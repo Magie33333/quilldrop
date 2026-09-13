@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
@@ -376,7 +376,12 @@ function PageTitle({ kicker, children }: { kicker?: string; children: React.Reac
 }
 
 function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
   const hasCrop =
     card.crop_w !== undefined &&
     card.crop_w !== null &&
@@ -385,11 +390,43 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
 
   const src = failedSrc === card.imageUrl && card.remoteImageUrl ? card.remoteImageUrl : (card.imageUrl || card.remoteImageUrl);
 
+  useEffect(() => {
+    if (!containerRef.current || !hasCrop) return;
+    const el = containerRef.current;
+    const measure = () => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        setContainerSize({ w: el.clientWidth, h: el.clientHeight });
+      }
+    };
+    measure();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => measure());
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+  }, [hasCrop]);
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setNaturalSize({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+    }
+  }, [src]);
+
+  const onImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+    }
+  };
+
   if (!hasCrop) {
     return (
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
+        onLoad={onImgLoad}
         onError={() => {
           if (card.remoteImageUrl && src !== card.remoteImageUrl) {
             setFailedSrc(card.imageUrl);
@@ -399,36 +436,71 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
     );
   }
 
-  const cropX = Number(card.crop_x) || 0;
-  const cropY = Number(card.crop_y) || 0;
-  const cropW = Number(card.crop_w) || 100;
-  const cropH = Number(card.crop_h) || 100;
+  let imgStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  };
 
-  const scaleX = 100 / cropW;
-  const scaleY = 100 / cropH;
-  const left = -(cropX * scaleX);
-  const top = -(cropY * scaleY);
+  if (containerSize && naturalSize && containerSize.w > 0 && containerSize.h > 0) {
+    const cropX = Number(card.crop_x) || 0;
+    const cropY = Number(card.crop_y) || 0;
+    const cropW = Number(card.crop_w) || 100;
+    const cropH = Number(card.crop_h) || 100;
+
+    const cropXPx = (cropX / 100) * naturalSize.w;
+    const cropYPx = (cropY / 100) * naturalSize.h;
+    const cropWPx = (cropW / 100) * naturalSize.w;
+    const cropHPx = (cropH / 100) * naturalSize.h;
+
+    // Uniformní škálování: 100% zachování proporcí rukopisu bez jakékoliv deformace!
+    const uniformScale = Math.min(containerSize.w / cropWPx, containerSize.h / cropHPx);
+    const renderW = naturalSize.w * uniformScale;
+    const renderH = naturalSize.h * uniformScale;
+
+    const offsetX = (containerSize.w - cropWPx * uniformScale) / 2;
+    const offsetY = (containerSize.h - cropHPx * uniformScale) / 2;
+
+    const renderLeft = offsetX - cropXPx * uniformScale;
+    const renderTop = offsetY - cropYPx * uniformScale;
+
+    imgStyle = {
+      position: "absolute",
+      maxWidth: "none",
+      maxHeight: "none",
+      width: `${renderW}px`,
+      height: `${renderH}px`,
+      left: `${renderLeft}px`,
+      top: `${renderTop}px`,
+    };
+  }
 
   return (
-    <img
-      src={src}
-      alt={alt}
+    <div
+      ref={containerRef}
       style={{
-        position: "absolute",
-        maxWidth: "none",
-        maxHeight: "none",
-        width: `${scaleX * 100}%`,
-        height: `${scaleY * 100}%`,
-        left: `${left}%`,
-        top: `${top}%`,
-        objectFit: "fill",
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-      onError={() => {
-        if (card.remoteImageUrl && src !== card.remoteImageUrl) {
-          setFailedSrc(card.imageUrl);
-        }
-      }}
-    />
+    >
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        onLoad={onImgLoad}
+        style={imgStyle}
+        onError={() => {
+          if (card.remoteImageUrl && src !== card.remoteImageUrl) {
+            setFailedSrc(card.imageUrl);
+          }
+        }}
+      />
+    </div>
   );
 }
 
