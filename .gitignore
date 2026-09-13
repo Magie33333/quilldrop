@@ -30,6 +30,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# data exports (large raw datasets)
+Export_*.json
+
 # vercel
 .vercel
 

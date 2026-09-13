@@ -1,4 +1,4 @@
-﻿# 📜 Deník vývoje projektu Quilldrop
+# 📜 Deník vývoje projektu Quilldrop
 **Vzdělávací sběratelská karetní hra s latinskými a středověkými kolofony**
 
 * **Zadavatel a odborná garance:** Prof. PhDr. Lucie Doležalová, Ph.D. (Filozofická fakulta Univerzity Karlovy / FHS UK)
@@ -88,9 +88,28 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 * [x] Správa týmu a rolí pro fakultní spolupracovníky
 * [x] Kontrola a potvrzování změn před zápisem do databáze
 * [x] Verzování na GitHubu a dokumentace vývoje
+* [x] Propojení veřejné hry (`app/page.tsx`) se Supabase a aplikace ořezů
+
+---
+
+## 📅 Záznamy vývoje (Chronologický deník)
+
+### [2026-09-13] Propojení hráčského rozhraní se Supabase & Adaptivní 4:3 ořezy
+* **Propojení hráčského frontendu (`app/page.tsx`) s živou PostgreSQL databází:**
+  * Hráčské balíčky, sbírka, trofeje i denní minihry nyní načítají publikované karty přímo ze Supabase (`cards` + `colophons`).
+  * Pokud je uživatel offline nebo probíhá prvotní načítání, aplikace okamžitě použije lokální data (nulový výpadek, okamžitý render).
+* **Adaptivní matematika výřezu rukopisů:**
+  * Komponenta `ColophonImage` v herním rozhraní nyní přebírá procentuální souřadnice `(crop_x, crop_y, crop_w, crop_h)` nastavené administrátory v Quilldrop Studiu.
+  * Zobrazení využívá přepočet na relativní CSS škálování (`scaleX = 100 / crop_w`, `scaleY = 100 / crop_h`), takže výřez sedí na pixel přesně ve všech velikostech (náhled karty ve sbírce, otevření balíčku i velký detail kodexu).
+* **Přímý import z Heurist exportu bez stahování gigabajtů na disk:**
+  * Vytvořen skript `scripts/import-to-supabase.mjs` (`npm run import:supabase`), který z analyzovaného 53 MB exportu (32 064 záznamů) přímo streamuje fakultní skeny (`img.scribes.ff.cuni.cz` a `manuscriptorium.com`) do Supabase bez zatěžování lokálního disku.
+  * Do databáze bylo úspěšně synchronizováno 69 karet s reálnými skeny kodexů.
+* **Indikátor univerzitní databáze:**
+  * V hlavičce a profilu hráče byl přidán status badge `✦ FF UK Live`, který potvrzuje aktivní spojení s akademickou databází.
+
+---
 
 ### Následující krok:
-* [ ] **Propojení veřejné hry (`app/page.tsx`) se Supabase:**
-  - Napojit herní balíčky na živá data z databáze namísto statického souboru.
-  - Aplikovat uložené souřadnice ořezu do herních karet, aby hráči okamžitě viděli výsledky práce editorů.
-  - Zprovoznit ukládání zlaťáků, XP a sesbíraných karet do profilů hráčů.
+* [ ] **Synchronizace hráčského profilu a inventáře do Supabase:**
+  * Propojit herní postup (odemčené karty v inventáři, odehrané minihry, denní streak) s tabulkami `profiles` a `user_cards` v Supabase pro přihlášené hráče.
+

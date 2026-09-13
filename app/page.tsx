@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
+import { supabase } from "@/lib/supabase";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
@@ -11,7 +12,9 @@ type GameKind = "mood" | "cipher" | "paleo";
 type PackQuality = "standard" | "refined" | "masterwork";
 
 type Colophon = {
-  id: number;
+  id: number | string;
+  uuid?: string;
+  slug?: string;
   title: string;
   quote: string;
   translation: string;
@@ -30,11 +33,15 @@ type Colophon = {
   features?: readonly string[];
   rarityReason?: string;
   visualNote?: string;
+  crop_x?: number;
+  crop_y?: number;
+  crop_w?: number;
+  crop_h?: number;
 };
 
 type GameState = {
   packsOpened: number;
-  collection: Record<number, number>;
+  collection: Record<string | number, number>;
   xp: number;
   coins: number;
   streak: number;
@@ -98,7 +105,7 @@ function loadState(): GameState {
   try {
     const saved = JSON.parse(localStorage.getItem("quilldrop-state") || "null");
     const hydrated: GameState = { ...INITIAL_STATE, ...(saved || {}), bonusPacks: saved?.bonusPacks || [], gallery: saved?.gallery || [] };
-    const hasCurrentCards = Object.keys(hydrated.collection).some(id => COLOPHONS.some(card => card.id === Number(id)));
+    const hasCurrentCards = Object.keys(hydrated.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
     if (!hasCurrentCards) hydrated.collection = { ...INITIAL_STATE.collection };
     const dailyReset = hydrated.lastPlayed === today() ? hydrated : { ...hydrated, packsOpened: 0, gamesPlayed: 0, bonusPacks: [], lastPlayed: today() };
     if (dailyReset.lastLoginDate === today()) return dailyReset;
@@ -120,6 +127,8 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("home");
   const [state, setState] = useState<GameState>(INITIAL_STATE);
+  const [cards, setCards] = useState<Colophon[]>(COLOPHONS);
+  const [isLive, setIsLive] = useState(false);
   const [detail, setDetail] = useState<Colophon | null>(null);
   const [opened, setOpened] = useState<Colophon[] | null>(null);
   const [reveal, setReveal] = useState(0);
@@ -139,6 +148,82 @@ export default function Home() {
       setState(loadState());
       setReady(true);
     }, 0);
+
+    async function fetchLiveCards() {
+      try {
+        const { data, error } = await supabase
+          .from("cards")
+          .select(`
+            id,
+            slug,
+            title,
+            rarity,
+            rarity_reason,
+            mood,
+            sigil,
+            status,
+            image_url,
+            crop_x,
+            crop_y,
+            crop_w,
+            crop_h,
+            colophons (
+              id,
+              heurist_id,
+              quote,
+              translation_cs,
+              scribe,
+              place,
+              year,
+              locus,
+              manuscript_shelfmark,
+              visual_note,
+              features,
+              formula_frequency,
+              source_url
+            )
+          `)
+          .eq("status", "published")
+          .order("created_at", { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const mapped: Colophon[] = data.map((c: any) => ({
+            id: c.colophons?.heurist_id || c.id,
+            uuid: c.id,
+            slug: c.slug,
+            title: c.title,
+            quote: c.colophons?.quote || "Explicit...",
+            translation: c.colophons?.translation_cs || "Překlad se připravuje",
+            scribe: c.colophons?.scribe || "Neznámý písař",
+            place: c.colophons?.place || "Neznámé místo",
+            year: c.colophons?.year || 1400,
+            rarity: c.rarity as Rarity,
+            mood: c.mood || "scribal voice",
+            sigil: c.sigil || "Q",
+            imageUrl: c.image_url,
+            remoteImageUrl: c.image_url,
+            manuscript: c.colophons?.manuscript_shelfmark || "Neznámý rukopis",
+            locus: c.colophons?.locus || "fol. ?",
+            sourceUrl: c.colophons?.source_url || c.image_url,
+            formulaFrequency: c.colophons?.formula_frequency || 1,
+            features: c.colophons?.features || [],
+            rarityReason: c.rarity_reason,
+            visualNote: c.colophons?.visual_note,
+            crop_x: Number(c.crop_x) || 0,
+            crop_y: Number(c.crop_y) || 0,
+            crop_w: Number(c.crop_w) || 100,
+            crop_h: Number(c.crop_h) || 100,
+          }));
+          setCards(mapped);
+          setIsLive(true);
+        }
+      } catch (e) {
+        console.warn("Supabase fetch failed, continuing with static data:", e);
+      }
+    }
+
+    fetchLiveCards();
+
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -162,8 +247,8 @@ export default function Home() {
       : quality === "refined"
         ? (roll > .97 ? ["Unique"] : roll > .80 ? ["Legendary", "Epic"] : ["Rare", "Epic", "Uncommon"])
         : (roll > .985 ? ["Unique"] : roll > .93 ? ["Legendary"] : roll > .78 ? ["Epic", "Rare"] : roll > .5 ? ["Uncommon", "Rare"] : ["Common", "Uncommon"]);
-    const pool = COLOPHONS.filter(c => allowed.includes(c.rarity));
-    return pool[Math.floor(Math.random() * pool.length)] || COLOPHONS[0];
+    const pool = cards.filter(c => allowed.includes(c.rarity));
+    return pool[Math.floor(Math.random() * pool.length)] || cards[0] || COLOPHONS[0];
   };
 
   const openPack = () => {
@@ -173,13 +258,13 @@ export default function Home() {
       return;
     }
     const quality: PackQuality | "daily" = usingBonus ? state.bonusPacks[0] : "daily";
-    const cards = Array.from({ length: 5 }, () => chooseCard(quality));
-    setOpened(cards);
+    const drawn = Array.from({ length: 5 }, () => chooseCard(quality));
+    setOpened(drawn);
     setReveal(0);
     setCardShown(false);
     setPackQuality(quality === "daily" ? "standard" : quality);
     const nextCollection = { ...state.collection };
-    cards.forEach(card => { nextCollection[card.id] = (nextCollection[card.id] || 0) + 1; });
+    drawn.forEach(card => { nextCollection[card.id] = (nextCollection[card.id] || 0) + 1; });
     const nextTrophies = [...state.trophies];
     if (!nextTrophies.includes("first-pack")) nextTrophies.push("first-pack");
     const nextLevel = levelForXp(state.xp + 25);
@@ -228,14 +313,14 @@ export default function Home() {
   return (
     <main className="page-stage">
       <section className="app-shell" aria-label="Quilldrop application">
-        <StatusBar state={state} />
+        <StatusBar state={state} isLive={isLive} />
 
         <div className="scroll-area">
-          {tab === "home" && <HomeScreen state={state} uniqueOwned={uniqueOwned} onPacks={() => setTab("packs")} onCollection={() => setTab("collection")} onMap={() => setShowMap(true)} onGallery={() => setTab("profile")} />}
+          {tab === "home" && <HomeScreen state={state} uniqueOwned={uniqueOwned} totalCards={cards.length} onPacks={() => setTab("packs")} onCollection={() => setTab("collection")} onMap={() => setShowMap(true)} onGallery={() => setTab("profile")} />}
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
-          {tab === "collection" && <CollectionScreen state={state} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
-          {tab === "trophies" && <TrophiesScreen state={state} />}
-          {tab === "profile" && <ProfileScreen state={state} uniqueOwned={uniqueOwned} duplicates={duplicates} onReset={resetDemo} onSend={() => setToast(duplicates ? "Duplicate sent to Beatrice!" : "You need a duplicate first.")} onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Profile portrait updated."); }} />}
+          {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
+          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} />}
+          {tab === "profile" && <ProfileScreen state={state} uniqueOwned={uniqueOwned} duplicates={duplicates} isLive={isLive} onReset={resetDemo} onSend={() => setToast(duplicates ? "Duplicate sent to Beatrice!" : "You need a duplicate first.")} onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Profile portrait updated."); }} />}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
@@ -244,8 +329,8 @@ export default function Home() {
 
         {detail && <CardDetail card={detail} count={state.collection[detail.id] || 0} onClose={() => setDetail(null)} />}
         {opened && <PackReveal key={`${reveal}-${cardShown}`} card={opened[reveal]} position={reveal + 1} total={opened.length} quality={packQuality} shown={cardShown} onReveal={() => setCardShown(true)} onNext={finishReveal} />}
-        {game && <GameModal kind={game} answer={answer} step={gameStep} setStep={setGameStep} onClose={() => setGame(null)} onAnswer={finishGame} />}
-        {showMap && <MapModal state={state} onClose={() => setShowMap(false)} />}
+        {game && <GameModal kind={game} cards={cards} answer={answer} step={gameStep} setStep={setGameStep} onClose={() => setGame(null)} onAnswer={finishGame} />}
+        {showMap && <MapModal state={state} cards={cards} onClose={() => setShowMap(false)} />}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
         {toast && <div className="toast" role="status">{toast}</div>}
       </section>
@@ -253,9 +338,31 @@ export default function Home() {
   );
 }
 
-function StatusBar({ state }: { state: GameState }) {
+function StatusBar({ state, isLive }: { state: GameState; isLive?: boolean }) {
   return <header className="status-bar">
-    <div className="brand-lockup"><img src="/quilldrop-logo.png" alt="Quilldrop" /></div>
+    <div className="brand-lockup">
+      <img src="/quilldrop-logo.png" alt="Quilldrop" />
+      {isLive && (
+        <span
+          style={{
+            fontSize: "9px",
+            color: "#d4af37",
+            marginLeft: "8px",
+            fontWeight: 700,
+            border: "1px solid #74420c",
+            padding: "2px 6px",
+            borderRadius: "4px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "3px",
+            letterSpacing: "0.5px",
+          }}
+          title="Živě propojeno se Supabase a univerzitními skeny FF UK"
+        >
+          <Sparkles size={10} /> FF UK Live
+        </span>
+      )}
+    </div>
     <div className="stats">
       <span title="Current streak" aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
       <span title="Illumination fragments — one earned per login day" aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
@@ -269,13 +376,64 @@ function PageTitle({ kicker, children }: { kicker?: string; children: React.Reac
 }
 
 function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
-  return <img src={card.imageUrl} alt={alt} onError={(event) => {
-    const image = event.currentTarget;
-    if (image.src !== card.remoteImageUrl) image.src = card.remoteImageUrl;
-  }} />;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const hasCrop =
+    card.crop_w !== undefined &&
+    card.crop_w !== null &&
+    Number(card.crop_w) > 5 &&
+    Number(card.crop_w) < 99.5;
+
+  const src = failedSrc === card.imageUrl && card.remoteImageUrl ? card.remoteImageUrl : (card.imageUrl || card.remoteImageUrl);
+
+  if (!hasCrop) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        onError={() => {
+          if (card.remoteImageUrl && src !== card.remoteImageUrl) {
+            setFailedSrc(card.imageUrl);
+          }
+        }}
+      />
+    );
+  }
+
+  const cropX = Number(card.crop_x) || 0;
+  const cropY = Number(card.crop_y) || 0;
+  const cropW = Number(card.crop_w) || 100;
+  const cropH = Number(card.crop_h) || 100;
+
+  const scaleX = 100 / cropW;
+  const scaleY = 100 / cropH;
+  const left = -(cropX * scaleX);
+  const top = -(cropY * scaleY);
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{
+        position: "absolute",
+        maxWidth: "none",
+        maxHeight: "none",
+        width: `${scaleX * 100}%`,
+        height: `${scaleY * 100}%`,
+        left: `${left}%`,
+        top: `${top}%`,
+        objectFit: "fill",
+      }}
+      onError={() => {
+        if (card.remoteImageUrl && src !== card.remoteImageUrl) {
+          setFailedSrc(card.imageUrl);
+        }
+      }}
+    />
+  );
 }
 
-function HomeScreen({ state, uniqueOwned, onPacks, onCollection, onMap, onGallery }: { state: GameState; uniqueOwned: number; onPacks: () => void; onCollection: () => void; onMap: () => void; onGallery: () => void }) {
+function HomeScreen({ state, uniqueOwned, totalCards, onPacks, onCollection, onMap, onGallery }: { state: GameState; uniqueOwned: number; totalCards: number; onPacks: () => void; onCollection: () => void; onMap: () => void; onGallery: () => void }) {
+  const progressPercent = totalCards > 0 ? Math.round((uniqueOwned / totalCards) * 100) : 0;
   return <div className="screen home-screen">
     <section className="welcome-panel">
       <div><p className="eyebrow">Good morrow, Olivia</p><h1>What will the margins reveal today?</h1><p>Open a new bundle of scribal voices from across medieval Europe.</p></div>
@@ -288,8 +446,8 @@ function HomeScreen({ state, uniqueOwned, onPacks, onCollection, onMap, onGaller
       <div className="daily-copy"><h2>A bundle from the scriptorium</h2><p>Five colophons are waiting under the seal.</p><button className="illuminated-button" onClick={onPacks}>Open today’s pack <span>→</span></button></div>
     </section>
 
-    <div className="section-title"><h2>Your manuscript</h2><span>{uniqueOwned}/{COLOPHONS.length} discovered</span></div>
-    <div className="progress-panel"><div className="progress-copy"><strong>Collection progress</strong><span>{Math.round(uniqueOwned / COLOPHONS.length * 100)}%</span></div><div className="progress"><i style={{ width: `${uniqueOwned / COLOPHONS.length * 100}%` }} /></div><button onClick={onCollection}>View collection</button></div>
+    <div className="section-title"><h2>Your manuscript</h2><span>{uniqueOwned}/{totalCards} discovered</span></div>
+    <div className="progress-panel"><div className="progress-copy"><strong>Collection progress</strong><span>{progressPercent}%</span></div><div className="progress"><i style={{ width: `${progressPercent}%` }} /></div><button onClick={onCollection}>View collection</button></div>
 
     <div className="quick-grid">
       <button onClick={onMap}><span className="quick-icon"><MapPinned size={23} /></span><strong>Explore the map</strong><small>Find voices by place</small></button>
@@ -327,15 +485,15 @@ function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () =
   </div>;
 }
 
-function CollectionScreen({ state, filter, setFilter, onDetail }: { state: GameState; filter: Rarity | "All"; setFilter: (f: Rarity | "All") => void; onDetail: (c: Colophon) => void }) {
+function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state: GameState; cards: Colophon[]; filter: Rarity | "All"; setFilter: (f: Rarity | "All") => void; onDetail: (c: Colophon) => void }) {
   const rarities: (Rarity | "All")[] = ["All", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Unique"];
-  const cards = COLOPHONS.filter(c => filter === "All" || c.rarity === filter);
+  const displayedCards = cards.filter(c => filter === "All" || c.rarity === filter);
   return <div className="screen collection-screen">
     <PageTitle kicker="Your illuminated archive">Collection</PageTitle>
     <div className="collection-summary"><div><strong>{Object.keys(state.collection).length}</strong><span>discovered</span></div><div><strong>{Object.values(state.collection).reduce((a, b) => a + b, 0)}</strong><span>total cards</span></div><div><strong>{Object.values(state.collection).filter(n => n > 1).length}</strong><span>duplicates</span></div></div>
     <div className="filter-row" aria-label="Filter cards by rarity">{rarities.map(r => <button key={r} className={filter === r ? "active" : ""} onClick={() => setFilter(r)}>{r}</button>)}</div>
     <div className="card-grid">
-      {cards.map(card => {
+      {displayedCards.map(card => {
         const count = state.collection[card.id] || 0;
         return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Open ${card.title}` : "Undiscovered card"}>
           <span className="rarity-label">{count ? card.rarity : "Undiscovered"}</span>
@@ -349,7 +507,7 @@ function CollectionScreen({ state, filter, setFilter, onDetail }: { state: GameS
   </div>;
 }
 
-function TrophiesScreen({ state }: { state: GameState }) {
+function TrophiesScreen({ state, cards }: { state: GameState; cards: Colophon[] }) {
   const trophies = [
     ["first-spark", "First Spark", "Open your first daily pack", "100 XP", "Q"],
     ["first-pack", "Seal Breaker", "Discover five colophons", "150 XP", "S"],
@@ -361,11 +519,11 @@ function TrophiesScreen({ state }: { state: GameState }) {
     <PageTitle kicker="Marks of your journey">Trophies</PageTitle>
     <section className="puzzle-board"><div className="puzzle-copy"><p>16-day illumination</p><h2>{state.puzzle}/16 days</h2><small>Return each day to reveal one new fragment.</small><div className="progress"><i style={{ width: `${state.puzzle / 16 * 100}%` }} /></div></div><IlluminationMosaic pieces={state.puzzle} compact /></section>
     <div className="section-title"><h2>Achievements</h2><span>{state.trophies.length}/5 earned</span></div>
-    <div className="trophy-list">{trophies.map(([id, title, text, xp, initial]) => { const ownsUnique = COLOPHONS.some(card => card.rarity === "Unique" && state.collection[card.id]); const earned = state.trophies.includes(id) || (id === "collector" && Object.keys(state.collection).length >= 8) || (id === "streak" && state.streak >= 16) || (id === "unique" && ownsUnique); return <article key={id} className={earned ? "earned" : "locked"}><div className="illuminated-initial">{initial}</div><div><strong>{title}</strong><p>{text}</p><small>{earned ? "Earned" : xp}</small></div><span>{earned ? <Award size={18} /> : <LockKeyhole size={16} />}</span></article>; })}</div>
+    <div className="trophy-list">{trophies.map(([id, title, text, xp, initial]) => { const ownsUnique = cards.some(card => card.rarity === "Unique" && state.collection[card.id]); const earned = state.trophies.includes(id) || (id === "collector" && Object.keys(state.collection).length >= 8) || (id === "streak" && state.streak >= 16) || (id === "unique" && ownsUnique); return <article key={id} className={earned ? "earned" : "locked"}><div className="illuminated-initial">{initial}</div><div><strong>{title}</strong><p>{text}</p><small>{earned ? "Earned" : xp}</small></div><span>{earned ? <Award size={18} /> : <LockKeyhole size={16} />}</span></article>; })}</div>
   </div>;
 }
 
-function ProfileScreen({ state, uniqueOwned, duplicates, onReset, onSend, onSetAvatar }: { state: GameState; uniqueOwned: number; duplicates: number; onReset: () => void; onSend: () => void; onSetAvatar: (id: string) => void }) {
+function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend, onSetAvatar }: { state: GameState; uniqueOwned: number; duplicates: number; isLive?: boolean; onReset: () => void; onSend: () => void; onSetAvatar: (id: string) => void }) {
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
   const title = level >= 10 ? "Master Illuminator" : level >= 6 ? "Journeyman Illuminator" : "Apprentice Illuminator";
@@ -374,6 +532,13 @@ function ProfileScreen({ state, uniqueOwned, duplicates, onReset, onSend, onSetA
     <section className="profile-card"><div className={`avatar ${state.avatarArt ? "art-avatar" : ""}`}>{state.avatarArt ? <img src={ILLUMINATIONS.find(a => a.id === state.avatarArt)?.source} alt="Selected illumination portrait" /> : "O"}</div><div><h2>olivia_r333</h2><p>{title} · Level {level}</p><div className="level-progress" aria-label={`${levelXp} of ${XP_PER_LEVEL} experience points toward level ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div><small>{levelXp} / {XP_PER_LEVEL} XP · {XP_PER_LEVEL - levelXp} XP to Level {level + 1}</small></div></section>
     <blockquote>“Per pedes et non per manus.”<cite>Selected personal colophon</cite></blockquote>
     <div className="profile-stats"><div><strong>{uniqueOwned}</strong><span>cards</span></div><div><strong>{state.streak}</strong><span>day streak</span></div><div><strong>{duplicates}</strong><span>duplicates</span></div></div>
+    
+    <div className="section-title"><h2>Database status</h2><span>{isLive ? "Online" : "Cached"}</span></div>
+    <div style={{ background: "#1c1713", border: "1px solid #3b322a", borderRadius: "8px", padding: "10px 12px", fontSize: "11px", color: "#c8b9a6", marginBottom: "14px", display: "flex", alignItems: "center", justifyContent: "between", gap: "8px" }}>
+      <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: isLive ? "#4ade80" : "#fbbf24" }} />
+      <span>{isLive ? "Připojeno k univerzitní Supabase (FF UK)" : "Používá se lokální záloha (offline režim)"}</span>
+    </div>
+
     <div className="section-title gallery-title"><h2>Illumination gallery</h2><span>{state.gallery.length} collected</span></div>
     <section className="current-illumination"><IlluminationMosaic pieces={state.puzzle} /><div><p>Current work</p><h3>The Learned Hare</h3><small>{state.puzzle < 16 ? `${16 - state.puzzle} login day${16 - state.puzzle === 1 ? "" : "s"} remaining` : "Illumination complete"}</small></div></section>
     {state.gallery.length ? <div className="illumination-gallery">{state.gallery.map(id => { const art = ILLUMINATIONS.find(item => item.id === id); if (!art) return null; return <article key={id}><img src={art.source} alt={art.title} /><div><strong>{art.title}</strong><small>Completed after 16 login days</small><button className={state.avatarArt === id ? "selected" : ""} onClick={() => onSetAvatar(id)}>{state.avatarArt === id ? "Current portrait" : "Set as portrait"}</button></div></article>; })}</div> : <p className="empty-gallery">Complete the 16-day mosaic to add your first illumination here.</p>}
@@ -406,7 +571,7 @@ function LevelUpModal({ level, onClose }: { level: number; onClose: () => void }
 }
 
 function CardDetail({ card, count, onClose }: { card: Colophon; count: number; onClose: () => void }) {
-  return <div className="modal-backdrop" onClick={onClose}><section className={`modal card-detail rarity-${card.rarity.toLowerCase()}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={card.title}><button className="close" onClick={onClose}>×</button><span className="rarity-label">{card.rarity}</span><div className="large-illustration"><ColophonImage card={card} alt={`Manuscript image for ${card.title}`} /></div><h2>{card.title}</h2><p className="latin">“{card.quote}”</p>{card.translation !== "Translation pending" && <p>{card.translation}</p>}<dl><div><dt>Scribe</dt><dd>{card.scribe}</dd></div><div><dt>Place & date</dt><dd>{card.place}, {card.year}</dd></div><div><dt>Manuscript</dt><dd>{card.manuscript}</dd></div><div><dt>Folio</dt><dd>{card.locus}</dd></div>{card.rarityReason && <div><dt>Why {card.rarity}?</dt><dd>{card.rarityReason}</dd></div>}<div><dt>Copies owned</dt><dd>{count}</dd></div></dl><a className="source-link" href={card.sourceUrl} target="_blank" rel="noreferrer">Open image source</a></section></div>;
+  return <div className="modal-backdrop" onClick={onClose}><section className={`modal card-detail rarity-${card.rarity.toLowerCase()}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={card.title}><button className="close" onClick={onClose}>×</button><span className="rarity-label">{card.rarity}</span><div className="large-illustration"><ColophonImage card={card} alt={`Manuscript image for ${card.title}`} /></div><h2>{card.title}</h2><p className="latin">“{card.quote}”</p>{card.translation && card.translation !== "Translation pending" && <p>{card.translation}</p>}<dl><div><dt>Scribe</dt><dd>{card.scribe}</dd></div><div><dt>Place & date</dt><dd>{card.place}, {card.year}</dd></div><div><dt>Manuscript</dt><dd>{card.manuscript}</dd></div><div><dt>Folio</dt><dd>{card.locus}</dd></div>{card.rarityReason && <div><dt>Why {card.rarity}?</dt><dd>{card.rarityReason}</dd></div>}<div><dt>Copies owned</dt><dd>{count}</dd></div></dl><a className="source-link" href={card.sourceUrl} target="_blank" rel="noreferrer">Open image source</a></section></div>;
 }
 
 function PackReveal({ card, position, total, quality, shown, onReveal, onNext }: { card: Colophon; position: number; total: number; quality: PackQuality; shown: boolean; onReveal: () => void; onNext: () => void }) {
@@ -443,8 +608,8 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
   </div>;
 }
 
-function GameModal({ kind, answer, step, setStep, onClose, onAnswer }: { kind: GameKind; answer: string | null; step: number; setStep: (n: number) => void; onClose: () => void; onAnswer: (correct: boolean) => void }) {
-  const challengeCard = COLOPHONS[kind === "paleo" ? 0 : kind === "cipher" ? 1 : 2];
+function GameModal({ kind, cards, answer, step, setStep, onClose, onAnswer }: { kind: GameKind; cards: Colophon[]; answer: string | null; step: number; setStep: (n: number) => void; onClose: () => void; onAnswer: (correct: boolean) => void }) {
+  const challengeCard = cards[kind === "paleo" ? 0 : kind === "cipher" ? 1 : 2] || cards[0] || COLOPHONS[0];
   const data = {
     mood: { title: "Scribe’s mood", intro: "How did this scribe feel?", quote: "The book is finally finished. My back aches, my eyes are dim, and now I want wine.", options: [["😌", "Peaceful"], ["😩", "Exhausted"], ["😡", "Furious"]], right: 1 },
     cipher: { title: "Crack the colophon", intro: "The vowels have vanished. Restore the phrase.", quote: "M_N_S  M_ _  D_L_T", options: [["Manus mea dolet", "My hand hurts"], ["Monas mea delet", "My monk erases"], ["Minus mio dalet", "A false trail"]], right: 0 },
@@ -454,7 +619,7 @@ function GameModal({ kind, answer, step, setStep, onClose, onAnswer }: { kind: G
   return <div className="modal-backdrop" onClick={onClose}><section className={`modal game-modal game-${kind}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"><button className="close" onClick={onClose}>×</button><p className="eyebrow">Bonus pack challenge</p><h2>{data.title}</h2><div className="reward-banner"><span>Reward</span><strong>{reward}</strong></div><div className="game-rule">{data.intro}</div><div className="challenge-manuscript"><ColophonImage card={challengeCard} alt="Manuscript detail used in this challenge" /><small>{challengeCard.manuscript} · {challengeCard.locus}</small></div><blockquote className={kind === "paleo" ? "paleo-text" : ""}>{data.quote}</blockquote><div className="game-options">{data.options.map((o, i) => <button key={i} disabled={!!answer} className={answer ? (i === data.right ? "correct" : "dim") : ""} onClick={() => onAnswer(i === data.right)}><span>{o[0]}</span><small>{o[1]}</small></button>)}</div>{answer === "wrong" && <p className="wrong-answer">Not quite—look for the clue in the wording.</p>}{step === 0 && <button className="hint" onClick={() => setStep(1)}>Need a hint?</button>}{step === 1 && <p className="hint-copy">Think about the physical feeling or the shape of the letters.</p>}</section></div>;
 }
 
-function MapModal({ state, onClose }: { state: GameState; onClose: () => void }) {
-  const owned = COLOPHONS.filter(c => state.collection[c.id]);
+function MapModal({ state, cards, onClose }: { state: GameState; cards: Colophon[]; onClose: () => void }) {
+  const owned = cards.filter(c => state.collection[c.id]);
   return <div className="modal-backdrop" onClick={onClose}><section className="modal map-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"><button className="close" onClick={onClose}>×</button><p className="eyebrow">Voices across Europe</p><h2>Colophon map</h2><div className="old-map"><span className="land land-1" /><span className="land land-2" /><span className="land land-3" />{owned.slice(0, 6).map((c, i) => <button key={c.id} style={{ left: `${22 + (i * 13) % 58}%`, top: `${25 + (i * 19) % 47}%` }} title={`${c.title}, ${c.place}`}>✦</button>)}</div><div className="map-list">{owned.slice(0, 4).map(c => <span key={c.id}><b>{c.place.split(",")[0]}</b><small>{c.year}</small></span>)}</div></section></div>;
 }
