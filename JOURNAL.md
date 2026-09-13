@@ -2,10 +2,61 @@
 **Vzdělávací sběratelská karetní hra s latinskými a středověkými kolofony**
 
 * **Zadavatel a odborná garance:** Prof. PhDr. Lucie Doležalová, Ph.D. (Filozofická fakulta Univerzity Karlovy / FHS UK)
-* **Realizace:** Vojtěch Benýšek & AI párový programátor (Google Antigravity / Gemini)
+* **Realizace:** Vojtěch Benýšek & AI párový programátor (Google Antigravity / Claude)
 * **Oficiální repozitář:** https://github.com/Magie33333/quilldrop
 * **Databázová a autentizační platforma:** Supabase (PostgreSQL, Auth, Row Level Security)
 * **Hlavní technologie:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Vite / Vinext
+
+---
+
+## 📅 Záznam ze dne 14. 9. 2026 — Kompletní vizuální redesign (commit `c2e018b`)
+
+**Problém:** Předchozí Gemini redesign (commit `87c4cc9`) zavedl příliš tmavý, uměle vypadající 
+design „temného skriptoria" (`#0a0806` pozadí), který uživateli splýval do mdlé AI estetiky.
+Zároveň byly odstraněny původní animace otevírání balíčků (aura efekty, glitter storm, světelné šachty).
+
+**Změny:**
+
+1. **Nová typografie** (`app/layout.tsx`):
+   - Nahrazeny Geist fonty za **Cinzel** (Google Fonts, medievální serif pro nadpisy a UI) 
+     a **Nunito** (přátelský rounded sans-serif pro UI text)
+   - CSS proměnné `--font-display` a `--font-ui` propojeny s Next.js font variables
+
+2. **Nová barevná paleta** (`app/globals.css`):
+   - Světlé pergamenové tóny: `#fdf6e3` jako základ, `#fef3c7` a `#fde68a` jako akcenty
+   - Zlatá: `#c8920a` (primární), `#f59e0b` (světlá), `#fde68a` (glow)
+   - Inkoustové okraje: `#d4b98a` → `#7a5c2e` (namísto tmavých `#2f251c`)
+   - Text: `#2c1a0e` (heading), `#4a3318` (body), `#8a6540` (muted)
+
+3. **Obnoveny cinematic animace otevírání balíčků**:
+   - `.aura-common/uncommon/rare/epic/legendary/unique` — barevná pozadí dle rarity
+   - `.glitter-storm` — explodující zlaté/barevné třpytky s CSS custom properties
+   - `.light-shafts` — světelné šachty padající z vrchu
+   - `.rarity-burst` — vějíř paprsků z středu
+   - `.reveal-flash` — rychlý záblesk přes celou obrazovku při odhalení
+   - `.is-tension` (Legendary/Unique) — třesoucí se animace před odhalením
+   - `.unique-breathe` — dýchající zlatý záblesk pro Unique karty
+   - `.level-up-modal` + `.level-seal` + `.level-rays` — animovaný level-up dialog
+
+4. **Barvy rarit karet** (světlé, kontrastní, WCAG-přívětivé):
+   - Common: šedý okraj `#9ca3af`
+   - Uncommon: zelený `#16a34a` s glow
+   - Rare: modrý `#2563eb` s glow
+   - Epic: fialový `#9333ea` s glow
+   - Legendary: oranžový `#ea580c` s glow
+   - Unique: zlatý `#c8920a` s glowing gradientem
+
+5. **PackReveal komponenta** přepsána s plným aura systémem:
+   - Fullscreen background se třídou `.aura-{rarity}` místo `bg-black/90`
+   - Tension state pro Legendary/Unique před odhalením
+   - Glitter, světelné šachty a paprsky při reveal
+
+6. **Zachováno z předchozí verze:**
+   - Responzivní layout (bez 430px limitu, desktop navbar, mobile bottom nav)
+   - Vyhledávání a řazení v kolekci
+   - Sloupcová mřížka karet (2–6 sloupců)
+   - ColophonImage boundary clamping logika
+   - Czech lokalizace
 
 ---
 
