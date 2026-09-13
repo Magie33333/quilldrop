@@ -157,6 +157,26 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 
 ---
 
+### [2026-09-13] Desktopový plnoobrazovkový dashboard, odstranění interních prvků a gramatická revize
+* **Přechod na skutečně plnoobrazovkové webové rozhraní (Full Width):**
+  * Odstraněno umělé 1200px ohraničení i šedé okraje kolem aplikace. Rozhraní se nyní plynule rozprostírá přes celou šířku a výšku monitoru (`100vw`, `100vh`), přičemž obsah je rozprostřen do vyváženého kontejneru až do `1400px`.
+* **Nový bohatý dashboard na domovské obrazovce (Home Dashboard):**
+  * Zcela zaplněn dříve prázdný prostor pod uvítacím panelem na velkých monitorech.
+  * **Hero sekce:** Vlevo denní pečetěný balíček s voskovou pečetí a počítadlem, vpravo panel tří denních písařských výzev (*Nálada písaře*, *Rozlušti kolofon*, *Paleografický mistr*) s okamžitým spuštěním minihry a indikátorem zbývajících pokusů.
+  * **Výběr z archivu (Showcase):** Zobrazení 6 nejzajímavějších vlastněných či objevovaných kolofonů v adaptivním poměru 4:3 s uniformním škálováním a okamžitým proklikem na detail karty.
+  * **Sekundární sekce:** Přehled postupu 16denní iluminované mozaiky s fragmenty Učeného zajíce a upoutávka na historickou mapu skriptorií s geografickými stopami písařů.
+* **Oprava české gramatiky a skloňování (Pluralizace):**
+  * Vyřešena chyba „2 balíčeky“: Zavedena pomocná funkce `formatPacksCount` pro správné české skloňování (`1 balíček`, `2–4 balíčky`, `5+ balíčků`).
+  * Opraveny anglické hlášky v toast notifikacích na přirozenou češtinu.
+* **Oddělení veřejné hry od interních fakultních nástrojů:**
+  * Odstraněn badge `✦ FF UK Live` z hlavičky aplikace.
+  * Odstraněn odkaz do Quilldrop Studia (`/admin`) z horní lišty i z hráčského profilu – administrace zůstává dostupná výhradně přímým zadáním URL oprávněným editorům.
+  * Vyčištěny fakultní reference v uživatelském rozhraní (např. *Student FF UK* změněn na *Mistr písař*, *Denní skriptorium FF UK* na *Denní skriptorium*).
+* **Zachování autentického vizuálu:**
+  * Ponechán oblíbený styl iluminovaného pergamenu, zlaté a rubínové pečetě, barevné odlišení rarit i dramatická animace otevírání balíčků s třesem balíčku, světelnými kužely a konfetami.
+
+---
+
 ### Následující kroky (Fáze 2):
 * [ ] **Napojení dynamických miniher ze Supabase (`game_questions`):**
   * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
