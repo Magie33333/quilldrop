@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
@@ -88,7 +88,17 @@ const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
 const today = () => new Date().toISOString().slice(0, 10);
 const XP_PER_LEVEL = 100;
 const levelForXp = (xp: number) => Math.floor(xp / XP_PER_LEVEL) + 1;
-const qualityLabel = (quality: PackQuality) => quality[0].toUpperCase() + quality.slice(1);
+const qualityLabel = (quality: PackQuality) => {
+  if (quality === "masterwork") return "Mistrovský";
+  if (quality === "refined") return "Vytříbený";
+  return "Standardní";
+};
+
+const formatPacksCount = (n: number): string => {
+  if (n === 1) return "1 balíček";
+  if (n >= 2 && n <= 4) return `${n} balíčky`;
+  return `${n} balíčků`;
+};
 
 function withXpReward(state: GameState, amount: number): GameState {
   const nextXp = state.xp + amount;
@@ -254,7 +264,7 @@ export default function Home() {
   const openPack = () => {
     const usingBonus = state.packsOpened >= 10;
     if (usingBonus && !state.bonusPacks.length) {
-      setToast(state.gamesPlayed >= 10 ? "All packs and minigames are spent for today." : "Your ten daily packs are spent—earn another in a minigame.");
+      setToast(state.gamesPlayed >= 10 ? "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy.");
       return;
     }
     const quality: PackQuality | "daily" = usingBonus ? state.bonusPacks[0] : "daily";
@@ -278,12 +288,12 @@ export default function Home() {
     else {
       setOpened(null);
       if (pendingPackLevel) { setLevelUp(pendingPackLevel); setPendingPackLevel(null); }
-      else setToast("Five cards added to your collection!");
+      else setToast("Pět nových karet bylo uloženo do vaší sbírky!");
     }
   };
 
   const startGame = (kind: GameKind) => {
-    if (state.gamesPlayed >= 10) { setToast("You have completed today’s ten minigames. Return tomorrow."); return; }
+    if (state.gamesPlayed >= 10) { setToast("Dnešních 10 výzev jste již dokončili. Vraťte se zítra za svítání."); return; }
     setGame(kind);
   };
 
@@ -295,20 +305,20 @@ export default function Home() {
       const nextLevel = levelForXp(state.xp + earnedXp);
       setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 20 }, earnedXp));
       if (nextLevel > levelForXp(state.xp)) window.setTimeout(() => setLevelUp(nextLevel), 1300);
-      else setToast(`Correct! A ${qualityLabel(quality)} bonus pack is waiting.`);
+      else setToast(`Správně! ${qualityLabel(quality)} balíček čeká ve vaší pokladnici.`);
     } else {
       setState(s => ({ ...s, gamesPlayed: s.gamesPlayed + 1 }));
-      setToast(`Attempt used — ${Math.max(0, 9 - state.gamesPlayed)} challenges remain today.`);
+      setToast(`Pokus využit — dnes zbývá ${Math.max(0, 9 - state.gamesPlayed)} výzev.`);
     }
     setTimeout(() => { setGame(null); setAnswer(null); setGameStep(0); }, 1200);
   };
 
   const resetDemo = () => {
     setState(INITIAL_STATE);
-    setToast("Your demo progress has been reset.");
+    setToast("Váš herní postup byl úspěšně resetován.");
   };
 
-  if (!ready) return <main className="loading">Opening the manuscript…</main>;
+  if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
     <main className="page-stage">
@@ -323,11 +333,24 @@ export default function Home() {
         />
 
         <div className="scroll-area">
-          {tab === "home" && <HomeScreen state={state} uniqueOwned={uniqueOwned} totalCards={cards.length} onPacks={() => setTab("packs")} onCollection={() => setTab("collection")} onMap={() => setShowMap(true)} onGallery={() => setTab("profile")} />}
+          {tab === "home" && (
+            <HomeScreen
+              state={state}
+              cards={cards}
+              uniqueOwned={uniqueOwned}
+              totalCards={cards.length}
+              onPacks={() => setTab("packs")}
+              onCollection={() => setTab("collection")}
+              onMap={() => setShowMap(true)}
+              onGallery={() => setTab("profile")}
+              onGame={startGame}
+              onDetail={setDetail}
+            />
+          )}
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
           {tab === "trophies" && <TrophiesScreen state={state} cards={cards} />}
-          {tab === "profile" && <ProfileScreen state={state} uniqueOwned={uniqueOwned} duplicates={duplicates} isLive={isLive} onReset={resetDemo} onSend={() => setToast(duplicates ? "Duplicate sent to Beatrice!" : "You need a duplicate first.")} onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Profile portrait updated."); }} />}
+          {tab === "profile" && <ProfileScreen state={state} uniqueOwned={uniqueOwned} duplicates={duplicates} isLive={isLive} onReset={resetDemo} onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")} onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }} />}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
@@ -347,7 +370,6 @@ export default function Home() {
 
 function StatusBar({
   state,
-  isLive,
   tab,
   setTab,
   uniqueOwned,
@@ -369,26 +391,6 @@ function StatusBar({
         title="Quilldrop: Návrat do skriptoria"
       >
         <img src="/quilldrop-logo.png" alt="Quilldrop" />
-        {isLive && (
-          <span
-            style={{
-              fontSize: "9px",
-              color: "#d4af37",
-              marginLeft: "8px",
-              fontWeight: 700,
-              border: "1px solid #74420c",
-              padding: "2px 6px",
-              borderRadius: "4px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "3px",
-              letterSpacing: "0.5px",
-            }}
-            title="Živě propojeno se Supabase a univerzitními skeny FF UK"
-          >
-            <Sparkles size={10} /> FF UK Live
-          </span>
-        )}
       </div>
 
       <nav className="desktop-nav" aria-label="Hlavní navigace">
@@ -418,9 +420,6 @@ function StatusBar({
         <span title="Dní v řadě bez přerušení" aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
         <span title="16denní iluminace" aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
         <span title="Zkušenostní body (XP)" aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
-        <a href="/admin" className="studio-btn-nav" title="Přejít do Quilldrop Studia pro ořez a schvalování rukopisů">
-          <PenTool size={11} /> <span>Studio</span>
-        </a>
       </div>
     </header>
   );
@@ -572,39 +571,213 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
   );
 }
 
-function HomeScreen({ state, uniqueOwned, totalCards, onPacks, onCollection, onMap, onGallery }: { state: GameState; uniqueOwned: number; totalCards: number; onPacks: () => void; onCollection: () => void; onMap: () => void; onGallery: () => void }) {
+function HomeScreen({
+  state,
+  cards,
+  uniqueOwned,
+  totalCards,
+  onPacks,
+  onCollection,
+  onMap,
+  onGallery,
+  onGame,
+  onDetail,
+}: {
+  state: GameState;
+  cards: Colophon[];
+  uniqueOwned: number;
+  totalCards: number;
+  onPacks: () => void;
+  onCollection: () => void;
+  onMap: () => void;
+  onGallery: () => void;
+  onGame: (g: GameKind) => void;
+  onDetail: (c: Colophon) => void;
+}) {
   const progressPercent = totalCards > 0 ? Math.round((uniqueOwned / totalCards) * 100) : 0;
-  return <div className="screen home-screen">
-    <div className="home-responsive-grid">
+  const remaining = Math.max(0, 10 - state.packsOpened);
+  const hasBonus = state.bonusPacks.length > 0;
+  const gamesLeft = Math.max(0, 10 - state.gamesPlayed);
+
+  const showcaseCards = useMemo(() => {
+    const owned = cards.filter(c => state.collection[c.id]);
+    if (owned.length >= 6) return owned.slice(0, 6);
+    const unowned = cards.filter(c => !state.collection[c.id]);
+    return [...owned, ...unowned].slice(0, 6);
+  }, [cards, state.collection]);
+
+  return (
+    <div className="screen home-screen">
       <section className="welcome-panel">
         <div>
           <p className="eyebrow">Středověké skriptorium</p>
           <h1>Co dnes vydají okraje kodexů?</h1>
-          <p>Otevřete novou várku hlasů písařů, stížností na bolavé ruce i slavnostních přípisů (výzkum FF UK).</p>
+          <p>Otevřete novou várku hlasů písařů, stížností na bolavé ruce i slavnostních přípisů ze starých rukopisů.</p>
         </div>
         <div className="scribe-medallion"><PenTool size={34} strokeWidth={1.45} /></div>
       </section>
 
-      <section className="daily-card">
-        <div className="daily-top"><span>Dnešní objev</span><b>{10 - state.packsOpened} balíčků zbývá</b></div>
-        <div className="pack-art" aria-hidden="true"><span>Q</span><i>✦</i></div>
-        <div className="daily-copy">
-          <h2>Balíček ze skriptoria</h2>
-          <p>5 skrytých hlasů písařů čeká pod voskovou pečetí.</p>
-          <button className="illuminated-button" onClick={onPacks}>Rozpečetit balíček <span>→</span></button>
+      <div className="home-hero-grid">
+        <section className="home-hero-card home-hero-pack">
+          <div>
+            <div className="home-pack-header">
+              <span>{hasBonus && remaining === 0 ? "Připravená odměna" : "Denní příděl balíčků"}</span>
+              <span className="home-pack-badge">
+                {remaining > 0 ? formatPacksCount(remaining) : hasBonus ? `${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
+              </span>
+            </div>
+            <div className="home-pack-body">
+              <div className="home-pack-seal" aria-hidden="true">Q</div>
+              <div className="home-pack-info">
+                <h2>{remaining ? "Balíček ze skriptoria" : hasBonus ? `${qualityLabel(state.bonusPacks[0])} balíček` : "Skriptorium odpočívá"}</h2>
+                <p>
+                  {remaining
+                    ? "Pět skrytých hlasů písařů čeká pod voskovou pečetí."
+                    : hasBonus
+                    ? "Získaná odměna z písařské výzvy čeká na rozpečetění."
+                    : gamesLeft
+                    ? "Splňte písařskou výzvu vedle a získejte další balíček!"
+                    : "Vraťte se zítra za rozbřesku, až zapálíme nové svíce."}
+                </p>
+              </div>
+            </div>
+          </div>
+          <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
+            {remaining || hasBonus ? "Rozpečetit balíček (5 karet)" : "Přejít do pokladnice"} <span>→</span>
+          </button>
+        </section>
+
+        <section className="home-quests-box">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h3>Písařské výzvy dne</h3>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--blue)" }}>{gamesLeft}/10 k dispozici</span>
+          </div>
+          <p>Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice.</p>
+          <div className="home-quests-list">
+            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("mood")}>
+              <span className="home-quest-icon"><Smile size={18} /></span>
+              <div className="home-quest-info">
+                <strong>Nálada písaře</strong>
+                <small>Rychlá intuice · Snadná výzva</small>
+              </div>
+              <span className="home-quest-reward">Standardní balíček →</span>
+            </button>
+            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
+              <span className="home-quest-icon"><KeyRound size={18} /></span>
+              <div className="home-quest-info">
+                <strong>Rozlušti kolofon</strong>
+                <small>Doplňte chybějící litery · Střední</small>
+              </div>
+              <span className="home-quest-reward">Vytříbený (Rare+) →</span>
+            </button>
+            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
+              <span className="home-quest-icon"><Languages size={18} /></span>
+              <div className="home-quest-info">
+                <strong>Paleografický mistr</strong>
+                <small>Určete středověké písmo · Expertní</small>
+              </div>
+              <span className="home-quest-reward">Mistrovský (Epic+) →</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section className="home-showcase-section">
+        <div className="showcase-header">
+          <div>
+            <h2>{uniqueOwned > 0 ? "Výběr z vašeho archivu" : "Ukázka kolofonů k objevení"}</h2>
+            <small style={{ color: "#765228" }}>{uniqueOwned > 0 ? "Naposledy prozkoumané a odemčené iluminované karty" : "Rozpečeťte balíček a odhalte první rukopisy"}</small>
+          </div>
+          <button onClick={onCollection}>Zobrazit celou sbírku ({uniqueOwned}/{totalCards}) →</button>
+        </div>
+        <div className="showcase-grid">
+          {showcaseCards.map(card => {
+            const count = state.collection[card.id] || 0;
+            return (
+              <button
+                key={card.id}
+                className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`}
+                onClick={() => count ? onDetail(card) : onPacks()}
+                aria-label={count ? `Otevřít detail ${card.title}` : "Neobjevená karta, rozpečeťte balíček"}
+              >
+                <span className="rarity-label">{count ? card.rarity : "K objevení"}</span>
+                <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
+                <strong>{count ? card.title : "Tajemný kodex"}</strong>
+                <small>{count ? `${card.place} · ${card.year}` : "Získejte v balíčcích"}</small>
+                {count > 1 && <b className="duplicate">×{count}</b>}
+              </button>
+            );
+          })}
         </div>
       </section>
-    </div>
 
-    <div className="section-title"><h2>Váš kodexový archiv</h2><span>{uniqueOwned}/{totalCards} objeveno</span></div>
-    <div className="progress-panel"><div className="progress-copy"><strong>Postup kompletace sbírky</strong><span>{progressPercent}%</span></div><div className="progress"><i style={{ width: `${progressPercent}%` }} /></div><button onClick={onCollection}>Otevřít celou sbírku ({uniqueOwned} karet)</button></div>
+      <div className="section-title">
+        <h2>Postup kodexového archivu</h2>
+        <span>{uniqueOwned} z {totalCards} objeveno</span>
+      </div>
+      <div className="progress-panel">
+        <div className="progress-copy">
+          <strong>Postup kompletace sbírky</strong>
+          <span>{progressPercent}%</span>
+        </div>
+        <div className="progress">
+          <i style={{ width: `${progressPercent}%` }} />
+        </div>
+        <button onClick={onCollection}>Otevřít celou sbírku ({uniqueOwned} karet)</button>
+      </div>
 
-    <div className="quick-grid">
-      <button onClick={onMap}><span className="quick-icon"><MapPinned size={23} /></span><strong>Historická mapa</strong><small>Hlasy písařů podle měst a klášterů</small></button>
-      <button onClick={onGallery}><span className="quick-icon"><Grid3X3 size={22} /></span><strong>Iluminovaná mozaika</strong><small>{state.puzzle}/16 dní · odkrývání fragmentů</small></button>
+      <div className="home-secondary-grid">
+        <section className="home-panel-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+            <div>
+              <h3>16denní iluminovaná mozaika</h3>
+              <p>Vraťte se každý den pro odhalení fragmentu středověkého Učeného zajíce.</p>
+            </div>
+            <button className="icon-label" onClick={onGallery} style={{ padding: "4px 8px", fontSize: "11px" }}>
+              Detail →
+            </button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "10px" }}>
+            <IlluminationMosaic pieces={state.puzzle} compact />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px" }}>
+                <span>Postup iluminace</span>
+                <span>{state.puzzle} z 16</span>
+              </div>
+              <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
+                <i style={{ width: `${(state.puzzle / 16) * 100}%` }} />
+              </div>
+              <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px" }}>
+                {state.puzzle < 16 ? `Zbývá ${16 - state.puzzle} denních přihlášení do kompletního díla.` : "Iluminace je dokončena! Portrét byl odemčen v profilu."}
+              </small>
+            </div>
+          </div>
+        </section>
+
+        <section className="home-panel-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+              <div>
+                <h3>Historická mapa skriptorií</h3>
+                <p>Sledujte geografické stopy písařů napříč středověkou Evropou a českými zeměmi.</p>
+              </div>
+              <span style={{ width: "36px", height: "36px", display: "grid", placeItems: "center", background: "#eed8ab", borderRadius: "50%", color: "var(--brown)", border: "1px solid #a87940" }}>
+                <MapPinned size={18} />
+              </span>
+            </div>
+            <div style={{ background: "#ecd8ad", padding: "10px 12px", borderRadius: "6px", border: "1px solid #ba8c53", fontSize: "11.5px", color: "var(--brown)" }}>
+              📍 <strong>Místa původu:</strong> Praha, Břevnov, Sázava, Třeboň, Zlatá Koruna a další evropská centra písemnictví.
+            </div>
+          </div>
+          <button className="illuminated-button" onClick={onMap} style={{ marginTop: "14px", width: "100%", justifyContent: "center" }}>
+            Otevřít historickou mapu <span>→</span>
+          </button>
+        </section>
+      </div>
+
+      <blockquote>“Kniha je dopsána. Kéž je čtenář laskav a písaři dopřeje číši dobrého vína.”<cite>— anonymní písař, cca 1300</cite></blockquote>
     </div>
-    <blockquote>“Kniha je dopsána. Kéž je čtenář laskav a písaři dopřeje číši dobrého vína.”<cite>— anonymní písař, cca 1300</cite></blockquote>
-  </div>;
+  );
 }
 
 function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () => void; onGame: (g: GameKind) => void }) {
@@ -612,14 +785,22 @@ function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () =
   const hasBonus = state.bonusPacks.length > 0;
   const gamesLeft = Math.max(0, 10 - state.gamesPlayed);
   return <div className="screen packs-screen">
-    <PageTitle kicker="Denní skriptorium FF UK">Rozpečetění balíčků</PageTitle>
+    <PageTitle kicker="Denní skriptorium">Rozpečetění balíčků</PageTitle>
     <div className="daily-ledger">
       <div><span>Denní balíčky</span><strong>{state.packsOpened}<small>/10</small></strong><div className="ten-dots">{Array.from({ length: 10 }).map((_, i) => <i key={i} className={i < state.packsOpened ? "used" : ""} />)}</div></div>
       <div><span>Písařské výzvy</span><strong>{state.gamesPlayed}<small>/10</small></strong><div className="ten-dots games">{Array.from({ length: 10 }).map((_, i) => <i key={i} className={i < state.gamesPlayed ? "used" : ""} />)}</div></div>
     </div>
-    {hasBonus && <div className="bonus-vault"><span><Gem size={13} /> Bonusová pokladnice</span><b>{state.bonusPacks.length} balíček{state.bonusPacks.length === 1 ? "" : "y"}</b><small>Připraven: <em className={`quality-name quality-${state.bonusPacks[0]}`}>{qualityLabel(state.bonusPacks[0])}</em></small></div>}
+    {hasBonus && (
+      <div className="bonus-vault">
+        <span><Gem size={13} /> Bonusová pokladnice</span>
+        <b>{formatPacksCount(state.bonusPacks.length)}</b>
+        <small>Připraven: <em className={`quality-name quality-${state.bonusPacks[0]}`}>{qualityLabel(state.bonusPacks[0])}</em></small>
+      </div>
+    )}
     <section className={`sealed-pack ${remaining === 0 && !hasBonus ? "empty" : ""} ${hasBonus && remaining === 0 ? `bonus-${state.bonusPacks[0]}` : ""}`}>
-      <div className={`pack-ribbon ${hasBonus && remaining === 0 ? `quality-${state.bonusPacks[0]}` : ""}`}>{remaining ? `${remaining} zbývá k otevření` : hasBonus ? `${qualityLabel(state.bonusPacks[0])} odměna` : "Dnešní balíčky vyčerpány"}</div>
+      <div className={`pack-ribbon ${hasBonus && remaining === 0 ? `quality-${state.bonusPacks[0]}` : ""}`}>
+        {remaining ? `${formatPacksCount(remaining)} zbývá k otevření` : hasBonus ? `${qualityLabel(state.bonusPacks[0])} odměna` : "Dnešní balíčky vyčerpány"}
+      </div>
       <div className="seal-orbit"><i /><i /><i /><div className="wax-seal">Q</div></div>
       <div className="manuscript-lines"><i /><i /><i /></div>
       <h2>{remaining ? "Denní balíček kolofonů" : hasBonus ? <><span className={`pack-quality-title quality-${state.bonusPacks[0]}`}>{qualityLabel(state.bonusPacks[0])}</span> balíček</> : "Skriptorium pro dnešek odpočívá"}</h2>
@@ -657,7 +838,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
   });
 
   return <div className="screen collection-screen">
-    <PageTitle kicker="Iluminovaný archiv FF UK">Sbírka kolofonů</PageTitle>
+    <PageTitle kicker="Iluminovaný archiv">Sbírka kolofonů</PageTitle>
     <div className="collection-summary">
       <div><strong>{Object.keys(state.collection).length}</strong><span>objeveno</span></div>
       <div><strong>{Object.values(state.collection).reduce((a, b) => a + b, 0)}</strong><span>karet celkem</span></div>
@@ -768,7 +949,7 @@ function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend
         {state.avatarArt ? <img src={ILLUMINATIONS.find(a => a.id === state.avatarArt)?.source} alt="Vybraný portrét" /> : "Q"}
       </div>
       <div>
-        <h2>Student FF UK</h2>
+        <h2>Mistr písař</h2>
         <p>{title} · Úroveň {level}</p>
         <div className="level-progress" aria-label={`${levelXp} z ${XP_PER_LEVEL} XP do úrovně ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div>
         <small>{levelXp} / {XP_PER_LEVEL} XP · Zbývá {XP_PER_LEVEL - levelXp} XP do úrovně {level + 1}</small>
@@ -809,9 +990,6 @@ function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend
     </div>
 
     <button className="settings-button" onClick={onReset}><RotateCcw size={12} /> Resetovat postup pro demonstraci</button>
-    <a href="/admin" className="settings-button" style={{ marginTop: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", textDecoration: "none" }}>
-      <PenTool size={13} /> Quilldrop Studio (Ořezávání a administrace rukopisů FF UK)
-    </a>
   </div>;
 }
 
@@ -853,7 +1031,7 @@ function CardDetail({ card, count, onClose }: { card: Colophon; count: number; o
             <ColophonImage card={card} alt={`Snímek rukopisu ${card.title}`} />
           </div>
           <a className="source-link" href={card.sourceUrl} target="_blank" rel="noreferrer">
-            Otevřít digitální sken na FF UK ↗
+            Otevřít digitální sken rukopisu ↗
           </a>
         </div>
         <div className="card-detail-right">

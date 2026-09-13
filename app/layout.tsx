@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quilldrop | Středověká sběratelská hra z kolofonů FF UK",
-  description: "Sběratelská hra s autentickými latinskými a středověkými kolofony z výzkumu prof. Lucie Doležalové (Univerzita Karlova).",
+  title: "Quilldrop | Středověká sběratelská hra z rukopisných kolofonů",
+  description: "Sběratelská hra s autentickými středověkými kolofony, iluminacemi a hlasy písařů ze starých kodexů.",
   other: {
     "codex-preview": "development",
   },
