@@ -9,54 +9,22 @@
 
 ---
 
-## 📅 Záznam ze dne 14. 9. 2026 — Kompletní vizuální redesign (commit `c2e018b`)
+## 📅 Záznam ze dne 14. 9. 2026 — Návrat k původnímu pergamenovému vizuálu (GPT work) se zachováním funkčních oprav
 
-**Problém:** Předchozí Gemini redesign (commit `87c4cc9`) zavedl příliš tmavý, uměle vypadající 
-design „temného skriptoria" (`#0a0806` pozadí), který uživateli splýval do mdlé AI estetiky.
-Zároveň byly odstraněny původní animace otevírání balíčků (aura efekty, glitter storm, světelné šachty).
+**Rozhodnutí:** Pokusy o radikální grafické přepracování (tmavé skriptorium i hybridní žlutobílý režim) narušily jednotnou atmosféru a rozbily provázanost vizuálních prvků a animací. Na žádost uživatele byl proveden návrat k původnímu, ucelenému a funkčnímu designu vytvořenému v rámci GPT work (`72b0adf`).
 
-**Změny:**
-
-1. **Nová typografie** (`app/layout.tsx`):
-   - Nahrazeny Geist fonty za **Cinzel** (Google Fonts, medievální serif pro nadpisy a UI) 
-     a **Nunito** (přátelský rounded sans-serif pro UI text)
-   - CSS proměnné `--font-display` a `--font-ui` propojeny s Next.js font variables
-
-2. **Nová barevná paleta** (`app/globals.css`):
-   - Světlé pergamenové tóny: `#fdf6e3` jako základ, `#fef3c7` a `#fde68a` jako akcenty
-   - Zlatá: `#c8920a` (primární), `#f59e0b` (světlá), `#fde68a` (glow)
-   - Inkoustové okraje: `#d4b98a` → `#7a5c2e` (namísto tmavých `#2f251c`)
-   - Text: `#2c1a0e` (heading), `#4a3318` (body), `#8a6540` (muted)
-
-3. **Obnoveny cinematic animace otevírání balíčků**:
-   - `.aura-common/uncommon/rare/epic/legendary/unique` — barevná pozadí dle rarity
-   - `.glitter-storm` — explodující zlaté/barevné třpytky s CSS custom properties
-   - `.light-shafts` — světelné šachty padající z vrchu
-   - `.rarity-burst` — vějíř paprsků z středu
-   - `.reveal-flash` — rychlý záblesk přes celou obrazovku při odhalení
-   - `.is-tension` (Legendary/Unique) — třesoucí se animace před odhalením
-   - `.unique-breathe` — dýchající zlatý záblesk pro Unique karty
-   - `.level-up-modal` + `.level-seal` + `.level-rays` — animovaný level-up dialog
-
-4. **Barvy rarit karet** (světlé, kontrastní, WCAG-přívětivé):
-   - Common: šedý okraj `#9ca3af`
-   - Uncommon: zelený `#16a34a` s glow
-   - Rare: modrý `#2563eb` s glow
-   - Epic: fialový `#9333ea` s glow
-   - Legendary: oranžový `#ea580c` s glow
-   - Unique: zlatý `#c8920a` s glowing gradientem
-
-5. **PackReveal komponenta** přepsána s plným aura systémem:
-   - Fullscreen background se třídou `.aura-{rarity}` místo `bg-black/90`
-   - Tension state pro Legendary/Unique před odhalením
-   - Glitter, světelné šachty a paprsky při reveal
-
-6. **Zachováno z předchozí verze:**
-   - Responzivní layout (bez 430px limitu, desktop navbar, mobile bottom nav)
-   - Vyhledávání a řazení v kolekci
-   - Sloupcová mřížka karet (2–6 sloupců)
-   - ColophonImage boundary clamping logika
-   - Czech lokalizace
+**Stav a zachované funkční opravy:**
+1. **Původní pergamenový vizuál a barevná paleta:**
+   - Obnoven kompletní stylesheet `app/globals.css` s autentickými středověkými pergamenovými odstíny (`--parchment: #edd8b1`, `--light: #f4e5c6`, `--brown: #935803`, `--blue: #1039a0`, `--red: #b84732`, `--gold: #c89a2b`).
+   - Obnoveny původní barvy rarit a stínování karet ve sbírce i v balíčcích.
+2. **Obnovení všech animací:**
+   - Plný systém odhalování balíčku (`PackReveal`): animace napětí (`.is-tension`) pro Legendary a Unique karty, třesení karty před odhalením, částicové pole (`.particle-field`), exploze třpytek (`.glitter-storm`), světelné šachty (`.light-shafts`), paprsky rarity (`.rarity-burst`), záblesk obrazovky (`.reveal-flash`) a zlaté dýchání (`unique-breathe`).
+   - Původní vosková pečeť s rotací a pulzací.
+3. **Plně zachované funkční opravy a integrace:**
+   - **Supabase live data:** Živé stahování publikovaných karet a kolofonů přímo z univerzitního PostgreSQL cloudu s fallbackem na lokální archiv.
+   - **ColophonImage bez deformace:** Uniformní škálování `Math.min(container.w / crop.w, container.h / crop.h)` a boundary clamping na všech okrajích (eliminace bílých/prázdných mezer pod spodními ořezy).
+   - **Quilldrop Studio:** Plnohodnotné rozhraní pro editory na `/admin` pro ořezávání a schvalování rukopisů z FF UK.
+   - **Opravená metadata:** Čeština v titulku a `lang="cs"`.
 
 ---
 

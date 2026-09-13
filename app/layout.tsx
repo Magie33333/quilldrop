@@ -1,27 +1,23 @@
 import type { Metadata } from "next";
-import { Cinzel, Nunito } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-// Cinzel — klasické serif s historickým charakterem pro nadpisy a UI
-const cinzel = Cinzel({
-  variable: "--font-display",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "600", "700", "900"],
-  display: "swap",
 });
 
-// Nunito — přátelský, kulatý sans-serif pro tělo textu a UI prvky
-const nunito = Nunito({
-  variable: "--font-ui",
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  display: "swap",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "Quilldrop | Středověká sběratelská hra z kolofonů FF UK",
-  description:
-    "Sbírejte autentické kolofony a rukopisy ze středověkých kodexů z výzkumu prof. Lucie Doležalové (Univerzita Karlova).",
+  description: "Sběratelská hra s autentickými latinskými a středověkými kolofony z výzkumu prof. Lucie Doležalové (Univerzita Karlova).",
+  other: {
+    "codex-preview": "development",
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -35,7 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="cs">
-      <body className={`${cinzel.variable} ${nunito.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         {children}
       </body>
     </html>
