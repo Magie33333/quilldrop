@@ -461,8 +461,21 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
     const offsetX = (containerSize.w - cropWPx * uniformScale) / 2;
     const offsetY = (containerSize.h - cropHPx * uniformScale) / 2;
 
-    const renderLeft = offsetX - cropXPx * uniformScale;
-    const renderTop = offsetY - cropYPx * uniformScale;
+    let renderLeft = offsetX - cropXPx * uniformScale;
+    let renderTop = offsetY - cropYPx * uniformScale;
+
+    // Clamping hran: zabrání vzniku prázdných mezer na okrajích, pokud je rukopis větší než rámeček
+    if (renderW >= containerSize.w) {
+      renderLeft = Math.min(0, Math.max(containerSize.w - renderW, renderLeft));
+    } else {
+      renderLeft = (containerSize.w - renderW) / 2;
+    }
+
+    if (renderH >= containerSize.h) {
+      renderTop = Math.min(0, Math.max(containerSize.h - renderH, renderTop));
+    } else {
+      renderTop = (containerSize.h - renderH) / 2;
+    }
 
     imgStyle = {
       position: "absolute",

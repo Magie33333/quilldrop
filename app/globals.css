@@ -122,7 +122,8 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .close { position: absolute; z-index: 5; top: 8px; right: 9px; width: 30px; height: 30px; border: 1px solid var(--brown); background: #f5e5c4; color: var(--brown); font-size: 20px; cursor: pointer; }
 .card-detail h2, .game-modal h2, .map-modal h2 { color: var(--brown); margin: 12px 0 6px; font-size: 28px; }
 .large-illustration { height: 190px; margin-top: 10px; }
-.card-detail .large-illustration { width: 100%; max-width: 270px; height: 202.5px; margin: 12px auto 8px; border-radius: 8px; }
+.card-detail .large-illustration { width: 100%; max-width: 270px; height: 202.5px; margin: 12px auto 8px; border-radius: 8px; background: #16120e; border: 1px solid #4a3f35; }
+.card-detail .large-illustration::before, .reveal-card .large-illustration::before, .mini-illustration:has(img)::before, .large-illustration:has(img)::before { display: none; }
 .large-illustration span { z-index: 1; font-size: 79px; }.latin { color: var(--brown); font-style: italic; }.card-detail p { font-size: 13px; line-height: 1.45; }.card-detail dl { border-top: 1px solid #a87940; margin: 13px 0 0; }.card-detail dl div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #c9aa74; font-size: 11px; }.card-detail dt { font-weight: 700; }.card-detail dd { margin: 0; text-align: right; }
 .source-link { display: inline-flex; margin-top: 12px; color: #784708; font-size: 11px; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
 .challenge-manuscript { position: relative; height: 150px; margin: 10px 0; overflow: hidden; border: 1px solid #a87940; border-radius: 7px; background: #d7bd89; box-shadow: inset 0 0 18px #4e2a1024; }

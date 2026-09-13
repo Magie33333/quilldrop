@@ -726,8 +726,24 @@ export default function AdminPage() {
 
     const offsetX = (CARD_IMG_W - completedCrop.width * uniformScale) / 2;
     const offsetY = (CARD_IMG_H - completedCrop.height * uniformScale) / 2;
-    renderLeft = offsetX - completedCrop.x * uniformScale;
-    renderTop = offsetY - completedCrop.y * uniformScale;
+    let rLeft = offsetX - completedCrop.x * uniformScale;
+    let rTop = offsetY - completedCrop.y * uniformScale;
+
+    // Clamping hran: zabrání vzniku prázdných mezer na okrajích, pokud je rukopis větší než rámeček
+    if (renderW >= CARD_IMG_W) {
+      rLeft = Math.min(0, Math.max(CARD_IMG_W - renderW, rLeft));
+    } else {
+      rLeft = (CARD_IMG_W - renderW) / 2;
+    }
+
+    if (renderH >= CARD_IMG_H) {
+      rTop = Math.min(0, Math.max(CARD_IMG_H - renderH, rTop));
+    } else {
+      rTop = (CARD_IMG_H - renderH) / 2;
+    }
+
+    renderLeft = rLeft;
+    renderTop = rTop;
   }
 
   // PŘIHLAŠOVACÍ OBRAZOVKA (Pokud není uživatel přihlášen)
