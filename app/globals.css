@@ -1,75 +1,79 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════
+   QUILLDROP — Světlá pergamenová paleta (warm parchment theme)
+   Fonty: --font-display (Cinzel), --font-ui (Nunito)
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
-  /* Hlavní paleta skriptoria */
-  --bg-deep: #0a0806;
-  --bg-card: #15110d;
-  --bg-card-hover: #1f1914;
-  --bg-surface: #1a1511;
-  --border-muted: #2f251c;
-  --border-gold: #8c6d31;
-  --border-active: #d4af37;
+  /* Pergamenové podklady */
+  --parchment-bg:   #fdf6e3;
+  --parchment-mid:  #f5e8c0;
+  --parchment-deep: #ede0ab;
+  --parchment-card: #faf3dc;
+  --parchment-hover: #fff8ee;
 
-  /* Zlaté a pergamenové akcenty */
-  --gold-primary: #d4af37;
-  --gold-light: #ffd580;
-  --gold-glow: rgba(255, 213, 128, 0.25);
-  --text-parchment: #ede3d4;
-  --text-muted: #9e8d7a;
-  --text-dim: #6d5e4f;
+  /* Inkoustové okraje a linie */
+  --ink-light: #d4b98a;
+  --ink-mid:   #b08a50;
+  --ink-deep:  #7a5c2e;
+  --ink-dark:  #4a3520;
 
-  /* Barvy rarit (autentické středověké pigmenty) */
-  --rarity-common: #807264;
-  --rarity-uncommon: #2e8540;
-  --rarity-rare: #2563eb;
-  --rarity-epic: #9333ea;
+  /* Zlaté akcenty */
+  --gold-primary: #c8920a;
+  --gold-bright:  #f5c23e;
+  --gold-glow:    rgba(248, 194, 62, 0.35);
+  --gold-pill-bg: #fef3c7;
+
+  /* Text */
+  --text-heading:  #2c1a0e;
+  --text-body:     #4a3318;
+  --text-muted:    #8a6540;
+  --text-dim:      #b09060;
+
+  /* Barvy rarit — živé, kontrastní */
+  --rarity-common:    #6b7280;
+  --rarity-uncommon:  #16a34a;
+  --rarity-rare:      #2563eb;
+  --rarity-epic:      #9333ea;
   --rarity-legendary: #ea580c;
-  --rarity-unique: #ffd580;
+  --rarity-unique:    #c8920a;
 
-  /* Písma */
-  --font-serif: Georgia, "Times New Roman", Cambria, serif;
-  --font-ui: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+  /* Fonty */
+  --font-display: var(--font-display, "Cinzel", Georgia, serif);
+  --font-ui:      var(--font-ui, "Nunito", "Segoe UI", system-ui, sans-serif);
+  --font-serif:   Georgia, "Times New Roman", Cambria, serif;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html {
-  background-color: var(--bg-deep);
-  color-scheme: dark;
+  background-color: var(--parchment-bg);
+  color-scheme: light;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  color: var(--text-parchment);
-  font-family: var(--font-serif);
-  background: radial-gradient(circle at 50% 0%, #221b14 0%, #0d0a07 65%, #050403 100%);
+  color: var(--text-body);
+  font-family: var(--font-ui);
+  background:
+    radial-gradient(ellipse at 50% 0%, #fffbe8 0%, var(--parchment-bg) 55%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c4a355' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom medieval scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0d0a07;
-}
-::-webkit-scrollbar-thumb {
-  background: #33271d;
-  border-radius: 4px;
-  border: 1px solid #1c150f;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #4a3a2b;
-}
+/* Skrolbary v pergamenovém stylu */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f0e5c4; }
+::-webkit-scrollbar-thumb { background: #c4a870; border-radius: 4px; border: 1px solid #d4b98a; }
+::-webkit-scrollbar-thumb:hover { background: #a07840; }
 
-/* -------------------------------------------------------------
-   RESPONZIVNÍ WEB SHELL (Plnohodnotný web bez 430px limitu)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   RESPONZIVNÍ WEB SHELL
+   ───────────────────────────────────────────────────────────── */
 .page-stage {
   min-height: 100dvh;
   width: 100%;
@@ -86,7 +90,6 @@ body {
   position: relative;
 }
 
-/* Hlavní obsahový kontejner */
 .main-content {
   flex: 1;
   width: 100%;
@@ -96,23 +99,21 @@ body {
 }
 
 @media (min-width: 768px) {
-  .main-content {
-    padding: 2rem 2rem 3rem 2rem;
-  }
+  .main-content { padding: 2rem 2rem 3rem 2rem; }
 }
 
-/* -------------------------------------------------------------
-   HORNÍ NAVIGAČNÍ LIŠTA (Moderní Web Navbar pro Desktop & Tablet)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   HORNÍ NAVBAR (sticky, skleněný pergamen)
+   ───────────────────────────────────────────────────────────── */
 .desktop-navbar {
   position: sticky;
   top: 0;
   z-index: 40;
   width: 100%;
-  background: rgba(15, 12, 9, 0.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid #33271d;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  background: rgba(253, 246, 227, 0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 2px solid var(--ink-light);
+  box-shadow: 0 3px 18px rgba(100, 65, 20, 0.12);
 }
 
 .desktop-navbar-inner {
@@ -131,82 +132,83 @@ body {
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: #ffd580;
-  background: rgba(212, 175, 55, 0.12);
-  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: var(--gold-primary);
+  background: var(--gold-pill-bg);
+  border: 1px solid var(--ink-light);
   padding: 2px 8px;
   border-radius: 9999px;
   letter-spacing: 0.5px;
-  font-weight: 600;
+  font-weight: 700;
   font-family: var(--font-ui);
 }
 
 .nav-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 8px;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 10px;
   font-size: 13px;
-  font-family: var(--font-serif);
-  font-weight: 600;
-  color: #a89887;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--text-muted);
   background: transparent;
   border: 1px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .nav-tab-btn:hover {
-  color: #ffd580;
-  background: rgba(255, 213, 128, 0.06);
-  border-color: rgba(212, 175, 55, 0.2);
+  color: var(--gold-primary);
+  background: rgba(200, 146, 10, 0.08);
+  border-color: var(--ink-light);
 }
 
 .nav-tab-btn.active {
-  color: #ffd580;
-  background: rgba(212, 175, 55, 0.14);
-  border-color: rgba(212, 175, 55, 0.5);
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+  color: var(--gold-primary);
+  background: var(--gold-pill-bg);
+  border-color: var(--ink-mid);
+  box-shadow: 0 2px 8px rgba(200, 146, 10, 0.18);
 }
 
 .stat-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 4px 10px;
-  background: #191410;
-  border: 1px solid #3d3126;
+  background: var(--parchment-mid);
+  border: 1px solid var(--ink-light);
   border-radius: 8px;
   font-size: 12px;
   font-family: var(--font-ui);
-  color: #e8ded1;
+  font-weight: 700;
+  color: var(--text-body);
   white-space: nowrap;
 }
 
-/* -------------------------------------------------------------
-   MOBILNÍ SPODNÍ LIŠTA (Pouze pro displeje < 768px)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   MOBILNÍ SPODNÍ LIŠTA
+   ───────────────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: 64px;
-  background: rgba(16, 13, 10, 0.95);
+  background: rgba(253, 246, 227, 0.97);
   backdrop-filter: blur(14px);
-  border-top: 1px solid #3b2e23;
+  border-top: 2px solid var(--ink-light);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   z-index: 40;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 -3px 16px rgba(100, 65, 20, 0.10);
 }
 
 .bottom-nav button {
@@ -215,105 +217,78 @@ body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  color: #8c7b6d;
+  color: var(--text-muted);
   background: transparent;
   border: none;
   font-family: var(--font-ui);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
-.bottom-nav button.active {
-  color: #ffd580;
-}
-
+.bottom-nav button.active { color: var(--gold-primary); }
 .bottom-nav button.active span {
-  color: #ffd580;
-  filter: drop-shadow(0 0 8px rgba(255, 213, 128, 0.5));
+  color: var(--gold-primary);
+  filter: drop-shadow(0 0 6px rgba(200, 146, 10, 0.4));
 }
 
-/* -------------------------------------------------------------
-   MŘÍŽKA KARET (Responzivní Web Grid)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   MŘÍŽKA KARET (Responzivní)
+   ───────────────────────────────────────────────────────────── */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
+@media (min-width: 640px)  { .card-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+@media (min-width: 860px)  { .card-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
+@media (min-width: 1140px) { .card-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; } }
+@media (min-width: 1380px) { .card-grid { grid-template-columns: repeat(6, 1fr); gap: 20px; } }
 
-@media (min-width: 640px) {
-  .card-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-}
-
-@media (min-width: 860px) {
-  .card-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-  }
-}
-
-@media (min-width: 1140px) {
-  .card-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 20px;
-  }
-}
-
-@media (min-width: 1380px) {
-  .card-grid {
-    grid-template-columns: repeat(6, 1fr);
-    gap: 20px;
-  }
-}
-
-/* -------------------------------------------------------------
-   KARTA SBÍRKY (Sběratelská karta s autentickým výřezem)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   SBĚRATELSKÁ KARTA (mini-card)
+   ───────────────────────────────────────────────────────────── */
 .mini-card {
   position: relative;
-  background: #16120e;
-  border: 1px solid #382d22;
-  border-radius: 12px;
+  background: var(--parchment-card);
+  border: 2px solid var(--ink-light);
+  border-radius: 14px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   text-align: left;
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 10px rgba(100, 65, 20, 0.10), inset 0 1px 0 rgba(255,255,255,0.7);
   overflow: hidden;
 }
 
 .mini-card:hover {
-  transform: translateY(-4px);
-  border-color: #ffd580;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7), 0 0 18px rgba(212, 175, 55, 0.2);
+  transform: translateY(-5px) scale(1.015);
+  border-color: var(--gold-primary);
+  box-shadow: 0 10px 28px rgba(100, 65, 20, 0.18), 0 0 0 3px rgba(200, 146, 10, 0.12);
 }
 
 .mini-card.locked {
   opacity: 0.55;
-  filter: grayscale(0.85);
+  filter: grayscale(0.75) sepia(0.2);
   cursor: not-allowed;
 }
 
 .mini-card.locked:hover {
   transform: none;
-  border-color: #382d22;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  border-color: var(--ink-light);
+  box-shadow: 0 2px 10px rgba(100, 65, 20, 0.10);
 }
 
-/* Rámeček ilustrace (přesný poměr 4:3 bez deformace) */
+/* Rámeček ilustrace 4:3 */
 .mini-illustration {
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: #0f0c0a;
+  background: var(--parchment-deep);
   border-radius: 8px;
-  border: 1px solid #332920;
+  border: 1px solid var(--ink-light);
   overflow: hidden;
   position: relative;
   margin-bottom: 8px;
@@ -326,66 +301,50 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s ease;
 }
 
-.mini-card:hover .mini-illustration img {
-  transform: scale(1.03);
+.mini-card:hover .mini-illustration img { transform: scale(1.04); }
+
+/* ─── Rarity borders (bright, vivid) ─── */
+.rarity-common    { border-color: #9ca3af; }
+.rarity-uncommon  { border-color: #16a34a; box-shadow: 0 2px 10px rgba(22,163,74,0.15), inset 0 1px 0 rgba(255,255,255,0.7); }
+.rarity-rare      { border-color: #2563eb; box-shadow: 0 2px 10px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.7); }
+.rarity-epic      { border-color: #9333ea; box-shadow: 0 2px 10px rgba(147,51,234,0.2), inset 0 1px 0 rgba(255,255,255,0.7); }
+.rarity-legendary { border-color: #ea580c; box-shadow: 0 2px 10px rgba(234,88,12,0.22), inset 0 1px 0 rgba(255,255,255,0.7); }
+.rarity-unique    {
+  border-color: #c8920a;
+  background: linear-gradient(160deg, #fffbeb 0%, var(--parchment-card) 100%);
+  box-shadow: 0 4px 18px rgba(200, 146, 10, 0.28), 0 0 0 1px rgba(200,146,10,0.2), inset 0 1px 0 rgba(255,255,255,0.8);
 }
 
-/* Rarity akcenty pro karty */
-.rarity-common {
-  border-color: #45372b;
-}
-.rarity-uncommon {
-  border-color: #1b5e20;
-  box-shadow: 0 4px 14px rgba(27, 94, 32, 0.2);
-}
-.rarity-rare {
-  border-color: #1e40af;
-  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.25);
-}
-.rarity-epic {
-  border-color: #7e22ce;
-  box-shadow: 0 4px 14px rgba(126, 34, 206, 0.25);
-}
-.rarity-legendary {
-  border-color: #c2410c;
-  box-shadow: 0 4px 14px rgba(194, 65, 12, 0.3);
-}
-.rarity-unique {
-  border-color: #ffd580;
-  background: linear-gradient(180deg, #221b12 0%, #15110d 100%);
-  box-shadow: 0 4px 20px rgba(255, 213, 128, 0.25), inset 0 0 15px rgba(255, 213, 128, 0.08);
-}
-
-/* Štítek rarity */
+/* Štítky rarity */
 .rarity-pill {
   font-size: 9px;
   font-family: var(--font-ui);
-  font-weight: 700;
-  letter-spacing: 0.8px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
   text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
 }
 
-.rarity-pill.Common { color: #b3a594; background: #261f18; }
-.rarity-pill.Uncommon { color: #86efac; background: #14381b; }
-.rarity-pill.Rare { color: #93c5fd; background: #14284b; }
-.rarity-pill.Epic { color: #d8b4fe; background: #35194f; }
-.rarity-pill.Legendary { color: #fdba74; background: #4a2110; }
-.rarity-pill.Unique { color: #ffd580; background: #443212; border: 1px solid rgba(255, 213, 128, 0.3); }
+.rarity-pill.Common    { color: #374151; background: #f3f4f6; border: 1px solid #d1d5db; }
+.rarity-pill.Uncommon  { color: #14532d; background: #dcfce7; border: 1px solid #86efac; }
+.rarity-pill.Rare      { color: #1e3a8a; background: #dbeafe; border: 1px solid #93c5fd; }
+.rarity-pill.Epic      { color: #581c87; background: #f3e8ff; border: 1px solid #d8b4fe; }
+.rarity-pill.Legendary { color: #7c2d12; background: #ffedd5; border: 1px solid #fdba74; }
+.rarity-pill.Unique    { color: #78350f; background: #fef3c7; border: 1px solid #fcd34d; }
 
-/* -------------------------------------------------------------
-   DETAIL KARTY (Responzivní dialogové okno s rukopisem)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   MODÁLNÍ BACKDROP
+   ───────────────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(6, 5, 4, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(28, 18, 8, 0.72);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,20 +355,23 @@ body {
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   DETAIL KARTY (dialog)
+   ───────────────────────────────────────────────────────────── */
 .card-detail-dialog {
-  background: #17130f;
-  border: 1px solid #4a3b2c;
-  border-radius: 16px;
+  background: var(--parchment-card);
+  border: 2px solid var(--ink-mid);
+  border-radius: 18px;
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(212, 175, 55, 0.15);
-  color: var(--text-parchment);
+  box-shadow: 0 24px 70px rgba(30, 12, 2, 0.5), 0 0 0 1px rgba(255,255,255,0.5);
+  color: var(--text-body);
 }
 
 .card-detail-close {
@@ -420,9 +382,9 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #261e17;
-  border: 1px solid #453629;
-  color: #c4b4a1;
+  background: var(--parchment-mid);
+  border: 1px solid var(--ink-light);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -432,101 +394,411 @@ body {
 }
 
 .card-detail-close:hover {
-  background: #382c21;
-  color: #ffd580;
-  border-color: #ffd580;
+  background: #fef3c7;
+  color: var(--gold-primary);
+  border-color: var(--gold-primary);
 }
 
-/* -------------------------------------------------------------
-   SKRIPTORIUM A ROZPEČETĚNÍ BALÍČKŮ (Packs & Reveal)
-   ------------------------------------------------------------- */
+/* ─────────────────────────────────────────────────────────────
+   STŮL SE ZAPEČETĚNÝM BALÍČKEM (Packs screen)
+   ───────────────────────────────────────────────────────────── */
 .sealed-pack-desk {
-  background: radial-gradient(circle at 50% 30%, #291f16 0%, #15110d 60%, #0c0907 100%);
-  border: 1px solid #3f3123;
+  background:
+    radial-gradient(ellipse at 50% 20%, #fef8e6 0%, #f5e8c0 55%, #ede0ab 100%);
+  border: 2px solid var(--ink-mid);
   border-radius: 20px;
   padding: 3rem 1.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(100, 65, 20, 0.14), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
+/* Vosková pečeť */
 .wax-seal-ceremony {
   width: 96px;
   height: 96px;
   margin: 1rem auto;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 28%, #dc4e38 0%, #992318 60%, #5e110b 100%);
-  border: 3px solid #7a1c13;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255, 120, 100, 0.4);
+  background: radial-gradient(circle at 35% 28%, #e05a3a 0%, #b22d14 60%, #7a1c0e 100%);
+  border: 4px solid #8c1f10;
+  box-shadow: 0 10px 28px rgba(140, 30, 10, 0.45), inset 0 0 18px rgba(255, 130, 100, 0.35), 0 0 0 6px rgba(200, 80, 50, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 52px;
-  font-weight: 800;
-  color: #ffd580;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  font-weight: 900;
+  font-family: var(--font-display);
+  color: #fff8e7;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.28s ease;
 }
 
 .wax-seal-ceremony:hover {
-  transform: scale(1.08) rotate(-3deg);
-  box-shadow: 0 14px 35px rgba(220, 78, 56, 0.4), inset 0 0 20px rgba(255, 150, 120, 0.6);
+  transform: scale(1.1) rotate(-4deg);
+  box-shadow: 0 16px 40px rgba(180, 50, 20, 0.5), inset 0 0 22px rgba(255, 160, 130, 0.6), 0 0 0 8px rgba(200, 80, 50, 0.15);
 }
 
-/* Fullscreen Reveal */
-.reveal-card-stage {
-  position: relative;
-  width: 100%;
-  max-width: 360px;
-  background: #17130f;
-  border: 2px solid #ffd580;
-  border-radius: 16px;
-  padding: 16px;
-  text-align: center;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 50px rgba(255, 213, 128, 0.3);
-  animation: cardFlipIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes cardFlipIn {
-  from {
-    transform: scale(0.7) rotateY(80deg);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1) rotateY(0deg);
-    opacity: 1;
-  }
-}
-
-/* Toast */
+/* ─────────────────────────────────────────────────────────────
+   TOAST
+   ───────────────────────────────────────────────────────────── */
 .toast-notice {
   position: fixed;
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: #241c14;
-  border: 1px solid #d4af37;
-  color: #ffd580;
-  padding: 10px 20px;
+  background: var(--parchment-card);
+  border: 2px solid var(--gold-primary);
+  color: var(--ink-deep);
+  padding: 10px 22px;
   border-radius: 9999px;
   font-size: 13px;
   font-family: var(--font-ui);
-  font-weight: 600;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+  font-weight: 700;
+  box-shadow: 0 8px 28px rgba(100, 65, 20, 0.2);
   animation: toastIn 0.2s ease-out;
   pointer-events: none;
 }
 
 @keyframes toastIn {
-  from {
-    transform: translate(-50%, 10px);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, 0);
-    opacity: 1;
+  from { transform: translate(-50%, 10px); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PACK REVEAL — CINEMATIC RARITY ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Základní reveal jeviště */
+.reveal-bg {
+  background:
+    linear-gradient(115deg, transparent 0 42%, #fff0c80a 50%, transparent 58%),
+    linear-gradient(180deg, #e8d7b0 0%, #c4a068 48%, #8c6830 100%);
+  transition: background 0.3s ease;
+}
+
+.reveal-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, #0003, transparent 22% 78%, #0003);
+  opacity: 0.35;
+}
+
+/* Barvy pozadí dle rarity */
+.aura-common    { background: linear-gradient(145deg, #c8b89a, #8c745a 55%, #6a5640); }
+.aura-uncommon  { background: linear-gradient(145deg, #4ade80, #16a34a 55%, #14532d); }
+.aura-rare      { background: linear-gradient(145deg, #60a5fa, #2563eb 55%, #1e3a8a); }
+.aura-epic      { background: linear-gradient(145deg, #c084fc, #9333ea 53%, #581c87); }
+.aura-legendary { background: linear-gradient(145deg, #fb923c, #ea580c 52%, #7c2d12); }
+.aura-unique    { background: linear-gradient(145deg, #fde68a, #f59e0b 44%, #b45309 77%, #78350f); }
+
+/* Glitter částice */
+.particle-field i {
+  left: calc(4% + (var(--i) * 5.2%));
+  top: calc(8% + ((var(--i) * 31px) % 78%));
+  font-size: 9px;
+  opacity: 0.14;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Flash přes celé jeviště */
+.reveal-flash {
+  position: absolute;
+  z-index: 1;
+  inset: -20%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent 25%, #fff8e8 49%, #fff 50%, #fff8e8 51%, transparent 75%);
+  transform: translateX(-80%) skewX(-12deg);
+  animation: screen-flash 0.72s ease-out both;
+}
+
+@keyframes screen-flash {
+  0%   { transform: translateX(-80%) skewX(-12deg); opacity: 0; }
+  18%  { opacity: 0.9; }
+  100% { transform: translateX(80%)  skewX(-12deg); opacity: 0; }
+}
+
+/* Světelné šachty */
+.light-shafts {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.22;
+}
+
+.light-shafts i {
+  position: absolute;
+  width: 18%;
+  height: 145%;
+  top: -20%;
+  left: 18%;
+  background: linear-gradient(180deg, #fff8e0cc, transparent 72%);
+  transform: skewX(-18deg) translateY(-70%);
+  filter: blur(8px);
+  animation: shaft-drop 1.1s 0.15s ease-out both;
+}
+
+.light-shafts i:nth-child(2) { left: 36%; width:  8%; animation-delay: 0.24s; }
+.light-shafts i:nth-child(3) { left: 50%; width: 22%; animation-delay: 0.10s; }
+.light-shafts i:nth-child(4) { left: 69%; width:  7%; animation-delay: 0.31s; }
+.light-shafts i:nth-child(5) { left: 82%; width: 12%; animation-delay: 0.20s; }
+
+@keyframes shaft-drop { to { transform: skewX(-18deg) translateY(0); } }
+
+.aura-epic .light-shafts      { opacity: 0.40; color: #e5a7ff; }
+.aura-legendary .light-shafts { opacity: 0.58; }
+.aura-unique .light-shafts    { opacity: 0.85; }
+.aura-common .light-shafts,
+.aura-uncommon .light-shafts  { opacity: 0.09; }
+
+/* Glitter bouře */
+.glitter-storm {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.glitter-storm i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  color: #ffe276;
+  font-size: var(--size);
+  font-style: normal;
+  opacity: 0;
+  text-shadow: 0 0 7px currentColor;
+  animation: glitter-explode 1.45s var(--delay) cubic-bezier(0.12, 0.72, 0.2, 1) both;
+}
+
+@keyframes glitter-explode {
+  0%   { transform: translate(0, 70px)                             scale(0.1) rotate(0deg);   opacity: 0; }
+  16%  { opacity: 1; }
+  62%  { opacity: 0.95; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.25) rotate(240deg); opacity: 0; }
+}
+
+.aura-common .glitter-storm i,
+.aura-uncommon .glitter-storm i { opacity: 0; animation-duration: 0.9s; }
+.aura-rare .glitter-storm i      { color: #93c5fd; }
+.aura-epic .glitter-storm i      { color: #d8b4fe; animation-duration: 1.75s; }
+.aura-legendary .glitter-storm i { color: #fed7aa; animation-duration: 2.05s; text-shadow: 0 0 10px #fb923c, 0 0 18px #fff; }
+.aura-unique .glitter-storm i    { color: #fde68a; animation-duration: 2.35s; text-shadow: 0 0 9px #fff, 0 0 20px #fcd34d; }
+
+/* Rarity burst paprsky */
+.rarity-burst { top: 50%; }
+.rarity-burst i {
+  height: 430px;
+  width: 3px;
+  background: linear-gradient(#fff8ddee, #f5c23d88 22%, transparent 76%);
+  filter: blur(2px);
+}
+
+.aura-common .rarity-burst,
+.aura-uncommon .rarity-burst { opacity: 0.08; }
+.aura-rare .rarity-burst      { opacity: 0.30; }
+.aura-epic .rarity-burst      { opacity: 0.65; filter: hue-rotate(245deg); }
+.aura-legendary .rarity-burst { opacity: 0.90; filter: hue-rotate(175deg) brightness(1.35); }
+.aura-unique .rarity-burst    { opacity: 1;    filter: brightness(1.5); }
+
+/* Stříbrný feather sweep (monumental) */
+.aura-epic.is-revealed::after,
+.aura-legendary.is-revealed::after,
+.aura-unique.is-revealed::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(from 15deg, transparent 0 8%, #fff8dd33 9% 10%, transparent 11% 22%, #fff8dd22 23% 24%, transparent 25% 100%);
+  animation: monumental-sweep 7s linear infinite;
+}
+
+@keyframes monumental-sweep { to { transform: rotate(360deg); } }
+
+/* Záře okolo reveal-card dle rarity */
+.aura-epic .reveal-card      { box-shadow: 0 28px 70px #2d1a5ccc, 0 0 45px #c084fccc, 0 0 110px #9333ea90; }
+.aura-legendary .reveal-card { box-shadow: 0 28px 70px #4a1c08cc, 0 0 55px #fb923c,   0 0 145px #ea580ccc; }
+.aura-unique .reveal-card    { border-color: #fde68a !important; box-shadow: 0 28px 70px #4a2c00cc, 0 0 70px #fde68a, 0 0 180px #f59e0b; }
+
+/* Card Crown (crown bar na reveal) */
+.aura-epic .card-crown      { background: linear-gradient(90deg, #581c87, #9333ea, #581c87); }
+.aura-legendary .card-crown { background: linear-gradient(90deg, #7c2d12, #ea580c, #7c2d12); }
+.aura-unique .card-crown    { color: #78350f; background: linear-gradient(90deg, #b45309, #fde68a, #ca8a04); }
+
+/* Animovaný zlatý lem pro Unique */
+.aura-unique .reveal-card::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  box-shadow: 0 0 20px #f59e0b;
+  pointer-events: none;
+  animation: gold-edge 1s ease-in-out infinite alternate;
+}
+
+@keyframes gold-edge { to { box-shadow: 0 0 38px #fde68a, inset 0 0 16px #fcd34d44; } }
+
+/* ─── Zadní strana karty ─── */
+.card-back {
+  background:
+    linear-gradient(130deg, transparent 0 40%, #ffffff18 48%, transparent 56%),
+    repeating-linear-gradient(45deg, transparent 0 8px, #f5c23d10 8px 10px),
+    linear-gradient(145deg, #c47d2e, #7a4e18 70%);
+}
+
+/* ─── Tahová (tension) animace před odhalením ─── */
+.is-tension .card-back { overflow: hidden; }
+.is-tension.aura-legendary .card-back { animation: legendary-tension 1.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.is-tension.aura-unique    .card-back { animation: unique-tension    1.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+.is-tension.aura-legendary .particle-field i,
+.is-tension.aura-unique    .particle-field i { animation-duration: 0.45s; opacity: 0.9; }
+.is-tension.aura-unique::before { opacity: 0.8; animation: tension-light 1.5s ease-in both; }
+
+@keyframes legendary-tension {
+  0%, 18% { transform: translate(0) rotateY(-5deg); }
+  24%  { transform: translate(-2px,  1px) rotate(-0.4deg) scale(1.005); }
+  32%  { transform: translate( 2px, -1px) rotate( 0.5deg) scale(1.010); }
+  42%  { transform: translate(-4px,  0px) rotate(-0.7deg) scale(1.015); }
+  54%  { transform: translate( 4px, -2px) rotate( 0.8deg) scale(1.020); }
+  68%  { transform: translate(-6px,  1px) rotate(-1.0deg) scale(1.025); }
+  82%  { transform: translate( 6px, -2px) rotate( 1.0deg) scale(1.030); }
+  100% { transform: translate(0) scale(1.05); filter: brightness(1.45); box-shadow: 0 0 0 5px #92400e, 0 0 0 7px #fcd34d, 0 28px 70px #000c, 0 0 95px #f59e0b; }
+}
+
+@keyframes unique-tension {
+  0%, 16%  { transform: translate(0) rotateY(-5deg); filter: brightness(1); }
+  22%, 34% { transform: translate(-2px,  1px) rotate(-0.4deg) scale(1.005); }
+  28%, 40% { transform: translate( 2px, -1px) rotate( 0.4deg) scale(1.010); }
+  48%  { transform: translate(-4px,  2px) rotate(-0.8deg) scale(1.018); }
+  56%  { transform: translate( 4px, -2px) rotate( 0.8deg) scale(1.025); }
+  64%  { transform: translate(-7px,  1px) rotate(-1.1deg) scale(1.035); }
+  72%  { transform: translate( 7px, -2px) rotate( 1.1deg) scale(1.045); }
+  80%  { transform: translate(-9px,  2px) rotate(-1.3deg) scale(1.055); }
+  88%  { transform: translate( 9px, -2px) rotate( 1.3deg) scale(1.065); }
+  100% { transform: translate(0) scale(1.09); filter: brightness(1.8); box-shadow: 0 0 0 5px #78350f, 0 0 0 8px #fde68a, 0 30px 80px #000c, 0 0 130px #f59e0b; }
+}
+
+@keyframes tension-light { from { filter: brightness(0.65); } to { filter: brightness(1.5); } }
+
+/* Reveal karta — flip-in animace */
+@keyframes cardFlipIn {
+  from { transform: scale(0.7) rotateY(80deg); opacity: 0; }
+  to   { transform: scale(1) rotateY(0deg);    opacity: 1; }
+}
+
+/* Reveal stage bílá karta */
+.reveal-card-stage {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  background: var(--parchment-card);
+  border: 2px solid var(--gold-primary);
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(30, 12, 2, 0.55), 0 0 40px rgba(200, 146, 10, 0.25);
+  animation: cardFlipIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Unique breathing */
+@keyframes unique-breathe {
+  0%, 100% { box-shadow: 0 0 0 3px #fde68a, 0 0 20px #f59e0b; }
+  50%       { box-shadow: 0 0 0 6px #fde68a, 0 0 40px #f59e0b, 0 0 80px #fcd34d55; }
+}
+
+.aura-unique .reveal-card-stage {
+  animation: cardFlipIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both,
+             unique-breathe 2s 0.65s ease-in-out infinite;
+}
+
+/* Level-up modal */
+.level-up-modal {
+  background: linear-gradient(145deg, #fffbeb, #fef3c7 60%, #fde68a);
+  border: 2px solid #f59e0b;
+  border-radius: 18px;
+  padding: 32px 28px 28px;
+  text-align: center;
+  color: var(--ink-dark);
+  box-shadow: 0 30px 80px rgba(20, 10, 0, 0.55), 0 0 60px rgba(245, 158, 11, 0.4), inset 0 0 30px rgba(253, 230, 138, 0.5);
+  animation: level-arrive 0.72s cubic-bezier(0.17, 0.86, 0.23, 1.18) both;
+  max-width: 340px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes level-arrive { from { opacity: 0; transform: scale(0.62) translateY(24px); filter: brightness(2.5) blur(4px); } }
+
+/* Rays inside level modal */
+.level-rays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+}
+
+.level-rays i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 230px;
+  background: linear-gradient(#c8920a, transparent);
+  transform-origin: top;
+}
+.level-rays i:nth-child(2) { transform: rotate(60deg); }
+.level-rays i:nth-child(3) { transform: rotate(120deg); }
+.level-rays i:nth-child(4) { transform: rotate(180deg); }
+.level-rays i:nth-child(5) { transform: rotate(240deg); }
+.level-rays i:nth-child(6) { transform: rotate(300deg); }
+
+/* Level seal */
+.level-seal {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fde68a, #f59e0b 56%, #b45309 76%);
+  border: 4px solid #fcd34d;
+  box-shadow: 0 0 0 6px #fef3c7, 0 8px 24px rgba(120, 53, 15, 0.4), inset 0 0 18px rgba(180, 83, 9, 0.3);
+  display: grid;
+  place-items: center;
+  margin: 8px auto 16px;
+  position: relative;
+}
+
+.level-seal span {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 47px;
+  font-weight: 900;
+  text-shadow: 0 3px #b45309;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   POMOCNÉ ANIMACE
+   ───────────────────────────────────────────────────────────── */
+@keyframes animate-fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn { animation: animate-fadeIn 0.35s ease-out; }
+
+/* Přístupnost — redukce pohybu */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior:           auto  !important;
   }
 }

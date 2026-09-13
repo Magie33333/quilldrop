@@ -427,10 +427,10 @@ export default function Home() {
 
   if (!ready) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#0a0806] text-[#ffd580] font-serif text-lg">
+      <main className="min-h-screen flex items-center justify-center bg-[#fdf6e3] text-[#4a3318] font-serif text-lg">
         <div className="flex flex-col items-center gap-3 animate-pulse">
-          <BookOpen size={36} className="text-[#d4af37]" />
-          <span>Otevírám středověký kodex...</span>
+          <BookOpen size={36} className="text-[#c8920a]" />
+          <span style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>Otevírám středověký kodex...</span>
         </div>
       </main>
     );
@@ -448,14 +448,17 @@ export default function Home() {
                 onClick={() => setTab("home")}
                 className="flex items-center gap-2 text-left cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4af37] to-[#8c6d31] flex items-center justify-center font-bold text-black text-lg shadow-md group-hover:scale-105 transition">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#c8920a] to-[#7a5018] flex items-center justify-center font-bold text-white text-lg shadow-md group-hover:scale-105 transition"
+                  style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
                   Q
                 </div>
                 <div>
-                  <span className="font-serif font-bold text-base text-[#ffd580] tracking-wide block leading-tight">
+                  <span className="font-bold text-base text-[#2c1a0e] tracking-wide block leading-tight"
+                    style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
                     Quilldrop
                   </span>
-                  <span className="text-[10px] text-[#8c7b6d] font-sans block leading-none">
+                  <span className="text-[10px] text-[#8a6540] block leading-none"
+                    style={{ fontFamily: "var(--font-ui)" }}>
                     Univerzita Karlova
                   </span>
                 </div>
@@ -466,10 +469,10 @@ export default function Home() {
                   className="brand-badge"
                   title="Živě propojeno se Supabase a univerzitními skeny FF UK"
                 >
-                  <Sparkles size={11} className="text-[#ffd580]" /> FF UK Live
+                  <Sparkles size={11} className="text-[#c8920a]" /> FF UK Live
                 </span>
               ) : (
-                <span className="brand-badge !text-[#a89887] !border-[#4a3b2c] !bg-[#1c1611]">
+                <span className="brand-badge opacity-60">
                   Offline archiv
                 </span>
               )}
@@ -489,12 +492,12 @@ export default function Home() {
                     <Icon size={16} />
                     <span>{item.label}</span>
                     {item.id === "collection" && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#292017] text-[#ffd580] font-sans">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#fef3c7] text-[#c8920a] border border-[#fcd34d]" style={{ fontFamily: "var(--font-ui)" }}>
                         {uniqueOwned}/{cards.length}
                       </span>
                     )}
                     {item.id === "packs" && state.packsOpened < 10 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#7a1c13] text-[#ffc6be] font-sans">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#ffedd5] text-[#ea580c] border border-[#fdba74]" style={{ fontFamily: "var(--font-ui)" }}>
                         {10 - state.packsOpened}
                       </span>
                     )}
@@ -517,7 +520,7 @@ export default function Home() {
                   className="stat-chip"
                   title={`Úroveň ${playerLevel} (${state.xp} XP)`}
                 >
-                  <Sparkles size={13} className="text-[#ffd580]" />
+                  <Sparkles size={13} className="text-[#c8920a]" />
                   <span>Lvl {playerLevel}</span>
                 </div>
               </div>
@@ -525,7 +528,8 @@ export default function Home() {
               {/* Tlačítko pro editory a administraci */}
               <a
                 href="/admin"
-                className="inline-flex items-center gap-1.5 text-xs font-serif font-bold text-[#ffd580] bg-[#221b14] hover:bg-[#33271d] border border-[#d4af37]/40 hover:border-[#ffd580] px-3 py-1.5 rounded-lg transition shadow-sm"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#78350f] bg-[#fef3c7] hover:bg-[#fde68a] border border-[#f59e0b] px-3 py-1.5 rounded-lg transition shadow-sm"
+                style={{ fontFamily: "var(--font-ui)" }}
                 title="Přejít do Quilldrop Studia pro ořez a správu rukopisů"
               >
                 <PenTool size={13} />
@@ -836,18 +840,20 @@ function HomeScreen({
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* HERO BANNER: Uvítání ve skriptoriu a pečeť balíčku */}
-      <section className="relative rounded-2xl bg-gradient-to-r from-[#1c1611] via-[#261e16] to-[#16120e] border border-[#4a3a2a] p-6 sm:p-8 shadow-2xl overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-[#d4af37]/10 to-transparent pointer-events-none" />
+      <section className="relative rounded-2xl bg-gradient-to-br from-[#fffbeb] via-[#fef3c7] to-[#fde68a] border-2 border-[#d4a017] p-6 sm:p-8 shadow-xl overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#f59e0b]/10 to-transparent pointer-events-none" />
 
         <div className="grid md:grid-cols-3 gap-6 items-center relative z-10">
           <div className="md:col-span-2 space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/40 text-[#ffd580] text-xs font-serif font-bold">
-              <Sparkles size={13} /> Dnešní objev ve skriptoriu
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c8920a]/12 border border-[#c8920a]/40 text-[#78350f] text-xs font-bold"
+              style={{ fontFamily: "var(--font-ui)" }}>
+              <Sparkles size={13} className="text-[#c8920a]" /> Dnešní objev ve skriptoriu
             </div>
-            <h1 className="text-2xl sm:text-4xl font-serif font-bold text-[#ffd580] leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold text-[#2c1a0e] leading-tight"
+              style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
               Co dnes vydají okraje středověkých kodexů?
             </h1>
-            <p className="text-sm text-[#b3a18d] leading-relaxed max-w-xl">
+            <p className="text-sm text-[#6b4c2a] leading-relaxed max-w-xl">
               Prozkoumejte autentické hlasy písařů, stížnosti na bolavé ruce,
               rubrikované modlitby i slavnostní přípisy z archivů celé Evropy (výzkum FF UK).
             </p>
@@ -855,27 +861,29 @@ function HomeScreen({
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={onPacks}
-                className="bg-gradient-to-b from-[#d4af37] to-[#aa831b] hover:from-[#e5c158] hover:to-[#be9423] text-black font-serif font-bold px-6 py-2.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-2"
+                className="bg-gradient-to-b from-[#f59e0b] to-[#c8920a] hover:from-[#fbbf24] hover:to-[#d97706] text-white font-bold px-6 py-2.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-2"
+                style={{ fontFamily: "var(--font-ui)" }}
               >
                 <ScrollText size={18} />
                 <span>Otevřít dnešní balíček</span>
-                <span className="bg-black/20 text-black px-2 py-0.5 rounded-full text-xs font-sans">
+                <span className="bg-white/20 text-white px-2 py-0.5 rounded-full text-xs">
                   {packsLeft} zbývá
                 </span>
               </button>
 
               <button
                 onClick={onCollection}
-                className="bg-[#241c14] hover:bg-[#33271d] text-[#e8ded1] border border-[#4a3b2b] px-4 py-2.5 rounded-xl text-sm font-serif transition cursor-pointer flex items-center gap-2"
+                className="bg-white/70 hover:bg-white text-[#4a3318] border-2 border-[#d4b98a] px-4 py-2.5 rounded-xl text-sm font-bold transition cursor-pointer flex items-center gap-2"
+                style={{ fontFamily: "var(--font-ui)" }}
               >
-                <LibraryBig size={16} className="text-[#ffd580]" />
+                <LibraryBig size={16} className="text-[#c8920a]" />
                 <span>Prohlédnout sbírku ({uniqueOwned})</span>
               </button>
             </div>
           </div>
 
           {/* Pečetidlo / Vosková pečeť balíčku */}
-          <div className="flex flex-col items-center justify-center p-4 bg-[#14100c]/80 rounded-xl border border-[#3b2e21] text-center">
+          <div className="flex flex-col items-center justify-center p-4 bg-white/50 rounded-xl border-2 border-[#d4b98a] text-center">
             <div
               onClick={onPacks}
               className="wax-seal-ceremony cursor-pointer group"
@@ -883,10 +891,11 @@ function HomeScreen({
             >
               Q
             </div>
-            <span className="font-serif font-bold text-sm text-[#ffd580] mt-2 block">
+            <span className="font-bold text-sm text-[#4a3318] mt-2 block"
+              style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
               {packsLeft > 0 ? `${packsLeft} balíčků dnes k dispozici` : "Dnešní balíčky vyčerpány"}
             </span>
-            <span className="text-[11px] text-[#8c7b6d] font-sans mt-0.5">
+            <span className="text-[11px] text-[#8a6540] mt-0.5" style={{ fontFamily: "var(--font-ui)" }}>
               Každý balíček ukrývá 5 historických kolofonů
             </span>
           </div>
@@ -1080,12 +1089,13 @@ function CollectionScreen({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* HLAVIČKA SBÍRKY */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2e251b] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-[#d4b98a] pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#ffd580]">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#2c1a0e]"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
             Archiv středověkých kolofonů
           </h1>
-          <p className="text-xs text-[#a89887] font-sans mt-1">
+          <p className="text-xs text-[#8a6540] mt-1" style={{ fontFamily: "var(--font-ui)" }}>
             Odemčeno {uniqueDiscovered} z {cards.length} kodexů v databázi • Získáno celkem{" "}
             {Object.values(state.collection).reduce((a, b) => a + b, 0)} karet
           </p>
@@ -1096,19 +1106,20 @@ function CollectionScreen({
           <div className="relative flex-1">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8c7b6d]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8a6540]"
             />
             <input
               type="text"
               placeholder="Hledat písaře, město, text kolofonu..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 bg-[#17130f] border border-[#3b2e21] rounded-xl text-xs text-[#e8ded1] placeholder-[#7d6e61] focus:outline-none focus:border-[#d4af37]"
+              className="w-full pl-9 pr-8 py-2 bg-white border-2 border-[#d4b98a] rounded-xl text-xs text-[#2c1a0e] placeholder-[#b09060] focus:outline-none focus:border-[#c8920a]"
+              style={{ fontFamily: "var(--font-ui)" }}
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8c7b6d] hover:text-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8a6540] hover:text-[#2c1a0e]"
               >
                 <X size={14} />
               </button>
@@ -1119,7 +1130,8 @@ function CollectionScreen({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="bg-[#17130f] border border-[#3b2e21] rounded-xl px-3 py-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] font-sans cursor-pointer"
+            className="bg-white border-2 border-[#d4b98a] rounded-xl px-3 py-2 text-xs text-[#2c1a0e] focus:outline-none focus:border-[#c8920a] cursor-pointer"
+            style={{ fontFamily: "var(--font-ui)" }}
           >
             <option value="year-asc">Nejstarší (rok ↑)</option>
             <option value="year-desc">Nejmladší (rok ↓)</option>
@@ -1137,11 +1149,12 @@ function CollectionScreen({
             <button
               key={r}
               onClick={() => setFilter(r)}
-              className={`px-3 py-1 rounded-lg text-xs font-serif font-bold transition cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                 filter === r
-                  ? "bg-[#d4af37] text-black shadow-md"
-                  : "bg-[#18130f] text-[#a89887] border border-[#33281d] hover:border-[#ffd580]/50"
+                  ? "bg-[#c8920a] text-white shadow-md"
+                  : "bg-white text-[#6b4c2a] border-2 border-[#d4b98a] hover:border-[#c8920a]"
               }`}
+              style={{ fontFamily: "var(--font-ui)" }}
             >
               {r === "All" ? "Všechny rarity" : r}
             </button>
@@ -1150,11 +1163,12 @@ function CollectionScreen({
 
         <button
           onClick={() => setOnlyOwned(!onlyOwned)}
-          className={`text-xs px-3 py-1 rounded-lg border font-serif transition cursor-pointer flex items-center gap-1.5 ${
+          className={`text-xs px-3 py-1 rounded-lg border-2 font-bold transition cursor-pointer flex items-center gap-1.5 ${
             onlyOwned
-              ? "bg-[#ffd580]/20 border-[#ffd580] text-[#ffd580]"
-              : "bg-[#18130f] border-[#33281d] text-[#8c7b6d]"
+              ? "bg-[#fef3c7] border-[#c8920a] text-[#78350f]"
+              : "bg-white border-[#d4b98a] text-[#8a6540]"
           }`}
+          style={{ fontFamily: "var(--font-ui)" }}
         >
           <Check size={13} className={onlyOwned ? "opacity-100" : "opacity-0"} />
           <span>Pouze vlastněné</span>
@@ -1163,9 +1177,9 @@ function CollectionScreen({
 
       {/* RESPONZIVNÍ MŘÍŽKA KARET (2 až 6 sloupců dle šířky) */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-[#8c7b6d] font-serif space-y-2">
-          <ScrollText size={36} className="mx-auto text-[#4a3b2b]" />
-          <p className="text-base">Žádný kolofon neodpovídá zadanému filtru nebo hledání.</p>
+        <div className="text-center py-16 text-[#8a6540] space-y-2">
+          <ScrollText size={36} className="mx-auto text-[#d4b98a]" />
+          <p className="text-base" style={{ fontFamily: "var(--font-ui)" }}>Žádný kolofon neodpovídá zadanému filtru nebo hledání.</p>
         </div>
       ) : (
         <div className="card-grid">
@@ -1183,11 +1197,13 @@ function CollectionScreen({
                 title={isOwned ? `Otevřít detail: ${card.title}` : "Dosud neobjevená karta"}
               >
                 {/* Horní lišta: Rarita a Sigil */}
-                <div className="flex justify-between items-center mb-1.5 text-[9px] font-sans">
+                <div className="flex justify-between items-center mb-1.5 text-[9px]"
+                  style={{ fontFamily: "var(--font-ui)" }}>
                   <span className={`rarity-pill ${card.rarity}`}>
                     {isOwned ? card.rarity : "???"}
                   </span>
-                  <span className="font-serif font-bold text-[#d4af37]">{card.sigil}</span>
+                  <span className="font-bold text-[#c8920a]"
+                    style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>{card.sigil}</span>
                 </div>
 
                 {/* Výřez rukopisu v poměru 4:3 */}
@@ -1195,13 +1211,13 @@ function CollectionScreen({
                   {isOwned ? (
                     <ColophonImage card={card} alt={card.title} />
                   ) : (
-                    <div className="text-center p-2 text-[#6d5e4f] font-serif">
+                    <div className="text-center p-2 text-[#b09060]">
                       <Lock size={22} className="mx-auto mb-1 opacity-40" />
-                      <span className="text-[10px]">Neodemčeno</span>
+                      <span className="text-[10px]" style={{ fontFamily: "var(--font-ui)" }}>Neodemčeno</span>
                     </div>
                   )}
                   {isOwned && (
-                    <span className="absolute bottom-1 right-1 bg-black/80 text-[#ffd580] text-[9px] font-mono px-1 rounded border border-[#3b2e21]">
+                    <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-mono px-1 rounded">
                       {card.year}
                     </span>
                   )}
@@ -1209,17 +1225,20 @@ function CollectionScreen({
 
                 {/* Texty karty */}
                 <div className="flex-1 min-w-0">
-                  <strong className="block font-serif text-xs font-bold text-[#ffd580] truncate leading-tight">
+                  <strong className="block font-bold text-xs text-[#2c1a0e] truncate leading-tight"
+                    style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
                     {isOwned ? card.title : "Tajemný kodex"}
                   </strong>
-                  <small className="block text-[10px] text-[#9c8976] truncate mt-0.5">
+                  <small className="block text-[10px] text-[#8a6540] truncate mt-0.5"
+                    style={{ fontFamily: "var(--font-ui)" }}>
                     {isOwned ? `${card.place} • ${card.scribe}` : "Získejte v balíčku"}
                   </small>
                 </div>
 
                 {/* Duplikáty */}
                 {count > 1 && (
-                  <span className="absolute top-2 right-2 bg-[#2563eb] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-md font-sans">
+                  <span className="absolute top-2 right-2 bg-[#2563eb] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md"
+                    style={{ fontFamily: "var(--font-ui)" }}>
                     ×{count}
                   </span>
                 )}
@@ -1251,22 +1270,24 @@ function PacksScreen({
   return (
     <div className="space-y-8 animate-fadeIn max-w-4xl mx-auto">
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-serif font-bold text-[#ffd580]">
+        <h1 className="text-3xl font-bold text-[#2c1a0e]"
+          style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
           Denní skriptorium: Pečeť kolofonů
         </h1>
-        <p className="text-sm text-[#b3a18d]">
+        <p className="text-sm text-[#6b4c2a]" style={{ fontFamily: "var(--font-ui)" }}>
           Každý den pro vás mniši a univerzitní písaři připraví 10 balíčků autentických kolofonů.
         </p>
       </div>
 
       {/* POČÍTADLO DENNÍCH BALÍČKŮ */}
-      <div className="grid grid-cols-2 gap-4 bg-[#16120e] border border-[#3b2e21] rounded-xl p-4 text-center">
+      <div className="grid grid-cols-2 gap-4 bg-white/70 border-2 border-[#d4b98a] rounded-xl p-4 text-center shadow-sm">
         <div>
-          <span className="text-[11px] text-[#8c7b6d] uppercase font-sans tracking-wider block">
+          <span className="text-[11px] text-[#8a6540] uppercase tracking-wider block" style={{ fontFamily: "var(--font-ui)" }}>
             Denní balíčky
           </span>
-          <strong className="text-2xl font-serif font-bold text-[#ffd580]">
-            {state.packsOpened} <small className="text-xs text-[#8c7b6d]">/ 10</small>
+          <strong className="text-2xl font-bold text-[#2c1a0e]"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
+            {state.packsOpened} <small className="text-xs text-[#8a6540]">/ 10</small>
           </strong>
           <div className="flex justify-center gap-1 mt-2">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -1274,8 +1295,8 @@ function PacksScreen({
                 key={i}
                 className={`w-2.5 h-2.5 rounded-full border ${
                   i < state.packsOpened
-                    ? "bg-[#d4af37] border-[#ffd580]"
-                    : "bg-[#241c14] border-[#443527]"
+                    ? "bg-[#c8920a] border-[#f59e0b]"
+                    : "bg-[#f0e8d0] border-[#d4b98a]"
                 }`}
               />
             ))}
@@ -1283,11 +1304,12 @@ function PacksScreen({
         </div>
 
         <div>
-          <span className="text-[11px] text-[#8c7b6d] uppercase font-sans tracking-wider block">
+          <span className="text-[11px] text-[#8a6540] uppercase tracking-wider block" style={{ fontFamily: "var(--font-ui)" }}>
             Písařské výzvy
           </span>
-          <strong className="text-2xl font-serif font-bold text-[#ffd580]">
-            {state.gamesPlayed} <small className="text-xs text-[#8c7b6d]">/ 10</small>
+          <strong className="text-2xl font-bold text-[#2c1a0e]"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
+            {state.gamesPlayed} <small className="text-xs text-[#8a6540]">/ 10</small>
           </strong>
           <div className="flex justify-center gap-1 mt-2">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -1296,7 +1318,7 @@ function PacksScreen({
                 className={`w-2.5 h-2.5 rounded-full border ${
                   i < state.gamesPlayed
                     ? "bg-[#2563eb] border-[#60a5fa]"
-                    : "bg-[#241c14] border-[#443527]"
+                    : "bg-[#f0e8d0] border-[#d4b98a]"
                 }`}
               />
             ))}
@@ -1316,7 +1338,8 @@ function PacksScreen({
             Q
           </div>
 
-          <h2 className="text-2xl font-serif font-bold text-[#ffd580]">
+          <h2 className="text-2xl font-bold text-[#2c1a0e]"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
             {remaining
               ? "Balíček neotevřených kolofonů"
               : hasBonus
@@ -1324,7 +1347,7 @@ function PacksScreen({
               : "Skriptorium pro dnešek odpočívá"}
           </h2>
 
-          <p className="text-sm text-[#b3a18d]">
+          <p className="text-sm text-[#6b4c2a]" style={{ fontFamily: "var(--font-ui)" }}>
             {remaining
               ? "5 skrytých hlasů písařů čeká pod voskovou pečetí."
               : hasBonus
@@ -1337,11 +1360,12 @@ function PacksScreen({
           <button
             onClick={onOpen}
             disabled={remaining === 0 && !hasBonus}
-            className={`px-8 py-3 rounded-xl font-serif font-bold text-base shadow-xl transition transform cursor-pointer ${
+            className={`px-8 py-3 rounded-xl font-bold text-base shadow-xl transition transform cursor-pointer ${
               remaining || hasBonus
-                ? "bg-gradient-to-b from-[#d4af37] to-[#aa831b] hover:from-[#e5c158] hover:to-[#be9423] text-black hover:-translate-y-0.5"
-                : "bg-[#261e16] text-[#736353] border border-[#3b2e21] cursor-not-allowed"
+                ? "bg-gradient-to-b from-[#f59e0b] to-[#c8920a] hover:from-[#fbbf24] hover:to-[#d97706] text-white hover:-translate-y-0.5"
+                : "bg-[#f0e8d0] text-[#b09060] border-2 border-[#d4b98a] cursor-not-allowed"
             }`}
+            style={{ fontFamily: "var(--font-ui)" }}
           >
             {remaining || hasBonus ? "Rozpečetit balíček (5 karet)" : "Balíčky vyčerpány"}
           </button>
@@ -1351,10 +1375,11 @@ function PacksScreen({
       {/* VÝZVY K ZÍSKÁNÍ DALŠÍCH BALÍČKŮ */}
       <div className="space-y-3 pt-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-serif font-bold text-[#ffd580] flex items-center gap-2">
-            <Trophy size={18} /> Získejte další balíček splněním výzvy
+          <h2 className="text-lg font-bold text-[#2c1a0e] flex items-center gap-2"
+            style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
+            <Trophy size={18} className="text-[#c8920a]" /> Získejte další balíček splněním výzvy
           </h2>
-          <span className="text-xs text-[#8c7b6d] font-sans">
+          <span className="text-xs text-[#8a6540]" style={{ fontFamily: "var(--font-ui)" }}>
             {gamesLeft} z 10 pokusů k dispozici
           </span>
         </div>
@@ -1363,16 +1388,17 @@ function PacksScreen({
           <button
             disabled={!gamesLeft}
             onClick={() => onGame("mood")}
-            className="p-4 bg-[#16120e] hover:bg-[#221b14] border border-[#382d22] hover:border-[#d4af37] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 bg-white/80 hover:bg-white border-2 border-[#d4b98a] hover:border-[#16a34a] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <div className="flex items-center gap-2 text-[#ffd580]">
+            <div className="flex items-center gap-2 text-[#16a34a]">
               <Smile size={20} />
-              <strong className="font-serif text-sm">Nálada písaře</strong>
+              <strong className="text-sm" style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>Nálada písaře</strong>
             </div>
-            <p className="text-xs text-[#9c8976]">
+            <p className="text-xs text-[#6b4c2a]" style={{ fontFamily: "var(--font-ui)" }}>
               Poznáte, jak se písař při psaní cítil? (Snadná výzva)
             </p>
-            <span className="text-[10px] text-[#4ade80] bg-[#14381b] px-2 py-0.5 rounded font-sans block w-fit">
+            <span className="text-[10px] text-[#14532d] bg-[#dcfce7] px-2 py-0.5 rounded font-bold block w-fit border border-[#86efac]"
+              style={{ fontFamily: "var(--font-ui)" }}>
               Odměna: Standardní balíček
             </span>
           </button>
@@ -1380,16 +1406,17 @@ function PacksScreen({
           <button
             disabled={!gamesLeft}
             onClick={() => onGame("cipher")}
-            className="p-4 bg-[#16120e] hover:bg-[#221b14] border border-[#382d22] hover:border-[#d4af37] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 bg-white/80 hover:bg-white border-2 border-[#d4b98a] hover:border-[#2563eb] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <div className="flex items-center gap-2 text-[#ffd580]">
+            <div className="flex items-center gap-2 text-[#2563eb]">
               <KeyRound size={20} />
-              <strong className="font-serif text-sm">Rozlušti kolofon</strong>
+              <strong className="text-sm" style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>Rozlušti kolofon</strong>
             </div>
-            <p className="text-xs text-[#9c8976]">
+            <p className="text-xs text-[#6b4c2a]" style={{ fontFamily: "var(--font-ui)" }}>
               Doplňte chybějící písmena v latinské formuli. (Střední výzva)
             </p>
-            <span className="text-[10px] text-[#60a5fa] bg-[#14284b] px-2 py-0.5 rounded font-sans block w-fit">
+            <span className="text-[10px] text-[#1e3a8a] bg-[#dbeafe] px-2 py-0.5 rounded font-bold block w-fit border border-[#93c5fd]"
+              style={{ fontFamily: "var(--font-ui)" }}>
               Odměna: Vytříbený balíček (Rare+)
             </span>
           </button>
@@ -1397,16 +1424,17 @@ function PacksScreen({
           <button
             disabled={!gamesLeft}
             onClick={() => onGame("paleo")}
-            className="p-4 bg-[#16120e] hover:bg-[#221b14] border border-[#382d22] hover:border-[#d4af37] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-4 bg-white/80 hover:bg-white border-2 border-[#d4b98a] hover:border-[#9333ea] rounded-xl text-left transition space-y-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <div className="flex items-center gap-2 text-[#ffd580]">
+            <div className="flex items-center gap-2 text-[#9333ea]">
               <Languages size={20} />
-              <strong className="font-serif text-sm">Paleografický mistr</strong>
+              <strong className="text-sm" style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>Paleografický mistr</strong>
             </div>
-            <p className="text-xs text-[#9c8976]">
+            <p className="text-xs text-[#6b4c2a]" style={{ fontFamily: "var(--font-ui)" }}>
               Určete typ středověkého písma podle ukázky. (Expertní výzva)
             </p>
-            <span className="text-[10px] text-[#d8b4fe] bg-[#35194f] px-2 py-0.5 rounded font-sans block w-fit">
+            <span className="text-[10px] text-[#581c87] bg-[#f3e8ff] px-2 py-0.5 rounded font-bold block w-fit border border-[#d8b4fe]"
+              style={{ fontFamily: "var(--font-ui)" }}>
               Odměna: Mistrovský balíček (Epic+)
             </span>
           </button>
@@ -1719,20 +1747,20 @@ function CardDetail({
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* LEVÝ SLOUPEC: Velký výřez rukopisu v poměru 4:3 */}
           <div className="space-y-3">
-            <div className="relative aspect-4/3 w-full bg-[#0d0a08] rounded-xl overflow-hidden border-2 border-[#4a3b2b] shadow-2xl flex items-center justify-center">
+            <div className="relative aspect-4/3 w-full bg-[#ede0ab] rounded-xl overflow-hidden border-2 border-[#b08a50] shadow-2xl flex items-center justify-center">
               <ColophonImage card={card} alt={card.title} />
-              <span className="absolute bottom-2 right-2 bg-black/85 text-[#ffd580] text-xs font-mono px-2 py-0.5 rounded border border-[#3b2e21]">
+              <span className="absolute bottom-2 right-2 bg-black/75 text-white text-xs font-mono px-2 py-0.5 rounded">
                 {card.year}
               </span>
             </div>
 
-            <div className="flex justify-between items-center text-xs text-[#8c7b6d] font-sans">
+            <div className="flex justify-between items-center text-xs text-[#8a6540]" style={{ fontFamily: "var(--font-ui)" }}>
               <span>Folium: {card.locus}</span>
               <a
                 href={card.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[#ffd580] hover:underline inline-flex items-center gap-1"
+                className="text-[#c8920a] hover:underline inline-flex items-center gap-1 font-bold"
               >
                 <span>Celý sken na FF UK</span>
                 <ExternalLink size={12} />
@@ -1744,54 +1772,58 @@ function CardDetail({
           <div className="space-y-4">
             <div>
               <span className={`rarity-pill ${card.rarity}`}>{card.rarity}</span>
-              <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#ffd580] mt-1.5 leading-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#2c1a0e] mt-1.5 leading-tight"
+                style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
                 {card.title}
               </h2>
             </div>
 
             {/* Latinský originál v citaci */}
-            <div className="bg-[#120f0c] border-l-4 border-[#d4af37] p-3.5 rounded-r-lg">
-              <p className="font-serif italic text-sm text-[#e8ded1] leading-relaxed">
-                “{card.quote}”
+            <div className="bg-[#fef3c7] border-l-4 border-[#c8920a] p-3.5 rounded-r-lg">
+              <p className="italic text-sm text-[#4a3318] leading-relaxed"
+                style={{ fontFamily: "Georgia, serif" }}>
+                "{card.quote}"
               </p>
             </div>
 
             {/* Český překlad */}
             {card.translation && (
               <div>
-                <span className="text-[10px] uppercase font-sans font-bold text-[#8c7b6d] block mb-1">
+                <span className="text-[10px] uppercase font-bold text-[#8a6540] block mb-1"
+                  style={{ fontFamily: "var(--font-ui)", letterSpacing: "0.8px" }}>
                   Český překlad
                 </span>
-                <p className="text-xs text-[#c4b4a1] leading-relaxed">
+                <p className="text-xs text-[#4a3318] leading-relaxed" style={{ fontFamily: "var(--font-ui)" }}>
                   {card.translation}
                 </p>
               </div>
             )}
 
             {/* Tabulka metadat */}
-            <dl className="divide-y divide-[#2e241b] border-y border-[#2e241b] text-xs py-1 font-sans">
+            <dl className="divide-y divide-[#e5d5b8] border-y border-[#e5d5b8] text-xs py-1" style={{ fontFamily: "var(--font-ui)" }}>
               <div className="py-1.5 flex justify-between gap-4">
-                <dt className="text-[#8c7b6d]">Písař</dt>
-                <dd className="text-right font-serif font-bold text-[#e8ded1]">{card.scribe}</dd>
+                <dt className="text-[#8a6540]">Písař</dt>
+                <dd className="text-right font-bold text-[#2c1a0e]"
+                  style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>{card.scribe}</dd>
               </div>
               <div className="py-1.5 flex justify-between gap-4">
-                <dt className="text-[#8c7b6d]">Místo vzniku</dt>
-                <dd className="text-right text-[#e8ded1]">{card.place}</dd>
+                <dt className="text-[#8a6540]">Místo vzniku</dt>
+                <dd className="text-right text-[#2c1a0e]">{card.place}</dd>
               </div>
               <div className="py-1.5 flex justify-between gap-4">
-                <dt className="text-[#8c7b6d]">Rukopis / signatura</dt>
-                <dd className="text-right text-[#a89887] max-w-[240px] truncate" title={card.manuscript}>
+                <dt className="text-[#8a6540]">Rukopis / signatura</dt>
+                <dd className="text-right text-[#6b4c2a] max-w-[240px] truncate" title={card.manuscript}>
                   {card.manuscript}
                 </dd>
               </div>
               {card.rarityReason && (
                 <div className="py-1.5 flex justify-between gap-4">
-                  <dt className="text-[#8c7b6d]">Důvod rarity</dt>
-                  <dd className="text-right text-[#ffd580] max-w-[240px]">{card.rarityReason}</dd>
+                  <dt className="text-[#8a6540]">Důvod rarity</dt>
+                  <dd className="text-right text-[#c8920a] font-bold max-w-[240px]">{card.rarityReason}</dd>
                 </div>
               )}
               <div className="py-1.5 flex justify-between gap-4">
-                <dt className="text-[#8c7b6d]">Vlastněných kopií</dt>
+                <dt className="text-[#8a6540]">Vlastněných kopií</dt>
                 <dd className="text-right font-bold text-[#2563eb]">×{count}</dd>
               </div>
             </dl>
@@ -1822,58 +1854,134 @@ function PackReveal({
   onReveal: () => void;
   onNext: () => void;
 }) {
+  const auraClass = `aura-${card.rarity.toLowerCase()}`;
+  const isTension = !shown && (card.rarity === "Legendary" || card.rarity === "Unique");
+
+  // Glitter particles for the reveal
+  const glitters = Array.from({ length: 18 }, (_, i) => ({
+    x: `${8 + Math.random() * 84}%`,
+    y: `${5 + Math.random() * 80}%`,
+    size: `${10 + Math.random() * 14}px`,
+    delay: `${i * 0.06}s`,
+    dx: `${(Math.random() - 0.5) * 140}px`,
+    dy: `${-60 - Math.random() * 120}px`,
+  }));
+
+  // Rarity burst rays
+  const rays = Array.from({ length: 24 }, (_, i) => ({
+    rotate: `${(i / 24) * 360}deg`,
+  }));
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="flex flex-col items-center space-y-6 max-w-sm w-full text-center">
-        <div className="flex justify-between items-center w-full text-xs text-[#ffd580] font-serif">
+    <div
+      className={`fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4 ${shown ? `${auraClass} is-revealed` : auraClass} ${isTension ? "is-tension" : ""}`}
+      style={{ perspective: "900px" }}
+    >
+      {/* Animovaný obsah na pozadí */}
+      {shown && (
+        <>
+          {/* Flash přes obrazovku */}
+          <div className="reveal-flash" />
+
+          {/* Světelné šachty */}
+          <div className="light-shafts">
+            {Array.from({ length: 5 }).map((_, i) => <i key={i} />)}
+          </div>
+
+          {/* Glitter bouře */}
+          <div className="glitter-storm">
+            {glitters.map((g, i) => (
+              <i
+                key={i}
+                style={{
+                  "--x": g.x,
+                  "--y": g.y,
+                  "--size": g.size,
+                  "--delay": g.delay,
+                  "--dx": g.dx,
+                  "--dy": g.dy,
+                  "--i": i,
+                } as React.CSSProperties}
+              >
+                ✦
+              </i>
+            ))}
+          </div>
+
+          {/* Rarity burst paprsky */}
+          <div className="rarity-burst absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+            {rays.map((r, i) => (
+              <i
+                key={i}
+                style={{
+                  position: "absolute",
+                  transformOrigin: "bottom center",
+                  transform: `rotate(${r.rotate})`,
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-col items-center space-y-6 max-w-sm w-full text-center relative z-10">
+        <div className="flex justify-between items-center w-full text-xs font-bold"
+          style={{ fontFamily: "var(--font-ui)", color: shown ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.7)" }}>
           <span>{qualityLabel(quality)} balíček</span>
           <span>Karta {position} z {total}</span>
         </div>
 
         {!shown ? (
-          /* Nerozbalená zadní strana karty */
+          /* Zadní strana karty */
           <div
             onClick={onReveal}
-            className="w-64 h-92 rounded-2xl bg-gradient-to-br from-[#241c14] to-[#14100c] border-2 border-[#ffd580] flex flex-col items-center justify-center p-6 shadow-2xl cursor-pointer hover:scale-105 transition transform group"
+            className={`card-back w-64 rounded-2xl border-2 border-white/30 flex flex-col items-center justify-center p-6 shadow-2xl cursor-pointer hover:scale-105 transition transform group ${isTension ? "is-tension" : ""}`}
+            style={{ height: "336px" }}
           >
-            <div className="w-20 h-20 rounded-full border-2 border-[#ffd580] flex items-center justify-center text-4xl font-serif font-bold text-[#ffd580] mb-4 group-hover:rotate-6 transition">
+            <div className="w-20 h-20 rounded-full border-2 border-white/50 flex items-center justify-center text-4xl font-bold text-white/90 mb-4 group-hover:rotate-6 transition"
+              style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
               Q
             </div>
-            <span className="font-serif font-bold text-sm text-[#ffd580]">
+            <span className="font-bold text-sm text-white/90"
+              style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
               Klepněte pro odhalení
             </span>
-            <small className="text-[10px] text-[#8c7b6d] mt-1 font-sans">
-              Inkoust se probouzí...
+            <small className="text-[10px] text-white/55 mt-1" style={{ fontFamily: "var(--font-ui)" }}>
+              {isTension ? "Něco vzácného se probouzí..." : "Inkoust se probouzí..."}
             </small>
           </div>
         ) : (
-          /* Odhalená karta s výřezem */
-          <div className="reveal-card-stage">
+          /* Odhalená karta */
+          <div className={`reveal-card-stage reveal-card`}>
             <div className="flex justify-between items-center text-[10px] mb-2">
               <span className={`rarity-pill ${card.rarity}`}>{card.rarity}</span>
-              <span className="font-serif font-bold text-[#ffd580]">{card.sigil}</span>
+              <span className="font-bold text-[#c8920a]"
+                style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>{card.sigil}</span>
             </div>
 
-            <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#3b2e21] mb-3 relative">
+            <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#d4b98a] mb-3 relative">
               <ColophonImage card={card} alt={card.title} />
-              <span className="absolute bottom-1 right-1 bg-black/80 text-[#ffd580] text-[9px] font-mono px-1 rounded">
+              <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-mono px-1 rounded">
                 {card.year}
               </span>
             </div>
 
-            <h3 className="font-serif font-bold text-lg text-[#ffd580] leading-tight">
+            <h3 className="font-bold text-lg text-[#2c1a0e] leading-tight"
+              style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
               {card.title}
             </h3>
-            <p className="font-serif italic text-xs text-[#c4b4a1] mt-2 line-clamp-2">
-              “{card.quote}”
+            <p className="italic text-xs text-[#6b4c2a] mt-2 line-clamp-2"
+              style={{ fontFamily: "Georgia, serif" }}>
+              "{card.quote}"
             </p>
-            <p className="text-[10px] text-[#8c7b6d] mt-1">
+            <p className="text-[10px] text-[#8a6540] mt-1" style={{ fontFamily: "var(--font-ui)" }}>
               {card.scribe} • {card.place}
             </p>
 
             <button
               onClick={onNext}
-              className="w-full mt-4 bg-gradient-to-b from-[#d4af37] to-[#aa831b] text-black font-serif font-bold py-2 rounded-xl text-xs hover:brightness-110 transition cursor-pointer"
+              className="w-full mt-4 bg-gradient-to-b from-[#f59e0b] to-[#c8920a] hover:brightness-110 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer"
+              style={{ fontFamily: "var(--font-ui)" }}
             >
               {position === total ? "Uložit do sbírky kodexů" : "Odhalit další kartu →"}
             </button>
@@ -2075,22 +2183,33 @@ function LevelUpModal({ level, onClose }: { level: number; onClose: () => void }
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="card-detail-dialog p-8 max-w-sm text-center space-y-4"
+        className="level-up-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
       >
-        <Sparkles size={40} className="mx-auto text-[#ffd580] animate-bounce" />
-        <span className="text-xs uppercase font-sans font-bold text-[#ffd580] tracking-wider">
+        <div className="level-rays">
+          {Array.from({ length: 6 }).map((_, i) => <i key={i} />)}
+        </div>
+        <Sparkles size={40} className="mx-auto text-[#c8920a] animate-bounce relative z-10" />
+        <span className="text-xs uppercase font-bold text-[#8a6540] tracking-wider relative z-10"
+          style={{ fontFamily: "var(--font-ui)" }}>
           Osvícení písaře
         </span>
-        <h2 className="text-4xl font-serif font-bold text-[#ffd580]">Úroveň {level}</h2>
-        <p className="text-xs text-[#b3a18d]">
+        <div className="level-seal relative z-10">
+          <span>{level}</span>
+        </div>
+        <h2 className="text-4xl font-bold text-[#2c1a0e] relative z-10"
+          style={{ fontFamily: "var(--font-display, Georgia, serif)" }}>
+          Úroveň {level}
+        </h2>
+        <p className="text-xs text-[#6b4c2a] relative z-10" style={{ fontFamily: "var(--font-ui)" }}>
           Vaše znalosti kodexů vzrostly. Do vaší truhly byl vložen{" "}
-          <strong className="text-[#ffd580]">Mistrovský balíček</strong>!
+          <strong className="text-[#c8920a]">Mistrovský balíček</strong>!
         </p>
         <button
           onClick={onClose}
-          className="w-full py-2.5 bg-gradient-to-b from-[#d4af37] to-[#aa831b] text-black font-serif font-bold rounded-xl text-sm hover:brightness-110 transition cursor-pointer"
+          className="w-full py-2.5 bg-gradient-to-b from-[#f59e0b] to-[#c8920a] hover:brightness-110 text-white font-bold rounded-xl text-sm transition cursor-pointer relative z-10"
+          style={{ fontFamily: "var(--font-ui)" }}
         >
           Převzít odměnu
         </button>
