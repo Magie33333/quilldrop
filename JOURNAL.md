@@ -9,22 +9,26 @@
 
 ---
 
-## 📅 Záznam ze dne 14. 9. 2026 — Návrat k původnímu pergamenovému vizuálu (GPT work) se zachováním funkčních oprav
+## 📅 Záznam ze dne 14. 9. 2026 — Převod na plnohodnotnou webovou multiplatformní aplikaci (Desktop & Mobil)
 
-**Rozhodnutí:** Pokusy o radikální grafické přepracování (tmavé skriptorium i hybridní žlutobílý režim) narušily jednotnou atmosféru a rozbily provázanost vizuálních prvků a animací. Na žádost uživatele byl proveden návrat k původnímu, ucelenému a funkčnímu designu vytvořenému v rámci GPT work (`72b0adf`).
+**Cíl etapy:** Převést původní mobilní rozložení (430px) na plnohodnotnou multiplatformní webovou aplikaci pro studenty FF UK i veřejnost, aniž by došlo k narušení oblíbeného pergamenového vizuálu, barev rarit a luxusních animací odhalování karet.
 
-**Stav a zachované funkční opravy:**
-1. **Původní pergamenový vizuál a barevná paleta:**
-   - Obnoven kompletní stylesheet `app/globals.css` s autentickými středověkými pergamenovými odstíny (`--parchment: #edd8b1`, `--light: #f4e5c6`, `--brown: #935803`, `--blue: #1039a0`, `--red: #b84732`, `--gold: #c89a2b`).
-   - Obnoveny původní barvy rarit a stínování karet ve sbírce i v balíčcích.
-2. **Obnovení všech animací:**
-   - Plný systém odhalování balíčku (`PackReveal`): animace napětí (`.is-tension`) pro Legendary a Unique karty, třesení karty před odhalením, částicové pole (`.particle-field`), exploze třpytek (`.glitter-storm`), světelné šachty (`.light-shafts`), paprsky rarity (`.rarity-burst`), záblesk obrazovky (`.reveal-flash`) a zlaté dýchání (`unique-breathe`).
-   - Původní vosková pečeť s rotací a pulzací.
-3. **Plně zachované funkční opravy a integrace:**
-   - **Supabase live data:** Živé stahování publikovaných karet a kolofonů přímo z univerzitního PostgreSQL cloudu s fallbackem na lokální archiv.
-   - **ColophonImage bez deformace:** Uniformní škálování `Math.min(container.w / crop.w, container.h / crop.h)` a boundary clamping na všech okrajích (eliminace bílých/prázdných mezer pod spodními ořezy).
-   - **Quilldrop Studio:** Plnohodnotné rozhraní pro editory na `/admin` pro ořezávání a schvalování rukopisů z FF UK.
-   - **Opravená metadata:** Čeština v titulku a `lang="cs"`.
+**Realizované úpravy:**
+1. **Desktopová navigace v záhlaví (`StatusBar`):**
+   - Na displejích s šířkou ≥ 768px se aplikace roztáhne do kontejneru o šířce až `1200px`.
+   - Mezi logo Quilldrop a statistiky (streak, puzzle, XP) byla integrována desktopová navigační lišta: *Skriptorium*, *Balíčky*, *Sbírka*, *Výzvy*, *Profil* a přímý odkaz na *Quilldrop Studio* (`/admin`).
+   - Na mobilních zařízeních (< 768px) zůstává zachována spodní mobilní lišta (`bottom-nav`), která se na desktopu automaticky skryje.
+2. **Responzivní mřížka sbírky (`CollectionScreen`):**
+   - Karty se na desktopu automaticky škálují do 3 až 5 sloupců podle šířky okna namísto původních 2 sloupců.
+   - Přidáno rychlé fulltextové vyhledávání kolofonů (podle písaře, města, textu či roku) a přepínač „Pouze vlastněné“.
+3. **Přehledný 2sloupcový pult Skriptoria (`HomeScreen`):**
+   - Na desktopu jsou uvítací panel a denní pečetěný balíček uspořádány vedle sebe do 2 sloupců, což působí jako skutečný stůl ve středověké dílně.
+4. **Responzivní minihry (`PacksScreen`):**
+   - Tři písařské výzvy (*Nálada písaře*, *Rozlušti kolofon*, *Paleografický mistr*) jsou na desktopu zarovnány vedle sebe do tří karet.
+5. **Kodikologický detail karty (`CardDetail`):**
+   - Na desktopu se detail otevře v přehledném 2sloupcovém modálu (vlevo velký ostrý výřez 4:3 bez deformace písma, vpravo latinská citace, český překlad a kodikologická metadata).
+6. **100% zachování autentických animací a stylu z GPT work:**
+   - Plný systém odhalování balíčků (`PackReveal`): napětí a třesení karet u Legendary a Unique, světelné šachty, třpytkové pole a zlaté dýchání karet zůstaly nedotčeny.
 
 ---
 
