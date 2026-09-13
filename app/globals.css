@@ -23,7 +23,14 @@ html, body {
   color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
   overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--brown) #ebd7b2;
 }
+html::-webkit-scrollbar { width: 10px; }
+html::-webkit-scrollbar-track { background: #ebd7b2; }
+html::-webkit-scrollbar-thumb { background: var(--brown); border-radius: 5px; border: 2px solid #ebd7b2; }
+html::-webkit-scrollbar-thumb:hover { background: #6f3e08; }
 button { font: inherit; color: inherit; }
 button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
@@ -73,7 +80,7 @@ button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .nav-count { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #e0be7f; color: #4e2e06; font-family: var(--font-ui, system-ui); }
 .nav-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: var(--red); color: white; font-family: var(--font-ui, system-ui); }
 
-.scroll-area { flex: 1; width: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--brown) transparent; }
+.scroll-area { flex: 1; width: 100%; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--brown) transparent; }
 .screen { width: 100%; max-width: 1400px; margin: 0 auto; padding: 20px 24px 48px; animation: page-in .25s ease both; }
 @keyframes page-in { from { opacity: 0; transform: translateY(5px); } }
 
@@ -200,7 +207,11 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
     border-radius: 0;
     box-shadow: none;
   }
-  .scroll-area { flex: 1; }
+  .scroll-area {
+    height: auto !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+  }
   .modal-backdrop { border-radius: 0; }
   .bottom-nav { display: none !important; }
   .desktop-nav { display: flex !important; }
@@ -515,7 +526,7 @@ h1, h2, h3, .section-title, .brand-lockup, .illuminated-initial, .avatar { font-
   .brand-lockup { width: 119px; height: 42px; }
   .stats span { padding: 3px 4px; }.stats b { font-size: 8px; }
 }
-@media (min-width: 700px) { .scroll-area { height: calc(100dvh - 166px); } }
+@media (min-width: 768px) { .scroll-area { height: auto !important; overflow-y: visible !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
 
 /* V4 — professional iconography, tactile surfaces and high-tier anticipation */
