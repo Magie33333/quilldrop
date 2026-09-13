@@ -13,11 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
-  other: {
-    "codex-preview": "development",
-  },
+  title: "Quilldrop | Středověká sběratelská hra z kolofonů FF UK",
+  description: "Sbírejte autentické kolofony a rukopisy ze středověkých kodexů z výzkumu prof. Lucie Doležalové (Univerzita Karlova).",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -30,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="cs">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

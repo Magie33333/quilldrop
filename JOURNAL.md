@@ -116,9 +116,29 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 * **Vyčištění dekorativních artefaktů v CSS:**
   * Skryt původní červený obloukový rámeček (`::before`) u reálných ilustrací rukopisů a nastaveno tmavé studiové pozadí `#16120e` pro rámeček karty v detailu. Náhled v Quilldrop Studiu a zobrazení ve hře jsou nyní stoprocentně identické.
 
+### [2026-09-13] Přerod v multiplatformní webovou aplikaci & Tmavý styl skriptoria
+* **Odstranění restrikce 430 px a přechod na plnohodnotný webový layout:**
+  * Původní prototyp imitující mobilní telefon v úzkém pruhu 430 px byl kompletně přepracován na responzivní webové rozhraní (`max-w-[1360px]`).
+  * Na desktopu a tabletech vznikla moderní horní navigační lišta s logem, univerzitním odznakem `✦ FF UK Live`, přepínači záložek, statistikami hráče a tlačítkem pro přímý skok do Quilldrop Studia.
+  * Na mobilních zařízeních se rozhraní plynule adaptuje na čistou spodní navigační lištu optimalizovanou pro dotyk.
+* **Vizuální identita „Císařské skriptorium“:**
+  * Zavedena luxusní paleta temného skriptoria (tmavý ebenový pergamen `#0a0806`, zlacení `#d4af37` / `#ffd580`, rubrikovaný vermilion, lapis lazuli). Naskenované středověké kodexy v tomto prostředí působí monumentálně a autenticky.
+* **Responzivní sbírka kodexů s vyhledáváním a řazením:**
+  * Mřížka sbírky se nyní automaticky přizpůsobuje šířce monitoru (2 sloupce na mobilu, 3–4 na tabletu, 5–6 sloupců na desktopu).
+  * Přidáno živé vyhledávání podle názvu, písaře, města, roku nebo textu kolofonu.
+  * Přidáno vícekriteriální řazení (nejstarší, nejmladší, raritní váha, abecedně dle názvu či místa) a filtr vlastněných karet.
+* **Dvousloupcový detail kodexu pro velké obrazovky:**
+  * Modální okno detailu karty na desktopu zobrazuje v levém sloupci velký 4:3 výřez naskenovaného rukopisu (s uniformním clampingem bez deformace) a v pravém sloupci latinský text s českým překladem a kompletní kodikologickou tabulkou (signatura, folium, písař, místo vzniku, odkaz na zdroj).
+* **Kompletní česká lokalizace rozhraní:**
+  * Celé hráčské prostředí bylo převedeno do přirozené češtiny vhodné pro studenty i akademickou obec FF UK.
+
 ---
 
-### Následující krok:
+### Následující kroky (Fáze 2):
+* [ ] **Napojení dynamických miniher ze Supabase (`game_questions`):**
+  * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
+* [ ] **Interaktivní mapa evropských skriptorií:**
+  * Nahradit provizorní mapu skutečnou interaktivní mapou historické Evropy s lokalitami ze záznamů (Praha, Olomouc, Bologna, Heidelberg, Krakov atd.).
 * [ ] **Synchronizace hráčského profilu a inventáře do Supabase:**
-  * Propojit herní postup (odemčené karty v inventáři, odehrané minihry, denní streak) s tabulkami `profiles` a `user_cards` v Supabase pro přihlášené hráče.
+  * Propojit herní postup s tabulkami `profiles` a `user_cards` v Supabase.
 
