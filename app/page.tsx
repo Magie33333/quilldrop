@@ -239,20 +239,49 @@ export default function Home() {
           .eq("is_active", true);
 
         if (!qError && qData && qData.length > 0) {
-          const loadedQuestions: QuestionData[] = qData.map((q: any) => ({
-            id: q.id,
-            card_id: q.card_id,
-            game_kind: q.game_kind,
-            title: q.title,
-            intro: q.intro,
-            quote: q.quote,
-            options: Array.isArray(q.options) ? q.options : [],
-            correct_index: Number(q.correct_index) || 0,
-            explanation: q.explanation || undefined,
-            hint: q.hint || undefined,
-            difficulty: q.difficulty || "medium",
-            is_active: q.is_active,
-          }));
+          const loadedQuestions: QuestionData[] = qData.map((q: any) => {
+            let choices: [string, string][] = [];
+            let mode = q.game_kind;
+            let highlightRegions = q.highlight_regions;
+            let targetTranscription = q.target_transcription;
+            let acceptedVariants = q.accepted_variants;
+
+            if (Array.isArray(q.options)) {
+              choices = q.options;
+            } else if (q.options && typeof q.options === "object") {
+              if (Array.isArray(q.options.choices)) choices = q.options.choices;
+              if (q.options.mode) mode = q.options.mode;
+              if (q.options.highlight_regions) highlightRegions = q.options.highlight_regions;
+              if (q.options.target_transcription) targetTranscription = q.options.target_transcription;
+              if (q.options.accepted_variants) acceptedVariants = q.options.accepted_variants;
+            }
+
+            if (!mode) {
+              if (highlightRegions || targetTranscription) mode = "transcription";
+              else if (q.game_kind === "paleo") mode = "script";
+              else mode = q.game_kind;
+            }
+
+            return {
+              id: q.id,
+              card_id: q.card_id,
+              game_kind: q.game_kind,
+              mode: mode as any,
+              title: q.title,
+              intro: q.intro,
+              quote: q.quote,
+              translation_cs: q.translation_cs || q.options?.translation_cs,
+              options: choices,
+              correct_index: Number(q.correct_index) || 0,
+              explanation: q.explanation || undefined,
+              hint: q.hint || undefined,
+              difficulty: q.difficulty || "medium",
+              is_active: q.is_active,
+              highlight_regions: highlightRegions,
+              target_transcription: targetTranscription,
+              accepted_variants: acceptedVariants,
+            };
+          });
           setQuestions(loadedQuestions);
         }
       } catch (e) {
@@ -320,28 +349,40 @@ export default function Home() {
     }
   };
 
-  const startGame = (kind: GameKind) => {
+  const startGame = (questType: "mood" | "cipher" | "script" | "paleo") => {
     if (state.gamesPlayed >= 10) {
       setToast("Dnešních 10 výzev jste již dokončili. Vraťte se zítra za svítání.");
       return;
     }
-    const pool = questions.filter(q => q.game_kind === kind);
+    let pool: QuestionData[] = [];
+    if (questType === "mood") {
+      pool = questions.filter(q => q.game_kind === "mood" || q.mode === "mood");
+    } else if (questType === "cipher") {
+      pool = questions.filter(q => q.game_kind === "cipher" || q.mode === "cipher");
+    } else if (questType === "script") {
+      pool = questions.filter(q => q.game_kind === "paleo" && (q.mode === "script" || q.mode === "century" || (!q.target_transcription && !q.highlight_regions)));
+    } else {
+      pool = questions.filter(q => q.game_kind === "paleo" && (q.mode === "transcription" || q.target_transcription || q.highlight_regions));
+    }
+
     const chosen = pool.length > 0
       ? pool[Math.floor(Math.random() * pool.length)]
-      : DEFAULT_QUESTIONS.find(q => q.game_kind === kind) || DEFAULT_QUESTIONS[0];
+      : DEFAULT_QUESTIONS.find(q => q.mode === questType || q.game_kind === (questType === "script" ? "paleo" : questType)) || DEFAULT_QUESTIONS[0];
+
     setActiveQuestion(chosen);
-    setGame(kind);
+    setGame(chosen.game_kind);
     setGameStep(0);
     setAnswer(null);
   };
 
   const finishGame = (correct: boolean) => {
     setAnswer(correct ? "correct" : "wrong");
-    const quality: PackQuality = game === "paleo" ? "masterwork" : game === "cipher" ? "refined" : "standard";
+    const isTranscription = activeQuestion?.mode === "transcription" || Boolean(activeQuestion?.target_transcription);
+    const quality: PackQuality = isTranscription ? "masterwork" : (game === "paleo" || game === "cipher") ? "refined" : "standard";
     if (correct) {
-      const earnedXp = quality === "masterwork" ? 90 : quality === "refined" ? 60 : 35;
+      const earnedXp = isTranscription ? 120 : game === "paleo" ? 75 : game === "cipher" ? 60 : 35;
       const nextLevel = levelForXp(state.xp + earnedXp);
-      setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 20 }, earnedXp));
+      setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 25 }, earnedXp));
       if (nextLevel > levelForXp(state.xp)) {
         window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
       } else {
@@ -656,7 +697,7 @@ function HomeScreen({
   onCollection: () => void;
   onMap: () => void;
   onGallery: () => void;
-  onGame: (g: GameKind) => void;
+  onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
   onDetail: (c: Colophon) => void;
 }) {
   const progressPercent = totalCards > 0 ? Math.round((uniqueOwned / totalCards) * 100) : 0;
@@ -723,25 +764,33 @@ function HomeScreen({
               <span className="home-quest-icon"><Smile size={18} /></span>
               <div className="home-quest-info">
                 <strong>Nálada písaře</strong>
-                <small>Rychlá intuice · Snadná výzva</small>
+                <small>Výběr emoce · 4 možnosti · Snadná</small>
               </div>
               <span className="home-quest-reward">Standardní balíček →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
               <span className="home-quest-icon"><KeyRound size={18} /></span>
               <div className="home-quest-info">
-                <strong>Rozlušti kolofon</strong>
-                <small>Doplňte chybějící litery · Střední</small>
+                <strong>Rozlušti šifru</strong>
+                <small>Kryptogramy a hříčky · Střední</small>
               </div>
               <span className="home-quest-reward">Vytříbený (Rare+) →</span>
             </button>
+            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
+              <span className="home-quest-icon"><ScrollText size={18} /></span>
+              <div className="home-quest-info">
+                <strong>Poznej písmo a století</strong>
+                <small>Typologie & datace kodexu · Pokročilá</small>
+              </div>
+              <span className="home-quest-reward">Vytříbený (Epic+) →</span>
+            </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
-              <span className="home-quest-icon"><Languages size={18} /></span>
+              <span className="home-quest-icon"><PenTool size={18} /></span>
               <div className="home-quest-info">
                 <strong>Paleografický mistr</strong>
-                <small>Určete středověké písmo · Expertní</small>
+                <small>Přepis autentického textu s lupou · Expertní</small>
               </div>
-              <span className="home-quest-reward">Mistrovský (Epic+) →</span>
+              <span className="home-quest-reward" style={{ color: "var(--brown)", fontWeight: 800 }}>Mistrovský (Legendary+) →</span>
             </button>
           </div>
         </section>
@@ -845,7 +894,7 @@ function HomeScreen({
   );
 }
 
-function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () => void; onGame: (g: GameKind) => void }) {
+function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () => void; onGame: (g: "mood" | "cipher" | "script" | "paleo") => void }) {
   const remaining = Math.max(0, 10 - state.packsOpened);
   const hasBonus = state.bonusPacks.length > 0;
   const gamesLeft = Math.max(0, 10 - state.gamesPlayed);
@@ -874,9 +923,10 @@ function PacksScreen({ state, onOpen, onGame }: { state: GameState; onOpen: () =
     </section>
     <div className="section-title"><h2>Získejte další balíček</h2><span>{gamesLeft}/10 výzev k dispozici</span></div>
     <div className="game-list">
-      <button disabled={!gamesLeft} onClick={() => onGame("mood")}><span><Smile size={23} /></span><div><strong>Nálada písaře</strong><small>Rychlá intuice · Snadná výzva</small><em>Standardní balíček</em></div><b>→</b></button>
-      <button disabled={!gamesLeft} onClick={() => onGame("cipher")}><span><KeyRound size={23} /></span><div><strong>Rozlušti kolofon</strong><small>Doplňte chybějící litery · Střední</small><em>Vytříbený balíček (Rare+)</em></div><b>→</b></button>
-      <button disabled={!gamesLeft} onClick={() => onGame("paleo")}><span><Languages size={23} /></span><div><strong>Paleografický mistr</strong><small>Určete středověké písmo · Expertní</small><em>Mistrovský balíček (Epic+)</em></div><b>→</b></button>
+      <button disabled={!gamesLeft} onClick={() => onGame("mood")}><span><Smile size={23} /></span><div><strong>Nálada písaře</strong><small>Výběr emoce · 4 možnosti</small><em>Standardní balíček</em></div><b>→</b></button>
+      <button disabled={!gamesLeft} onClick={() => onGame("cipher")}><span><KeyRound size={23} /></span><div><strong>Rozlušti šifru</strong><small>Kryptogramy a hříčky</small><em>Vytříbený balíček (Rare+)</em></div><b>→</b></button>
+      <button disabled={!gamesLeft} onClick={() => onGame("script")}><span><ScrollText size={23} /></span><div><strong>Poznej písmo a století</strong><small>Typologie písma a datace</small><em>Vytříbený balíček (Epic+)</em></div><b>→</b></button>
+      <button disabled={!gamesLeft} onClick={() => onGame("paleo")}><span><PenTool size={23} /></span><div><strong>Paleografický mistr</strong><small>Přepis autentických řádků s lupou</small><em>Mistrovský balíček (Legendary+)</em></div><b>→</b></button>
     </div>
   </div>;
 }
@@ -1155,6 +1205,46 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
   </div>;
 }
 
+function normalizeLatin(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, " ")
+    .replace(/v/g, "u")
+    .replace(/j/g, "i")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function calculateSimilarity(a: string, b: string): number {
+  const s1 = normalizeLatin(a);
+  const s2 = normalizeLatin(b);
+  if (s1 === s2) return 1;
+  if (!s1 || !s2) return 0;
+
+  const m = s1.length;
+  const n = s2.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  const dist = dp[m][n];
+  const maxLen = Math.max(m, n);
+  return Math.max(0, 1 - dist / maxLen);
+}
+
 function GameModal({
   kind,
   question,
@@ -1182,12 +1272,55 @@ function GameModal({
     cards[0] ||
     COLOPHONS[0];
 
-  const reward =
-    kind === "paleo"
-      ? "Mistrovský balíček · Epic a lepší"
-      : kind === "cipher"
-      ? "Vytříbený balíček · Zvýšená šance na Rare"
-      : "Standardní bonusový balíček";
+  const isTranscription = question.mode === "transcription" || Boolean(question.target_transcription);
+
+  const [userText, setUserText] = useState("");
+  const [transcriptionFeedback, setTranscriptionFeedback] = useState<{
+    similarity: number;
+    message: string;
+    pass: boolean;
+  } | null>(null);
+
+  const reward = isTranscription
+    ? "Mistrovský balíček · Legendary a lepší (+120 XP)"
+    : question.mode === "script" || kind === "paleo"
+    ? "Vytříbený balíček · Epic a lepší (+75 XP)"
+    : kind === "cipher"
+    ? "Vytříbený balíček · Zvýšená šance na Rare (+60 XP)"
+    : "Standardní bonusový balíček (+35 XP)";
+
+  const handleCheckTranscription = () => {
+    if (!userText.trim()) return;
+    const target = question.target_transcription || question.quote;
+    const targets = [target, ...(question.accepted_variants || [])];
+
+    let bestSim = 0;
+    for (const t of targets) {
+      const sim = calculateSimilarity(userText, t);
+      if (sim > bestSim) bestSim = sim;
+    }
+
+    const pass = bestSim >= 0.82;
+    if (pass) {
+      setTranscriptionFeedback({
+        similarity: Math.round(bestSim * 100),
+        message: bestSim >= 0.95 ? "Dokonalý paleografický přepis!" : "Výborně! Text byl úspěšně rozluštěn i s drobnými nuancemi.",
+        pass: true,
+      });
+      onAnswer(true);
+    } else {
+      setTranscriptionFeedback({
+        similarity: Math.round(bestSim * 100),
+        message:
+          bestSim >= 0.65
+            ? `Velmi blízko (${Math.round(bestSim * 100)} %)! Zkontrolujte koncovky slov, zkratky a ligatury.`
+            : `Zatím ${Math.round(bestSim * 100)} % shoda. Prozkoumejte detaily osvětlených řádků výše a zkuste to znovu.`,
+        pass: false,
+      });
+    }
+  };
+
+  const imgSrc = challengeCard.remoteImageUrl || challengeCard.imageUrl;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -1198,7 +1331,7 @@ function GameModal({
         aria-modal="true"
         aria-label={question.title}
       >
-        <button className="close" onClick={onClose}>
+        <button className="close" onClick={onClose} aria-label="Zavřít výzvu">
           ×
         </button>
         <p className="eyebrow">Výzva o bonusový balíček</p>
@@ -1208,37 +1341,184 @@ function GameModal({
           <strong>{reward}</strong>
         </div>
         <div className="game-rule">{question.intro}</div>
-        <div className="challenge-manuscript">
-          <ColophonImage card={challengeCard} alt="Detail rukopisu k výzvě" />
-          <small>
-            {challengeCard.manuscript} · {challengeCard.locus}
-          </small>
-        </div>
-        <blockquote className={kind === "paleo" ? "paleo-text" : ""}>
-          {question.quote}
-        </blockquote>
-        <div className="game-options">
-          {question.options.map((o, i) => (
-            <button
-              key={i}
-              disabled={!!answer}
-              className={answer ? (i === question.correct_index ? "correct" : "dim") : ""}
-              onClick={() => onAnswer(i === question.correct_index)}
-            >
-              <span>{o[0]}</span>
-              <small>{o[1]}</small>
-            </button>
-          ))}
-        </div>
-        {answer === "correct" && question.explanation && (
-          <div className="game-explanation">
-            <strong>Písařský vhled:</strong>
-            {question.explanation}
+
+        {isTranscription ? (
+          <div className="transcription-mode">
+            <div className="spotlight-wrap">
+              <img src={imgSrc} alt="Rukopis k paleografickému přepisu" />
+              {question.highlight_regions && question.highlight_regions.length > 0 && (
+                <svg className="spotlight-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <mask id={`spotlight-mask-${question.id || "curr"}`}>
+                      <rect x="0" y="0" width="100" height="100" fill="white" />
+                      {question.highlight_regions.map((reg, idx) => {
+                        const rw = reg.w ?? reg.width ?? 20;
+                        const rh = reg.h ?? reg.height ?? 5;
+                        return (
+                          <rect
+                            key={idx}
+                            x={reg.x}
+                            y={reg.y}
+                            width={rw}
+                            height={rh}
+                            rx="0.5"
+                            fill="black"
+                          />
+                        );
+                      })}
+                    </mask>
+                  </defs>
+                  <rect
+                    x="0"
+                    y="0"
+                    width="100"
+                    height="100"
+                    fill="rgba(14, 10, 7, 0.78)"
+                    mask={`url(#spotlight-mask-${question.id || "curr"})`}
+                  />
+                  {question.highlight_regions.map((reg, idx) => {
+                    const rw = reg.w ?? reg.width ?? 20;
+                    const rh = reg.h ?? reg.height ?? 5;
+                    const lineNum = reg.line_number ?? (idx + 1);
+                    return (
+                      <g key={idx}>
+                        <rect
+                          x={reg.x}
+                          y={reg.y}
+                          width={rw}
+                          height={rh}
+                          rx="0.8"
+                          fill="none"
+                          stroke="#ffd580"
+                          strokeWidth="0.8"
+                          strokeDasharray="2 1"
+                        />
+                        <text
+                          x={reg.x + 0.8}
+                          y={reg.y + Math.min(rh * 0.75, 4.2)}
+                          fill="#ffd580"
+                          fontSize="3"
+                          fontWeight="bold"
+                          fontFamily="sans-serif"
+                        >
+                          {lineNum}.
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              )}
+            </div>
+            <div className="text-center text-[10px] text-[#8c6b3e] mb-2">
+              {challengeCard.manuscript} · {challengeCard.locus}
+            </div>
+
+            <div className="transcription-box">
+              <input
+                type="text"
+                className="transcription-input"
+                placeholder="Zde přepište latinský text z osvětlených řádků..."
+                value={userText}
+                disabled={answer === "correct"}
+                onChange={(e) => setUserText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !answer && userText.trim()) {
+                    handleCheckTranscription();
+                  }
+                }}
+                autoFocus
+              />
+              <div className="transcription-bar">
+                <button
+                  type="button"
+                  className="transcription-btn"
+                  disabled={!userText.trim() || answer === "correct"}
+                  onClick={handleCheckTranscription}
+                >
+                  Ověřit přepis (Enter)
+                </button>
+                {transcriptionFeedback && (
+                  <span
+                    className={`transcription-feedback ${
+                      transcriptionFeedback.pass
+                        ? "success"
+                        : transcriptionFeedback.similarity > 65
+                        ? "partial"
+                        : "error"
+                    }`}
+                  >
+                    {transcriptionFeedback.pass ? "✓ Úspěšně rozluštěno!" : `${transcriptionFeedback.similarity} % shoda`}
+                  </span>
+                )}
+              </div>
+              {transcriptionFeedback && !transcriptionFeedback.pass && (
+                <p className="hint-copy">{transcriptionFeedback.message}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="multiple-choice-mode">
+            <div className="challenge-manuscript">
+              <ColophonImage card={challengeCard} alt="Detail rukopisu k výzvě" />
+              <small>
+                {challengeCard.manuscript} · {challengeCard.locus}
+              </small>
+            </div>
+
+            <blockquote className={kind === "paleo" ? "paleo-text" : ""}>
+              {question.quote}
+            </blockquote>
+
+            {question.translation_cs && (
+              <div className="translation-box">
+                <b>Překlad</b>
+                <span>„{question.translation_cs}“</span>
+              </div>
+            )}
+
+            <div className="game-options grid-2x2">
+              {question.options.map((o, i) => {
+                const icon = Array.isArray(o) ? o[0] : ["A", "B", "C", "D"][i] || "•";
+                const text = Array.isArray(o) ? o[1] : String(o);
+                return (
+                  <button
+                    key={i}
+                    disabled={!!answer}
+                    className={answer ? (i === question.correct_index ? "correct" : "dim") : ""}
+                    onClick={() => onAnswer(i === question.correct_index)}
+                  >
+                    <span className="opt-icon">{icon}</span>
+                    <span className="opt-text">
+                      <span>{text}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
-        {answer === "wrong" && (
-          <p className="wrong-answer">Bohužel vedle – hledejte nápovědu ve slovech písaře.</p>
+
+        {answer === "correct" && (
+          <div className="game-explanation">
+            <strong>Písařský vhled & řešení:</strong>
+            {isTranscription && (
+              <p className="font-serif italic text-sm text-[#ffd580] my-1">
+                „{question.target_transcription || question.quote}“
+              </p>
+            )}
+            {question.translation_cs && (
+              <p className="text-xs text-[#dcd3c7] mb-1">
+                <b>Překlad:</b> „{question.translation_cs}“
+              </p>
+            )}
+            {question.explanation && <p>{question.explanation}</p>}
+          </div>
         )}
+
+        {answer === "wrong" && !isTranscription && (
+          <p className="wrong-answer">Bohužel vedle – hledejte nápovědu ve slovech a stylu písaře.</p>
+        )}
+
         {step === 0 && !answer && question.hint && (
           <button className="hint" onClick={() => setStep(1)}>
             Potřebujete nápovědu?

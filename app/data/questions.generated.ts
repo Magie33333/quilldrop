@@ -1,88 +1,120 @@
-﻿export type GameKind = "mood" | "cipher" | "paleo";
+export type GameKind = "mood" | "cipher" | "paleo";
+export type GameMode = "mood" | "cipher" | "script" | "century" | "transcription";
+
+export type HighlightRegion = {
+  x: number; // 0 - 100 %
+  y: number; // 0 - 100 %
+  w: number; // 0 - 100 %
+  h: number; // 0 - 100 %
+  width?: number;
+  height?: number;
+  line_number?: number;
+};
 
 export type QuestionData = {
   id?: string;
   card_id?: string;
   game_kind: GameKind;
+  mode?: GameMode;
   title: string;
   intro: string;
   quote: string;
-  options: [string, string][];
+  translation_cs?: string;
+  options: [string, string][]; // [emoji/označení, text]
   correct_index: number;
   explanation?: string;
   hint?: string;
   difficulty?: "easy" | "medium" | "expert";
   is_active?: boolean;
+  highlight_regions?: HighlightRegion[];
+  target_transcription?: string;
+  accepted_variants?: string[];
 };
 
 export const DEFAULT_QUESTIONS: QuestionData[] = [
-  // --- MOOD (Nálada písaře) ---
+  // ==========================================
+  // 1. NÁLADA PÍSAŘE (Scribe's Mood) - 4 možnosti
+  // ==========================================
   {
     id: "mood-1",
     game_kind: "mood",
+    mode: "mood",
     title: "Písařský povzdech",
-    intro: "Jak se cítí písař, který v kolofonu míchá latinu se staročeským veršem?",
+    intro: "Jakou emoci vyjadřuje písař, který v kolofonu míchá latinu se staročeským veršem?",
     quote: "Scriptor iam cessa naposledy pójdeš do lesa.",
+    translation_cs: "Písaři, už přestaň, naposledy půjdeš do lesa.",
     options: [
-      ["🌲", "Vyčerpaný a toužící po svobodě venku v přírodě"],
-      ["⚔️", "Připravený k boji proti loupežníkům"],
-      ["📚", "Nadšený, že hned začne opisovat další folium"],
+      ["🌲", "Vyčerpaný a toužící po svobodě v přírodě"],
+      ["⚔️", "Připravený k ozbrojenému boji proti nepřátelům"],
+      ["📚", "Dychtivý ihned začít opisovat další kodex"],
+      ["💰", "Požadující okamžité navýšení písařské mzdy"],
     ],
     correct_index: 0,
-    explanation: "Fráze 'pójdeš do lesa' je staročeský idiom pro konec práce a únik od ztuhlých prstů a bolavých zad do volného prostoru.",
-    hint: "Soustřeďte se na touhu odložit psací brk po měsících sezení v chladném skriptoriu.",
+    explanation: "Fráze 'pójdeš do lesa' je staročeský idiom pro konec vyčerpávající práce a únik od ztuhlých prstů a bolavých zad do volného prostoru mimo klášterní skriptorium.",
+    hint: "Soustřeďte se na touhu odložit psací brk po měsících sezení v chladu.",
     difficulty: "easy",
   },
   {
     id: "mood-2",
     game_kind: "mood",
-    title: "Úleva po dokončení",
+    mode: "mood",
+    title: "Děkovná úleva",
     intro: "Co vyjadřuje písař těmito úsečnými slovy na samém konci rukopisu?",
-    quote: "Laus trino et uno",
+    quote: "Laus trino et uno. Finito libro, sit laus et gloria Christo.",
+    translation_cs: "Chvála Trojjedinému. Kniha je dokončena, buď chvála a sláva Kristu.",
     options: [
-      ["🙏", "Hlubokou vděčnost a zbožnou úlevu Bohu za darované síly"],
-      ["💰", "Netrpělivou žádost o vyplacení dohodnuté mzdy"],
-      ["⚖️", "Kritiku chyb v dodaném předlohovém kodexu"],
+      ["🙏", "Hlubokou zbožnou úlevu a vděčnost za dokončení díla"],
+      ["😩", "Stížnost na zkažený inkoust a křivě seříznutý brk"],
+      ["⚖️", "Kritiku teologických chyb v předloze"],
+      ["🍷", "Žádost o džbán moravského vína"],
     ],
     correct_index: 0,
-    explanation: "'Laus trino et uno' (Chvála Trojjedinému) je nejčastější děkovná formule středověkých písařů za to, že ve zdraví dokončili náročné dílo.",
-    hint: "Slova 'trino et uno' odkazují na Nejsvětější Trojici.",
+    explanation: "'Laus trino et uno' je nejčastější děkovná formule středověkých písařů Bohu za to, že jim dal zdraví a sílu dokončit náročný opis bez oslepnutí.",
+    hint: "Písař vzdává chválu Nejsvětější Trojici za zdárný konec úkolu.",
     difficulty: "easy",
   },
   {
     id: "mood-3",
     game_kind: "mood",
-    title: "Tajemství v úkrytu",
-    intro: "S jakým záměrem písař připojil k tomuto textu přísné varování?",
-    quote: "Serva istud secrete, quia secretum magnum est.",
+    mode: "mood",
+    title: "Písařská žízeň",
+    intro: "Jaký tón volí písař v tomto slavném latinském rýmovaném povzdechu?",
+    quote: "Explicit hoc totum, pro christo da michi potum.",
+    translation_cs: "Zde je to celé u konce, pro Krista, dej mi napít!",
     options: [
-      ["🤫", "Spiklenecká obezřetnost a ochrana esoterického vědění"],
-      ["📜", "Úřední příkaz k okamžitému spálení dokumentu"],
-      ["😠", "Rozhořčení nad neschopností mladších učedníků"],
+      ["🍷", "Odlehčený a žíznivý – žádá osvěžující nápoj za odvedenou dřinu"],
+      ["📜", "Přísně úřední záznam pro biskupa"],
+      ["😤", "Rozzuřený na čtenáře, který nevrátil předchozí svazek"],
+      ["🕊️", "Zbožné rozjímání o věčném životě"],
     ],
     correct_index: 0,
-    explanation: "Formule 'Serva istud secrete' chránila alchymistické, lékařské nebo mystické receptury před očima nezasvěcených.",
-    hint: "Latinské slovo 'secretum' znamená tajemství.",
-    difficulty: "medium",
+    explanation: "Verš 'pro Christo da mihi potum' byl mezi univerzitními a klášterními písaři velmi oblíbený – po týdnech v prašném skriptoriu žádali mecenáše o pivo či víno.",
+    hint: "Slovo 'potum' v latině znamená nápoj.",
+    difficulty: "easy",
   },
   {
     id: "mood-4",
     game_kind: "mood",
-    title: "Studentský elán v Bologni",
-    intro: "V jakém rozpoložení píše probošt Benedikt z Valdštejna svůj přípis?",
-    quote: "Ego Benedictus de Waldsssteyn prepositus Lithomerz. etc. feci principium... Alleluia",
+    mode: "mood",
+    title: "Kletba na zloděje",
+    intro: "Jakou emoci vložil písař do této závěrečné klauzule kodexu?",
+    quote: "Quisquis hunc librum rapuerit, anathema sit in die iudicii.",
+    translation_cs: "Kdokoliv by tuto knihu uloupil, budiž proklet v den soudný.",
     options: [
-      ["🎓", "Hrdost na zahájení univerzitních přednášek a velikonoční radost"],
-      ["🥱", "Nuda z dlouhých klášterních disputací"],
-      ["🌧️", "Stesk po rodných severních Čechách"],
+      ["⚡", "Hrozivý hněv a nekompromisní ochranu knihy před zcizením"],
+      ["😌", "Poklidné loučení se čtenářem"],
+      ["🤝", "Nabídku k výhodnému odkoupení svazku"],
+      ["😢", "Lítost nad ztraceným přítelem"],
     ],
     correct_index: 0,
-    explanation: "Benedikt hrdě zaznamenává zahájení svých přednášek ('principium') v dominikánském konventu v Bologni během Velikonoc doprovázené jásavým 'Alleluia'.",
-    hint: "Všimněte si závěrečného zvolání 'Alleluia' a univerzitního termínu 'feci principium'.",
-    difficulty: "medium",
+    explanation: "Kletby na zloděje knih (anathema) byly ve středověku běžnou ochranou drahocenných kodexů před krádeží. Knihy měly hodnotu celých vesnic.",
+    hint: "Slovo 'anathema' znamená církevní kletbu a vyloučení.",
+    difficulty: "easy",
   },
 
-  // --- CIPHER (Rozlušti kolofon) ---
+  // ==========================================
+  // 2. ROZLUŠTI ŠIFRU (Crack the Cipher) - 4 možnosti
+  // ==========================================
   {
     id: "cipher-1",
     game_kind: "cipher",
@@ -148,53 +180,126 @@ export const DEFAULT_QUESTIONS: QuestionData[] = [
     difficulty: "medium",
   },
 
-  // --- PALEO (Paleografický mistr) ---
+  // ==========================================
+  // 3. POZNEJ PÍSMO A STOLETÍ - 4 možnosti
+  // ==========================================
   {
-    id: "paleo-1",
+    id: "script-1",
     game_kind: "paleo",
-    title: "Gotické lomené písmo",
-    intro: "Který typ středověkého písma dominuje v kodexech 14. a 15. století v Čechách?",
-    quote: "Scribe in arce Pragensi...",
+    mode: "script",
+    title: "Druh středověkého písma",
+    intro: "Kterým typem písma je zapsán text této ukázky s lomenými dříky a bohatou rubrikací?",
+    quote: "Qui scripsit scribat, semper cum domino vivat.",
+    translation_cs: "Kdo psal, ať píše dál, ať navěky žije s Pánem.",
     options: [
-      ["Gotická textura a bastarda", "Hranaté tahy se zlomenými dříky a bohatou rubrikací"],
-      ["Hlaholice", "Staroslověnské písmo svatých Cyrila a Metoděje"],
-      ["Renesanční antikva", "Kulaté písmo inspirované římskými nápisy"],
+      ["📜", "Gotická textura (Textualis formata) – slavnostní knižní lomené písmo"],
+      ["✒️", "Gotická kurzíva (Cursiva) – zběžné úřední písmo se smyčkami"],
+      ["🏛️", "Humanistická antikva (Antiqua) – okrouhlé renesanční písmo"],
+      ["👑", "Karolínská minuskula – raně středověké písmo z 9.–11. století"],
     ],
     correct_index: 0,
-    explanation: "V českých zemích za lucemburské doby převládala gotická textura v liturgických kodexech a gotická bastarda v běžných rukopisech.",
-    hint: "Charakteristické je 'lámání' oblouků a svislé stínování písmových tahů.",
-    difficulty: "expert",
-  },
-  {
-    id: "paleo-2",
-    game_kind: "paleo",
-    title: "Rubrikace a zvýraznění",
-    intro: "Proč jsou v tomto kolofonu některá slova či iniciály napsány červeným inkoustem?",
-    quote: "O maria virgo",
-    options: [
-      ["🔴", "Rubrikace (z lat. ruber = červený) sloužila k orientaci a zvýraznění svatých jmen"],
-      ["❌", "Písař tím označil textové chyby, které má čtenář přeskočit"],
-      ["🎨", "Došel černý inkoust ze sazí a duběnek, tak písař použil zbytek rumělky"],
-    ],
-    correct_index: 0,
-    explanation: "Rubrikace prováděná červenou hlinkou nebo rumělkou (cinobrem) byla specializovaná práce rubrikátora pro hierarchizaci textu.",
-    hint: "Slovo pochází z latinského výrazu pro červenou barvu.",
+    explanation: "Gotická textura (z latinského 'textus' – tkanina) je vrcholně středověké knižní písmo 13.–15. století, charakteristické přísným lámáním dříků a vysokým kontrastem tahů připomínajícím tkanou látku.",
+    hint: "Všimněte si lomených patních tahů na spodku i vrchu liter.",
     difficulty: "medium",
   },
   {
-    id: "paleo-3",
+    id: "script-2",
     game_kind: "paleo",
-    title: "Středověké písařské zkratky",
-    intro: "Co ve středověkých latinských a německých rukopisech znamenala vodorovná čárka (titulus) nad písmenem?",
-    quote: "In dem Namen des Vater... Amen",
+    mode: "century",
+    title: "Datace rukopisu podle stylu",
+    intro: "Do kterého období spadá vznik tohoto univerzitního kodexu s lucemburskou notací z Prahy?",
+    quote: "Anno domini millesimo quadringentesimo duodecimo...",
+    translation_cs: "Léta Páně tisícího čtyřstého dvanáctého...",
     options: [
-      ["〰️", "Zkratku pro vynechané 'm' nebo 'n' (nasální zkrácení)"],
-      ["🎵", "Hudební notaci chorálního zpěvu"],
-      ["👑", "Označení, že text četl panovník"],
+      ["A", "1. polovina 15. století (1400–1450) – doba Václava IV. a husitství"],
+      ["B", "13. století (1200–1299) – doba Přemysla Otakara II."],
+      ["C", "Raný středověk (900–1050) – příchod křesťanství"],
+      ["D", "17. století (1600–1650) – barokní tisk"],
     ],
     correct_index: 0,
-    explanation: "Vodorovná čárka (titulus / suspenze) je nejčastější středověká zkratka, která šetřila drahocenný pergamen tím, že nahrazovala nosovky m a n.",
-    hint: "Pergamen byl drahý, písaři vynechávali písmena před koncem slabik.",
+    explanation: "Letopočet 'millesimo quadringentesimo duodecimo' (1412) spadá do doby vlády krále Václava IV., těsně před vypuknutím husitských válek.",
+    hint: "Latinské slovo 'quadringentesimo' značí čtyřsté (1400).",
+    difficulty: "medium",
+  },
+  {
+    id: "script-3",
+    game_kind: "paleo",
+    mode: "script",
+    title: "Písmo úředních a rychlých zápisů",
+    intro: "Písař psal se spěchem, písmena se propojují smyčkami a dříky se sklánějí doprava. O jaké písmo jde?",
+    quote: "Explicit liber magistri Iohannis de Praga scriptus raptim...",
+    translation_cs: "Zde končí kniha mistra Jana z Prahy, psaná ve spěchu...",
+    options: [
+      ["✒️", "Gotická kurzíva (Cursiva libraria) – rychlé písmo se smyčkami"],
+      ["📜", "Unciála – velká okrouhlá majuskula z 5. století"],
+      ["🏛️", "Gotická rotunda – italská okrouhlá gotika"],
+      ["🔤", "Kapitála – monumentální tesané nápisové písmo"],
+    ],
+    correct_index: 0,
+    explanation: "Gotická kurzíva byla vyvinuta pro potřeby univerzitních studentů a městských kanceláří, kde bylo třeba psát rychle bez neustálého zvedání pera.",
+    hint: "Slovo 'raptim' znamená ve spěchu.",
+    difficulty: "medium",
+  },
+
+  // ==========================================
+  // 4. PALEOGRAFICKÝ MISTR (Transcription with Multi-Strip Spotlight) - Nejtěžší
+  // ==========================================
+  {
+    id: "paleo-trans-1",
+    game_kind: "paleo",
+    mode: "transcription",
+    title: "Paleografický mistr: Děkovná formule",
+    intro: "Prohlédněte si zvětšenou a osvětlenou pasáž folia. Přepište přesně latinská slova, která písař zapsal.",
+    quote: "Laus trino et uno",
+    translation_cs: "Chvála Trojjedinému.",
+    options: [],
+    correct_index: 0,
+    target_transcription: "Laus trino et uno",
+    accepted_variants: ["laus trino et uno", "laus trino et vno", "lavs trino et vno"],
+    highlight_regions: [
+      { x: 28, y: 38, w: 44, h: 14 }
+    ],
+    explanation: "Gratulujeme k paleografickému přepisu! V gotickém písmu se písmeno 'u' a 'v' píše často nerozlišitelně a litery jsou těsně staženy k sobě.",
+    hint: "První slovo začíná velkým gotickým 'L' a končí 's'. Jde o chválu (Laus).",
+    difficulty: "expert",
+  },
+  {
+    id: "paleo-trans-2",
+    game_kind: "paleo",
+    mode: "transcription",
+    title: "Paleografický mistr: Bolest ruky",
+    intro: "Tato pasáž přechází přes dva řádky. Přečtěte osvětlené řádky lupy a zapište přepis latinských slov:",
+    quote: "Manus mea dolet",
+    translation_cs: "Ruka mě bolí.",
+    options: [],
+    correct_index: 0,
+    target_transcription: "Manus mea dolet",
+    accepted_variants: ["manus mea dolet", "manus mea"],
+    highlight_regions: [
+      { x: 18, y: 32, w: 58, h: 12 },
+      { x: 18, y: 46, w: 36, h: 12 }
+    ],
+    explanation: "Skvělý paleografický výkon! Zvládli jste číst přechod mezi řádky i typickou gotickou ligaturu.",
+    hint: "Písař si stěžuje na ruku: 'Manus...'",
+    difficulty: "expert",
+  },
+  {
+    id: "paleo-trans-3",
+    game_kind: "paleo",
+    mode: "transcription",
+    title: "Paleografický mistr: Písař Jan",
+    intro: "Přečtěte ze zlatě zvýrazněné pasáže rukopisu autorskou dedikaci písaře:",
+    quote: "per manus Iohannis",
+    translation_cs: "rukou Jana",
+    options: [],
+    correct_index: 0,
+    target_transcription: "per manus Iohannis",
+    accepted_variants: ["per manus iohannis", "per manus johannis", "per manus ioannis"],
+    highlight_regions: [
+      { x: 22, y: 40, w: 56, h: 14 }
+    ],
+    explanation: "Výborně! Středověká latina často píše jméno Jan jako 'Iohannes' s písmenem 'h' uprostřed.",
+    hint: "Text začíná předložkou 'per' a následuje jméno 'Iohannis'.",
     difficulty: "expert",
   },
 ];

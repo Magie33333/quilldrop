@@ -32,7 +32,13 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  Smile,
+  ScrollText,
+  Sparkles,
+  HelpCircle,
+  Trash2,
 } from "lucide-react";
+import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -79,12 +85,28 @@ type GameQuestion = {
   title: string;
   intro: string;
   quote: string;
-  options: [string, string][];
+  options: any;
   correct_index: number;
   explanation: string;
   hint: string;
   difficulty: "easy" | "medium" | "expert";
+  mode?: "mood" | "cipher" | "script" | "century" | "transcription";
+  translation_cs?: string;
+  target_transcription?: string;
+  accepted_variants?: string[];
+  highlight_regions?: { x: number; y: number; w: number; h: number; line_number?: number }[];
 };
+
+function isCipherCard(card: CardData): boolean {
+  if (card.colophons?.heurist_id) {
+    const h = HEURIST_COLOPHONS.find((item) => item.id === card.colophons?.heurist_id);
+    if (h && ((h.features as any)?.includes("cipher or wordplay") || h.rarityReason?.toLowerCase().includes("cipher"))) {
+      return true;
+    }
+  }
+  const text = `${card.title} ${card.rarity_reason || ""} ${card.colophons?.quote || ""} ${card.colophons?.visual_note || ""}`.toLowerCase();
+  return text.includes("cipher") || text.includes("šifr") || text.includes("tajemn") || text.includes("krypt");
+}
 
 type UserProfile = {
   id: string;
@@ -147,6 +169,7 @@ export default function AdminPage() {
   const [lastSavedSummary, setLastSavedSummary] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [cipherOnly, setCipherOnly] = useState(false);
 
   // React-image-crop stavy (PowerPoint style úchyty a posun)
   const [crop, setCrop] = useState<Crop>();
@@ -161,24 +184,30 @@ export default function AdminPage() {
   const [editTranslation, setEditTranslation] = useState("");
   const [editStatus, setEditStatus] = useState<"draft" | "review" | "published">("published");
 
-  // Minihry
+  // Minihry: Tvůrce výzev pro tým (4 herní režimy)
+  type GameBuilderMode = "mood" | "cipher" | "script" | "transcription";
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [showGameForm, setShowGameForm] = useState(false);
-  const [newGame, setNewGame] = useState<GameQuestion>({
-    game_kind: "mood",
-    title: "Nálada písaře",
-    intro: "Jak se písař cítil při psaní tohoto kolofonu?",
-    quote: "",
-    options: [
-      ["😌", "Mírumilovný a vděčný"],
-      ["😩", "Unavený a bolavý"],
-      ["😡", "Rozzuřený na zadavatele"],
-    ],
-    correct_index: 1,
-    explanation: "Písař zmiňuje únavu a touhu po odpočinku nebo poháru vína.",
-    hint: "Zaměřte se na zmínky o tělesné únavě nebo bolesti ruky.",
-    difficulty: "medium",
-  });
+  const [builderMode, setBuilderMode] = useState<GameBuilderMode>("mood");
+  const [builderTitle, setBuilderTitle] = useState("Nálada písaře");
+  const [builderIntro, setBuilderIntro] = useState("Jak se písař cítil při psaní tohoto kolofonu?");
+  const [builderQuote, setBuilderQuote] = useState("");
+  const [builderTranslation, setBuilderTranslation] = useState("");
+  const [builderExplanation, setBuilderExplanation] = useState("");
+  const [builderHint, setBuilderHint] = useState("");
+  const [builderDifficulty, setBuilderDifficulty] = useState<"easy" | "medium" | "expert">("easy");
+  const [builderOptions, setBuilderOptions] = useState<[string, string][]>([
+    ["😌", "Úleva a vděčnost za dokončení díla"],
+    ["🍺", "Touha po dobrém vínu či pivu a odpočinku"],
+    ["✍️", "Bolest ruky a tělesná únava"],
+    ["😡", "Rozladění a hněv na nekvalitní pergamen"],
+  ]);
+  const [builderCorrectIndex, setBuilderCorrectIndex] = useState(0);
+  const [builderTargetTranscription, setBuilderTargetTranscription] = useState("");
+  const [builderAcceptedVariants, setBuilderAcceptedVariants] = useState("");
+  const [builderStrips, setBuilderStrips] = useState<{ x: number; y: number; w: number; h: number; line_number?: number }[]>([
+    { x: 10, y: 70, w: 80, h: 8, line_number: 1 },
+  ]);
 
   // Přidání nového kolofonu
   const [showNewModal, setShowNewModal] = useState(false);
@@ -485,7 +514,109 @@ export default function AdminPage() {
 
   async function fetchQuestions(cardId: string) {
     const { data } = await supabase.from("game_questions").select("*").eq("card_id", cardId);
-    if (data) setQuestions(data as GameQuestion[]);
+    if (data) {
+      const parsed = data.map((q: any) => {
+        let choices = q.options;
+        let mode = q.game_kind;
+        let highlightRegions = undefined;
+        let targetTranscription = undefined;
+        let acceptedVariants = undefined;
+        let translationCs = q.translation_cs;
+
+        if (q.options && typeof q.options === "object" && !Array.isArray(q.options)) {
+          if (q.options.choices) choices = q.options.choices;
+          if (q.options.mode) mode = q.options.mode;
+          if (q.options.highlight_regions) highlightRegions = q.options.highlight_regions;
+          if (q.options.target_transcription) targetTranscription = q.options.target_transcription;
+          if (q.options.accepted_variants) acceptedVariants = q.options.accepted_variants;
+          if (q.options.translation_cs) translationCs = q.options.translation_cs;
+        }
+
+        if (!mode) {
+          if (highlightRegions || targetTranscription) mode = "transcription";
+          else if (q.game_kind === "paleo") mode = "script";
+          else mode = q.game_kind;
+        }
+
+        return {
+          ...q,
+          mode,
+          options: choices || [],
+          highlight_regions: highlightRegions,
+          target_transcription: targetTranscription,
+          accepted_variants: acceptedVariants,
+          translation_cs: translationCs,
+        };
+      });
+      setQuestions(parsed as GameQuestion[]);
+    }
+  }
+
+  function applyBuilderMode(mode: GameBuilderMode, card: CardData | null) {
+    setBuilderMode(mode);
+    if (!card) return;
+    const qText = card.colophons?.quote || "";
+    const trText = card.colophons?.translation_cs || "";
+
+    if (mode === "mood") {
+      setBuilderTitle("Nálada písaře");
+      setBuilderIntro("Jak se písař cítil při psaní tohoto kolofonu?");
+      setBuilderDifficulty("easy");
+      setBuilderQuote(qText);
+      setBuilderTranslation(trText);
+      setBuilderOptions([
+        ["😌", "Úleva a vděčnost za dokončení díla"],
+        ["🍺", "Touha po dobrém vínu či pivu a odpočinku"],
+        ["✍️", "Bolest ruky a tělesná únava"],
+        ["😡", "Rozladění a hněv na nekvalitní pergamen"],
+      ]);
+      setBuilderCorrectIndex(0);
+      setBuilderExplanation("Písař vyjadřuje úlevu a radost z dokončení celého kodexu.");
+      setBuilderHint("Sledujte zmínky o radosti z konce, či naopak o bolavých prstech a únavě.");
+    } else if (mode === "cipher") {
+      setBuilderTitle("Rozlušti šifru");
+      setBuilderIntro("Odhalte zašifrovaný text nebo skryté jméno písaře:");
+      setBuilderDifficulty("medium");
+      setBuilderQuote(qText);
+      setBuilderTranslation(trText);
+      setBuilderOptions([
+        ["🔑", "Skryté jméno písaře v kryptogramu"],
+        ["📜", "Zašifrovaný letopočet dokončení"],
+        ["🏛️", "Tajné místo sepsání kodexu"],
+        ["✝️", "Kletba na zloděje rukopisu"],
+      ]);
+      setBuilderCorrectIndex(0);
+      setBuilderExplanation("Písař použil kryptografickou substituci nebo slovní hříčku.");
+      setBuilderHint("Všímejte si neobvyklých znaků nebo vynechaných samohlásek.");
+    } else if (mode === "script") {
+      setBuilderTitle("Poznej středověké písmo");
+      setBuilderIntro("Určete, jakým typem písma je tento kolofon zapsán:");
+      setBuilderDifficulty("medium");
+      setBuilderQuote(qText);
+      setBuilderTranslation(trText);
+      setBuilderOptions([
+        ["📜", "Gotická textura (formalis)"],
+        ["✒️", "Gotická bastarda"],
+        ["🖋️", "Gotická kurzíva (notula)"],
+        ["🏛️", "Humanistická antikva"],
+      ]);
+      setBuilderCorrectIndex(1);
+      setBuilderExplanation("Charakteristické lámání dříků a duktus odpovídají gotické bastardě.");
+      setBuilderHint("Zaměřte se na ostrost lomení písmen a přítomnost smyček.");
+    } else if (mode === "transcription") {
+      setBuilderTitle("Paleografický mistr");
+      setBuilderIntro("Přepište označené řádky rukopisu s lupou přesně podle originálu:");
+      setBuilderDifficulty("expert");
+      setBuilderQuote(qText);
+      setBuilderTranslation(trText);
+      setBuilderTargetTranscription(qText.split("\n")[0] || qText);
+      setBuilderAcceptedVariants("");
+      setBuilderStrips([
+        { x: 10, y: 70, w: 80, h: 8, line_number: 1 },
+      ]);
+      setBuilderExplanation("Správný latinský přepis včetně rozvedených zkratek a ligatur.");
+      setBuilderHint("Pozor na záměnu písmen u/v, dlouhé 's' a zkracovací vlnovky.");
+    }
   }
 
   function getPendingChanges(): FieldChange[] {
@@ -687,15 +818,65 @@ export default function AdminPage() {
 
   async function handleAddGame() {
     if (!selectedCard) return;
-    const toInsert = {
-      ...newGame,
-      card_id: selectedCard.id,
-      quote: newGame.quote || selectedCard.colophons?.quote || "",
+
+    // Postgres CHECK (game_kind IN ('mood', 'cipher', 'paleo'))
+    const dbGameKind =
+      builderMode === "mood" ? "mood" :
+      builderMode === "cipher" ? "cipher" : "paleo";
+
+    const optionsPayload = {
+      choices: builderOptions,
+      mode: builderMode,
+      highlight_regions: builderMode === "transcription" ? builderStrips : undefined,
+      target_transcription: builderMode === "transcription" ? builderTargetTranscription.trim() : undefined,
+      accepted_variants:
+        builderMode === "transcription" && builderAcceptedVariants.trim()
+          ? builderAcceptedVariants.split(",").map((s) => s.trim()).filter(Boolean)
+          : undefined,
+      translation_cs: builderTranslation.trim() || undefined,
     };
+
+    const toInsert = {
+      card_id: selectedCard.id,
+      game_kind: dbGameKind,
+      title: builderTitle.trim(),
+      intro: builderIntro.trim(),
+      quote: builderQuote.trim() || selectedCard.colophons?.quote || "",
+      options: optionsPayload,
+      correct_index: builderCorrectIndex,
+      explanation: builderExplanation.trim(),
+      hint: builderHint.trim(),
+      difficulty: builderDifficulty,
+      is_active: true,
+    };
+
     const { data, error } = await supabase.from("game_questions").insert(toInsert).select().single();
     if (!error && data) {
-      setQuestions([...questions, data as GameQuestion]);
+      setQuestions([
+        ...questions,
+        {
+          ...data,
+          mode: builderMode,
+          highlight_regions: optionsPayload.highlight_regions,
+          target_transcription: optionsPayload.target_transcription,
+          accepted_variants: optionsPayload.accepted_variants,
+          translation_cs: optionsPayload.translation_cs,
+          options: builderOptions,
+        } as any,
+      ]);
       setShowGameForm(false);
+    } else {
+      alert("Chyba při ukládání minihry do Supabase: " + (error?.message || "Neznámá chyba"));
+    }
+  }
+
+  async function handleDeleteGame(qId: string) {
+    if (!confirm("Opravdu chcete tuto minihru smazat?")) return;
+    const { error } = await supabase.from("game_questions").delete().eq("id", qId);
+    if (!error) {
+      setQuestions(questions.filter((q) => q.id !== qId));
+    } else {
+      alert("Chyba při mazání minihry: " + error.message);
     }
   }
 
@@ -705,7 +886,8 @@ export default function AdminPage() {
       c.colophons?.quote.toLowerCase().includes(search.toLowerCase()) ||
       c.colophons?.scribe.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchCipher = !cipherOnly || isCipherCard(c);
+    return matchSearch && matchStatus && matchCipher;
   });
 
   // Uniformní měřítko pro náhled karty (100% zachování proporcí bez jakékoliv deformace!)
@@ -978,13 +1160,13 @@ export default function AdminPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
             />
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center flex-wrap">
               {["all", "published", "draft"].map((st) => (
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
                   className={`text-[11px] px-2 py-0.5 rounded capitalize ${
-                    statusFilter === st
+                    statusFilter === st && !cipherOnly
                       ? "bg-[#3d3226] text-[#ffd580] font-semibold"
                       : "text-[#8c7b6d] hover:text-[#d1c2b4]"
                   }`}
@@ -992,6 +1174,18 @@ export default function AdminPage() {
                   {st === "all" ? "Vše" : st}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setCipherOnly(!cipherOnly)}
+                className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition ${
+                  cipherOnly
+                    ? "bg-[#543414] text-[#ffd580] font-bold border border-[#c49233]"
+                    : "text-[#c9a96e] hover:bg-[#2e2318]"
+                }`}
+                title="Filtrovat pouze kolofony se šifrou či kryptogramem"
+              >
+                <KeyRound size={11} /> Šifry ({cards.filter(isCipherCard).length})
+              </button>
             </div>
           </div>
 
@@ -1026,6 +1220,11 @@ export default function AdminPage() {
                       <span>{c.colophons?.scribe || "Neznámý písař"}</span>
                       <span>•</span>
                       <span className="text-[#c9a96e]">{c.rarity}</span>
+                      {isCipherCard(c) && (
+                        <span className="bg-[#422915] text-[#ffd580] px-1 py-0.5 rounded border border-[#8a5b28] text-[9px] flex items-center gap-0.5">
+                          <KeyRound size={9} /> Šifra
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -1269,95 +1468,619 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* MINIHRY */}
+              {/* MINIHRY PRO TÝM */}
               <div className="space-y-3 pt-2 border-t border-[#2e2721]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#c9a96e] flex items-center gap-1.5">
                     Minihry k tomuto kolofonu ({questions.length})
                   </h3>
                   <button
-                    onClick={() => setShowGameForm(!showGameForm)}
+                    onClick={() => {
+                      if (!showGameForm) applyBuilderMode(builderMode, selectedCard);
+                      setShowGameForm(!showGameForm);
+                    }}
                     className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    <PlusCircle size={12} /> Přidat
+                    <PlusCircle size={12} /> {showGameForm ? "Zavřít formulář" : "Vytvořit výzvu"}
                   </button>
                 </div>
 
-                {questions.map((q, idx) => (
-                  <div
-                    key={q.id || idx}
-                    className="p-2.5 bg-[#1f1a16] border border-[#332921] rounded text-xs space-y-1"
-                  >
-                    <div className="flex justify-between font-bold text-[#ffd580]">
-                      <span>{q.title}</span>
-                      <span className="text-[10px] text-[#8c7b6d] capitalize">{q.game_kind}</span>
+                {questions.map((q, idx) => {
+                  const isTrans = q.mode === "transcription" || Boolean(q.target_transcription);
+                  const qMode = q.mode || q.game_kind;
+                  return (
+                    <div
+                      key={q.id || idx}
+                      className="p-2.5 bg-[#1f1a16] border border-[#332921] rounded text-xs space-y-1.5 relative group"
+                    >
+                      <div className="flex justify-between font-bold text-[#ffd580]">
+                        <span className="flex items-center gap-1.5">
+                          {qMode === "mood"
+                            ? "🎭"
+                            : qMode === "cipher"
+                            ? "🔑"
+                            : qMode === "transcription"
+                            ? "✒️"
+                            : "📜"}
+                          <span>{q.title}</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2e241b] text-[#c9a96e] uppercase">
+                            {qMode}
+                          </span>
+                          {q.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGame(q.id!)}
+                              className="text-[#8c524b] hover:text-[#ff6b6b] p-0.5"
+                              title="Smazat minihru"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[#9c8976]">{q.intro}</p>
+                      {isTrans ? (
+                        <div className="text-[11px] text-[#ffd580] bg-[#14110f] p-1.5 rounded border border-[#2e2620]">
+                          <b>Cílový přepis:</b> <i>{q.target_transcription || q.quote}</i>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-[#73d13d]">
+                          Správná volba: {Array.isArray(q.options) ? (q.options[q.correct_index]?.[1] || q.options[q.correct_index]) : "Zvolena"}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-[11px] text-[#9c8976]">{q.intro}</p>
-                    <div className="text-[10px] text-[#73d13d]">
-                      Správná odpověď: {q.options[q.correct_index]?.[1] || "Není zvolena"}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {showGameForm && (
-                  <div className="p-3 bg-[#1c1713] border border-[#d4af37]/40 rounded space-y-2.5 text-xs">
-                    <p className="font-bold text-[#ffd580]">Nová otázka k minihře</p>
-                    <div>
-                      <label className="text-[10px] text-[#9c8976]">Typ minihry</label>
-                      <select
-                        value={newGame.game_kind}
-                        onChange={(e) =>
-                          setNewGame({ ...newGame, game_kind: e.target.value as any })
-                        }
-                        className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs"
+                  <div className="p-3 bg-[#171310] border border-[#d4af37]/50 rounded-lg space-y-3 text-xs shadow-xl">
+                    <div className="flex items-center justify-between border-b border-[#2e251b] pb-2">
+                      <p className="font-bold text-[#ffd580] flex items-center gap-1.5">
+                        <Sparkles size={13} /> Tvůrce výzvy k rukopisu
+                      </p>
+                      <button
+                        onClick={() => setShowGameForm(false)}
+                        className="text-[#8c7b6d] hover:text-[#e8ded1] text-xs"
                       >
-                        <option value="mood">Scribe’s Mood (Nálada písaře)</option>
-                        <option value="cipher">Crack the Colophon (Doplňování)</option>
-                        <option value="paleo">Palaeographer (Určení písma)</option>
-                      </select>
+                        <X size={14} />
+                      </button>
                     </div>
 
+                    {/* 4 Herní režimy */}
                     <div>
-                      <label className="text-[10px] text-[#9c8976]">Zadání (intro)</label>
-                      <input
-                        type="text"
-                        value={newGame.intro}
-                        onChange={(e) => setNewGame({ ...newGame, intro: e.target.value })}
-                        className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs"
-                      />
+                      <label className="text-[10px] uppercase font-bold text-[#c9a96e] block mb-1">
+                        1. Vyberte druh minihry
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => applyBuilderMode("mood", selectedCard)}
+                          className={`p-2 rounded text-left border transition cursor-pointer flex flex-col ${
+                            builderMode === "mood"
+                              ? "bg-[#332213] border-[#d4af37] text-[#ffd580]"
+                              : "bg-[#1f1a16] border-[#382c21] text-[#a89684] hover:border-[#6b553e]"
+                          }`}
+                        >
+                          <span className="font-bold flex items-center gap-1 text-[11px]">
+                            <Smile size={12} /> Nálada písaře
+                          </span>
+                          <span className="text-[9px] opacity-75 mt-0.5">Výběr ze 4 emocí · Snadná</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => applyBuilderMode("cipher", selectedCard)}
+                          className={`p-2 rounded text-left border transition cursor-pointer flex flex-col ${
+                            builderMode === "cipher"
+                              ? "bg-[#332213] border-[#d4af37] text-[#ffd580]"
+                              : "bg-[#1f1a16] border-[#382c21] text-[#a89684] hover:border-[#6b553e]"
+                          }`}
+                        >
+                          <span className="font-bold flex items-center gap-1 text-[11px]">
+                            <KeyRound size={12} /> Rozlušti šifru
+                          </span>
+                          <span className="text-[9px] opacity-75 mt-0.5">Kryptogramy & hříčky · Střední</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => applyBuilderMode("script", selectedCard)}
+                          className={`p-2 rounded text-left border transition cursor-pointer flex flex-col ${
+                            builderMode === "script"
+                              ? "bg-[#332213] border-[#d4af37] text-[#ffd580]"
+                              : "bg-[#1f1a16] border-[#382c21] text-[#a89684] hover:border-[#6b553e]"
+                          }`}
+                        >
+                          <span className="font-bold flex items-center gap-1 text-[11px]">
+                            <ScrollText size={12} /> Písmo a století
+                          </span>
+                          <span className="text-[9px] opacity-75 mt-0.5">Gotika & datace · Pokročilá</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => applyBuilderMode("transcription", selectedCard)}
+                          className={`p-2 rounded text-left border transition cursor-pointer flex flex-col ${
+                            builderMode === "transcription"
+                              ? "bg-[#332213] border-[#d4af37] text-[#ffd580]"
+                              : "bg-[#1f1a16] border-[#382c21] text-[#a89684] hover:border-[#6b553e]"
+                          }`}
+                        >
+                          <span className="font-bold flex items-center gap-1 text-[11px]">
+                            <PenTool size={12} /> Paleografický mistr
+                          </span>
+                          <span className="text-[9px] opacity-75 mt-0.5">Přepis s lupou (řádky) · Expert</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] text-[#9c8976]">Možnosti a správná volba</label>
-                      <div className="space-y-1 mt-1">
-                        {newGame.options.map((opt, i) => (
-                          <div key={i} className="flex items-center gap-1.5">
-                            <input
-                              type="radio"
-                              name="correct_opt"
-                              checked={newGame.correct_index === i}
-                              onChange={() => setNewGame({ ...newGame, correct_index: i })}
-                            />
-                            <input
-                              type="text"
-                              value={opt[1]}
-                              onChange={(e) => {
-                                const nextOpts = [...newGame.options];
-                                nextOpts[i] = [opt[0], e.target.value];
-                                setNewGame({ ...newGame, options: nextOpts as [string, string][] });
+                    {/* Šifra info badge */}
+                    {builderMode === "cipher" && (
+                      <div
+                        className={`p-2 rounded border text-[11px] flex items-start gap-2 ${
+                          isCipherCard(selectedCard!)
+                            ? "bg-[#2b2413] border-[#7d5f1d] text-[#e8c679]"
+                            : "bg-[#251816] border-[#6b352e] text-[#e89b91]"
+                        }`}
+                      >
+                        <KeyRound size={14} className="shrink-0 mt-0.5" />
+                        <div>
+                          {isCipherCard(selectedCard!) ? (
+                            <span>
+                              <strong>Výborně!</strong> Tento rukopis má v databázi evidovanou šifru, kryptogram nebo hříčku.
+                            </span>
+                          ) : (
+                            <div>
+                              <span>Tento rukopis nemá v Heuristu značku šifry. Chcete vybrat rukopis se šifrou?</span>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {cards.filter(isCipherCard).slice(0, 3).map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                      selectCard(c);
+                                      applyBuilderMode("cipher", c);
+                                    }}
+                                    className="bg-[#3d1d18] hover:bg-[#522720] text-[#ffd580] px-1.5 py-0.5 rounded text-[10px] border border-[#7d3b32]"
+                                  >
+                                    {c.title}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Název & Zadání */}
+                    <div className="space-y-1.5">
+                      <div>
+                        <label className="text-[10px] text-[#9c8976]">Název výzvy</label>
+                        <input
+                          type="text"
+                          value={builderTitle}
+                          onChange={(e) => setBuilderTitle(e.target.value)}
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#9c8976]">Otázka pro hráče (intro)</label>
+                        <input
+                          type="text"
+                          value={builderIntro}
+                          onChange={(e) => setBuilderIntro(e.target.value)}
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Citát a český překlad */}
+                    <div className="space-y-1.5">
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] text-[#9c8976]">Citát z kolofonu</label>
+                          {builderMode === "cipher" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const words = builderQuote.split(" ");
+                                if (words.length > 2) {
+                                  words[words.length - 1] = words[words.length - 1].replace(/[aeiouy]/gi, "*");
+                                  setBuilderQuote(words.join(" "));
+                                } else {
+                                  setBuilderQuote(builderQuote.replace(/[aeiouy]/gi, "*"));
+                                }
                               }}
-                              className="flex-1 bg-[#14110f] border border-[#332921] rounded px-1.5 py-0.5 text-xs"
+                              className="text-[10px] text-[#ffd580] hover:underline"
+                            >
+                              Zamaskovat samohlásky (*)
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={builderQuote}
+                          onChange={(e) => setBuilderQuote(e.target.value)}
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs font-serif text-[#e8ded1]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-[#9c8976]">
+                          Český překlad (zobrazí se v bublině pod latinským textem)
+                        </label>
+                        <input
+                          type="text"
+                          value={builderTranslation}
+                          onChange={(e) => setBuilderTranslation(e.target.value)}
+                          placeholder="Doplňte překlad pro hráče..."
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* REŽIM 4: PALEOGRAFICKÝ MISTR (TRANSCRIPTION) */}
+                    {builderMode === "transcription" ? (
+                      <div className="space-y-2.5 pt-2 border-t border-[#2e2620]">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-[#c9a96e]">
+                            Vyznačení řádků k přepisu (Spotlight)
+                          </label>
+                          {builderStrips.length < 3 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const lastY = builderStrips[builderStrips.length - 1]?.y || 60;
+                                setBuilderStrips([
+                                  ...builderStrips,
+                                  {
+                                    x: 10,
+                                    y: Math.min(88, lastY + 10),
+                                    w: 80,
+                                    h: 8,
+                                    line_number: builderStrips.length + 1,
+                                  },
+                                ]);
+                              }}
+                              className="text-[10px] text-[#ffd580] hover:underline flex items-center gap-1"
+                            >
+                              <PlusCircle size={11} /> Přidat řádek
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Miniaturní náhled s osvětlenými řádky */}
+                        <div className="relative w-full h-32 bg-[#120d09] border border-[#423121] rounded overflow-hidden">
+                          <img
+                            src={selectedCard?.image_url}
+                            alt=""
+                            className="w-full h-full object-contain"
+                          />
+                          <svg
+                            className="absolute inset-0 w-full h-full pointer-events-none"
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
+                          >
+                            <defs>
+                              <mask id="admin-spotlight-mask">
+                                <rect x="0" y="0" width="100" height="100" fill="white" />
+                                {builderStrips.map((st, i) => (
+                                  <rect key={i} x={st.x} y={st.y} width={st.w} height={st.h} fill="black" rx="0.5" />
+                                ))}
+                              </mask>
+                            </defs>
+                            <rect
+                              x="0"
+                              y="0"
+                              width="100"
+                              height="100"
+                              fill="rgba(0,0,0,0.72)"
+                              mask="url(#admin-spotlight-mask)"
                             />
+                            {builderStrips.map((st, i) => (
+                              <g key={i}>
+                                <rect
+                                  x={st.x}
+                                  y={st.y}
+                                  width={st.w}
+                                  height={st.h}
+                                  fill="none"
+                                  stroke="#ffd580"
+                                  strokeWidth="0.8"
+                                  strokeDasharray="2 1"
+                                />
+                                <text
+                                  x={st.x + 1}
+                                  y={st.y + Math.min(st.h * 0.8, 5)}
+                                  fill="#ffd580"
+                                  fontSize="3.5"
+                                  fontWeight="bold"
+                                >
+                                  {st.line_number || i + 1}.
+                                </text>
+                              </g>
+                            ))}
+                          </svg>
+                        </div>
+
+                        {/* Nastavení souřadnic jednotlivých řádků */}
+                        <div className="space-y-2">
+                          {builderStrips.map((strip, idx) => (
+                            <div key={idx} className="p-2 bg-[#14100d] border border-[#2b221a] rounded text-[11px] space-y-1">
+                              <div className="flex justify-between items-center text-[#c9a96e] font-bold">
+                                <span>Řádek #{strip.line_number || idx + 1}</span>
+                                {builderStrips.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setBuilderStrips(builderStrips.filter((_, i) => i !== idx))}
+                                    className="text-[#ff6b6b] hover:underline cursor-pointer"
+                                  >
+                                    Odstranit
+                                  </button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-4 gap-1.5 text-[10px]">
+                                <div>
+                                  <label className="text-[#8c7b6d] block">X: {Math.round(strip.x)}%</label>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="80"
+                                    value={strip.x}
+                                    onChange={(e) => {
+                                      const next = [...builderStrips];
+                                      next[idx] = { ...strip, x: Number(e.target.value) };
+                                      setBuilderStrips(next);
+                                    }}
+                                    className="w-full"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[#8c7b6d] block">Y: {Math.round(strip.y)}%</label>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="90"
+                                    value={strip.y}
+                                    onChange={(e) => {
+                                      const next = [...builderStrips];
+                                      next[idx] = { ...strip, y: Number(e.target.value) };
+                                      setBuilderStrips(next);
+                                    }}
+                                    className="w-full"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[#8c7b6d] block">Šířka: {Math.round(strip.w)}%</label>
+                                  <input
+                                    type="range"
+                                    min="10"
+                                    max="100"
+                                    value={strip.w}
+                                    onChange={(e) => {
+                                      const next = [...builderStrips];
+                                      next[idx] = { ...strip, w: Number(e.target.value) };
+                                      setBuilderStrips(next);
+                                    }}
+                                    className="w-full"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[#8c7b6d] block">Výška: {Math.round(strip.h)}%</label>
+                                  <input
+                                    type="range"
+                                    min="4"
+                                    max="30"
+                                    value={strip.h}
+                                    onChange={(e) => {
+                                      const next = [...builderStrips];
+                                      next[idx] = { ...strip, h: Number(e.target.value) };
+                                      setBuilderStrips(next);
+                                    }}
+                                    className="w-full"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#9c8976] block">
+                            Přesný vzorový přepis latiny (očekávaný text pro hráče)
+                          </label>
+                          <input
+                            type="text"
+                            value={builderTargetTranscription}
+                            onChange={(e) => setBuilderTargetTranscription(e.target.value)}
+                            placeholder="Např. Finito libro sit laus et gloria Christo"
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs font-serif text-[#ffd580]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[#9c8976] block">
+                            Přípustné varianty (oddělené čárkou, např. alternativní čtení)
+                          </label>
+                          <input
+                            type="text"
+                            value={builderAcceptedVariants}
+                            onChange={(e) => setBuilderAcceptedVariants(e.target.value)}
+                            placeholder="Finito libro laus et gloria christo, Finito libro laus Christo"
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* REŽIM 1, 2, 3: VÝBĚR ZE 4 MOŽNOSTÍ */
+                      <div className="space-y-2 pt-2 border-t border-[#2e2620]">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-[#c9a96e]">
+                            4 Možnosti a správná volba (Radio)
+                          </label>
+
+                          {/* Šablony a rychlé generátory pro pedagogy */}
+                          <div className="flex items-center gap-1.5">
+                            {builderMode === "mood" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuilderOptions([
+                                      ["😌", "Úleva a vděčnost za dokončení díla"],
+                                      ["🍺", "Touha po doušku dobrého vína či piva"],
+                                      ["✍️", "Bolest ruky a tělesná únava"],
+                                      ["😡", "Rozladění a hněv na nekvalitní pergamen"],
+                                    ]);
+                                    setBuilderCorrectIndex(0);
+                                  }}
+                                  className="text-[10px] bg-[#231b14] hover:bg-[#33271d] text-[#ffd580] px-1.5 py-0.5 rounded border border-[#4a3a29] cursor-pointer"
+                                >
+                                  Únava & pivo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuilderOptions([
+                                      ["👑", "Hrdost na mistrovské dokončení kodexu"],
+                                      ["🙏", "Pokorná prosba za spásu písařovy duše"],
+                                      ["💀", "Kletba na případného zloděje knihy"],
+                                      ["⏳", "Netrpělivost a radost, že je práce u konce"],
+                                    ]);
+                                    setBuilderCorrectIndex(0);
+                                  }}
+                                  className="text-[10px] bg-[#231b14] hover:bg-[#33271d] text-[#ffd580] px-1.5 py-0.5 rounded border border-[#4a3a29] cursor-pointer"
+                                >
+                                  Zbožnost & hrdost
+                                </button>
+                              </>
+                            )}
+
+                            {builderMode === "script" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBuilderTitle("Poznej středověké písmo");
+                                    setBuilderIntro("Určete, jakým typem písma je tento kolofon zapsán:");
+                                    setBuilderOptions([
+                                      ["📜", "Gotická textura (formalis)"],
+                                      ["✒️", "Gotická bastarda"],
+                                      ["🖋️", "Gotická kurzíva (notula)"],
+                                      ["🏛️", "Humanistická antikva"],
+                                    ]);
+                                    setBuilderCorrectIndex(1);
+                                  }}
+                                  className="text-[10px] bg-[#231b14] hover:bg-[#33271d] text-[#ffd580] px-1.5 py-0.5 rounded border border-[#4a3a29] cursor-pointer"
+                                >
+                                  Gotická písma
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const year = selectedCard?.colophons?.year || 1420;
+                                    const century = Math.ceil(year / 100);
+                                    const isFirstHalf = year % 100 <= 50;
+                                    setBuilderTitle("Datace rukopisu");
+                                    setBuilderIntro(`Do kterého období spadá sepsání tohoto kodexu (rok ${year})?`);
+                                    setBuilderOptions([
+                                      ["⏳", `${isFirstHalf ? "1." : "2."} polovina ${century}. století`],
+                                      ["⏳", `${isFirstHalf ? "2." : "1."} polovina ${century}. století`],
+                                      ["⏳", `${isFirstHalf ? "2." : "1."} polovina ${century - 1}. století`],
+                                      ["⏳", `${isFirstHalf ? "1." : "2."} polovina ${century + 1}. století`],
+                                    ]);
+                                    setBuilderCorrectIndex(0);
+                                  }}
+                                  className="text-[10px] bg-[#231b14] hover:bg-[#33271d] text-[#ffd580] px-1.5 py-0.5 rounded border border-[#4a3a29] cursor-pointer"
+                                >
+                                  Století ({selectedCard?.colophons?.year || 1420})
+                                </button>
+                              </>
+                            )}
                           </div>
-                        ))}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {builderOptions.map((opt, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-center gap-2 p-1.5 rounded border ${
+                                builderCorrectIndex === i
+                                  ? "bg-[#292218] border-[#7d5f1d]"
+                                  : "bg-[#14110f] border-[#292119]"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name="correct_choice"
+                                checked={builderCorrectIndex === i}
+                                onChange={() => setBuilderCorrectIndex(i)}
+                                className="accent-[#d4af37] cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={opt[0]}
+                                onChange={(e) => {
+                                  const next = [...builderOptions];
+                                  next[i] = [e.target.value, opt[1]];
+                                  setBuilderOptions(next as [string, string][]);
+                                }}
+                                className="w-8 text-center bg-[#1c1713] border border-[#382d22] rounded p-1 text-xs"
+                                title="Ikona nebo emoji volby"
+                              />
+                              <input
+                                type="text"
+                                value={opt[1]}
+                                onChange={(e) => {
+                                  const next = [...builderOptions];
+                                  next[i] = [opt[0], e.target.value];
+                                  setBuilderOptions(next as [string, string][]);
+                                }}
+                                className="flex-1 bg-[#1c1713] border border-[#382d22] rounded p-1 text-xs text-[#e8ded1]"
+                                placeholder={`Možnost ${i + 1}`}
+                              />
+                              {builderCorrectIndex === i && (
+                                <span className="text-[10px] text-[#73d13d] font-bold shrink-0">Správná</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nápověda a vysvětlení */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <label className="text-[10px] text-[#9c8976]">Nápověda (Hint pro hráče)</label>
+                        <input
+                          type="text"
+                          value={builderHint}
+                          onChange={(e) => setBuilderHint(e.target.value)}
+                          placeholder="Např. Podívejte se na konec..."
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-[#9c8976]">Vysvětlení / paleografický vhled</label>
+                        <input
+                          type="text"
+                          value={builderExplanation}
+                          onChange={(e) => setBuilderExplanation(e.target.value)}
+                          placeholder="Např. Písař byl unaven..."
+                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                        />
                       </div>
                     </div>
 
                     <button
+                      type="button"
                       onClick={handleAddGame}
-                      className="w-full bg-[#d4af37] text-black font-bold py-1 rounded hover:bg-[#c39e2e] transition cursor-pointer"
+                      className="w-full bg-[#d4af37] text-black font-bold py-2 rounded hover:bg-[#c39e2e] transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
                     >
-                      Uložit minihru do Supabase
+                      <Check size={14} /> Uložit minihru do Supabase
                     </button>
                   </div>
                 )}
