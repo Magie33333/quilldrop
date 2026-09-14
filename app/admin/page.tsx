@@ -211,6 +211,7 @@ export default function AdminPage() {
 
   // Vizuální interaktivní vyznačení řádků (Studio Spotlight na velkém rukopisu)
   const [centerMode, setCenterMode] = useState<"crop" | "strips">("crop");
+  const [rightSidebarTab, setRightSidebarTab] = useState<"card" | "minigames">("card");
   const [activeStripIdx, setActiveStripIdx] = useState<number>(0);
   const stripContainerRef = useRef<HTMLDivElement>(null);
   const [stripDrag, setStripDrag] = useState<{
@@ -1124,7 +1125,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#110f0d] text-[#e8ded1] flex flex-col font-sans">
+    <div className="h-screen max-h-screen bg-[#110f0d] text-[#e8ded1] flex flex-col font-sans overflow-hidden">
       {/* HORNÍ LIŠTA */}
       <header className="border-b border-[#2e2721] bg-[#1a1613] px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1203,9 +1204,9 @@ export default function AdminPage() {
       </header>
 
       {/* HLAVNÍ PLOCHA */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* LEVÝ PANEL: Seznam karet */}
-        <aside className="w-80 border-r border-[#2e2721] bg-[#14110f] flex flex-col">
+        <aside className="w-80 border-r border-[#2e2721] bg-[#14110f] flex flex-col min-h-0 overflow-hidden">
           <div className="p-3 border-b border-[#2e2721] space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#c9a96e] uppercase tracking-wider">
@@ -1300,46 +1301,30 @@ export default function AdminPage() {
         </aside>
 
         {/* STŘEDNÍ PANEL: Plnohodnotný PowerPoint-style ořez NEBO vizuální vyznačení řádků */}
-        <main className="flex-1 bg-[#0a0908] flex flex-col overflow-hidden">
-          <div className="p-3 border-b border-[#2e2721] bg-[#14110f] flex items-center justify-between text-xs">
+        <main className="flex-1 bg-[#0a0908] flex flex-col min-h-0 overflow-hidden">
+          <div className="p-2.5 border-b border-[#2e2721] bg-[#14110f] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2.5">
-              {/* Přepínač režimu plátna */}
-              <div className="inline-flex rounded bg-[#1c1611] p-0.5 border border-[#3b322a]">
-                <button
-                  type="button"
-                  onClick={() => setCenterMode("crop")}
-                  className={`px-2.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                    centerMode === "crop"
-                      ? "bg-[#3d3120] text-[#ffd580] shadow"
-                      : "text-[#8c7b6d] hover:text-[#e8ded1]"
-                  }`}
-                >
-                  <CropIcon size={12} /> Výřez karty (4:3)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCenterMode("strips")}
-                  className={`px-2.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-                    centerMode === "strips"
-                      ? "bg-[#3d3120] text-[#ffd580] shadow"
-                      : "text-[#8c7b6d] hover:text-[#e8ded1]"
-                  }`}
-                >
-                  <PenTool size={12} /> Vyznačení řádků
+              {centerMode === "crop" ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-[#ffd580] flex items-center gap-1.5">
+                    <CropIcon size={14} className="text-[#d4af37]" /> Výřez karty (4:3)
+                  </span>
+                  <span className="text-[#8c7b6d] hidden md:inline text-[11px]">
+                    (Táhněte za <b>rohy rámečku</b> pro změnu měřítka, uvnitř pro posun)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-[#ffd580] flex items-center gap-1.5">
+                    <PenTool size={14} className="text-[#ffd580]" /> Vyznačení řádků k přepisu
+                  </span>
                   <span className="px-1.5 py-0.2 rounded-full bg-[#14110f] text-[9.5px] border border-[#d4af37]/40 text-[#ffd580] font-mono">
                     {builderStrips.length}/3
                   </span>
-                </button>
-              </div>
-
-              {centerMode === "crop" ? (
-                <span className="text-[#8c7b6d] hidden md:inline">
-                  (Táhněte za <b>rohy rámečku</b> pro velikost, nebo <b>uvnitř</b> pro posun)
-                </span>
-              ) : (
-                <span className="text-[#c9a96e] hidden md:inline font-medium">
-                  🎯 Klikněte a táhněte přímo po rukopisu pro označení a úpravu řádků
-                </span>
+                  <span className="text-[#c9a96e] hidden md:inline text-[11px] font-medium">
+                    🎯 Klikněte a táhněte po rukopisu pro označení a posun řádků
+                  </span>
+                </div>
               )}
             </div>
 
@@ -1427,15 +1412,23 @@ export default function AdminPage() {
                 >
                   <RotateCcw size={12} /> Standardní rozměr
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCenterMode("crop")}
+                  className="text-[11px] bg-[#22351f] text-[#86efac] hover:bg-[#2c4728] px-3 py-1 rounded border border-[#4ade80]/50 flex items-center gap-1.5 cursor-pointer font-bold transition shadow"
+                  title="Dokončit vyznačení řádků a vrátit se na náhled výřezu karty"
+                >
+                  <Check size={13} /> Hotovo (Zpět na výřez)
+                </button>
               </div>
             )}
           </div>
 
           {/* PLÁTNO: OŘEZ (ReactCrop) NEBO VIZUÁLNÍ OZNAČENÍ ŘÁDKŮ */}
-          <div className="flex-1 overflow-auto p-6 flex items-center justify-center relative select-none">
+          <div className="flex-1 min-h-0 overflow-hidden p-3 flex items-center justify-center relative select-none">
             {centerMode === "crop" ? (
               selectedCard ? (
-                <div className="max-w-full max-h-full border border-[#3d3226] shadow-2xl bg-[#14110f]">
+                <div className="max-w-full max-h-full border border-[#3d3226] shadow-2xl bg-[#14110f] flex items-center justify-center">
                   <ReactCrop
                     crop={crop}
                     onChange={(c, percentCrop) => {
@@ -1445,14 +1438,14 @@ export default function AdminPage() {
                     aspect={lockRatio ? 4 / 3 : undefined}
                     minWidth={80}
                     minHeight={60}
-                    className="max-h-[72vh]"
+                    className="max-h-[calc(100vh-130px)]"
                   >
                     <img
                       ref={imgRef}
                       src={selectedCard.image_url}
                       alt="Folio rukopisu"
                       onLoad={onImageLoad}
-                      className="max-h-[72vh] w-auto block select-none"
+                      className="max-h-[calc(100vh-130px)] max-w-full w-auto h-auto object-contain block select-none"
                     />
                   </ReactCrop>
                 </div>
@@ -1513,12 +1506,12 @@ export default function AdminPage() {
                         });
                       }
                     }}
-                    className="relative border border-[#4a3928] shadow-2xl bg-[#0f0d0b] max-h-[72vh] select-none cursor-crosshair overflow-hidden"
+                    className="relative border border-[#4a3928] shadow-2xl bg-[#0f0d0b] max-h-[calc(100vh-130px)] select-none cursor-crosshair overflow-hidden"
                   >
                     <img
                       src={selectedCard.image_url}
                       alt="Folio pro vyznačení řádků"
-                      className="max-h-[72vh] w-auto block pointer-events-none select-none"
+                      className="max-h-[calc(100vh-130px)] max-w-full w-auto h-auto object-contain block pointer-events-none select-none"
                     />
 
                     {/* Tmavá iluminovaná maska přes rukopis */}
@@ -1710,10 +1703,48 @@ export default function AdminPage() {
         </main>
 
         {/* PRAVÝ PANEL: ŽIVÝ NÁHLED KARTY (PŘIROZENÉ MĚŘÍTKO BEZ DEFORMACE) + FORMULÁŘ */}
-        <aside className="w-96 border-l border-[#2e2721] bg-[#161310] flex flex-col overflow-y-auto">
+        <aside className="w-96 border-l border-[#2e2721] bg-[#161310] flex flex-col min-h-0 overflow-y-auto">
           {selectedCard && (
-            <div className="p-4 space-y-6">
-              {/* ŽIVÝ NÁHLED KARTY */}
+            <div className="flex flex-col min-h-0 flex-1">
+              {/* ZÁLOŽKY: Karta a výřez VS Písařské výzvy */}
+              <div className="flex border-b border-[#2e2721] bg-[#1a1613] p-1 gap-1 sticky top-0 z-30 shadow-md shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setRightSidebarTab("card")}
+                  className={`flex-1 py-1.5 px-2 rounded text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    rightSidebarTab === "card"
+                      ? "bg-[#3d3120] text-[#ffd580] border border-[#d4af37]/40 shadow"
+                      : "text-[#8c7b6d] hover:text-[#e8ded1] hover:bg-[#241e19]"
+                  }`}
+                >
+                  <Eye size={13} /> 🎴 Karta a výřez
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRightSidebarTab("minigames");
+                    if (!showGameForm && questions.length === 0) {
+                      setShowGameForm(true);
+                      applyBuilderMode("mood", selectedCard);
+                    }
+                  }}
+                  className={`flex-1 py-1.5 px-2 rounded text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    rightSidebarTab === "minigames"
+                      ? "bg-[#3d3120] text-[#ffd580] border border-[#d4af37]/40 shadow"
+                      : "text-[#8c7b6d] hover:text-[#e8ded1] hover:bg-[#241e19]"
+                  }`}
+                >
+                  <Sparkles size={13} /> 🎮 Písařské výzvy
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#14110f] text-[9.5px] border border-[#d4af37]/40 text-[#ffd580] font-mono">
+                    {questions.length}
+                  </span>
+                </button>
+              </div>
+
+              <div className="p-4 space-y-6 flex-1">
+                {rightSidebarTab === "card" ? (
+                  <>
+                    {/* ŽIVÝ NÁHLED KARTY */}
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#c9a96e] mb-2 flex items-center gap-1.5">
                   <Eye size={13} /> Živý náhled karty (přesně podle výřezu)
@@ -1855,22 +1886,59 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* MINIHRY PRO TÝM */}
-              <div className="space-y-3 pt-2 border-t border-[#2e2721]">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#c9a96e] flex items-center gap-1.5">
-                    Minihry k tomuto kolofonu ({questions.length})
-                  </h3>
-                  <button
-                    onClick={() => {
-                      if (!showGameForm) applyBuilderMode(builderMode, selectedCard);
-                      setShowGameForm(!showGameForm);
-                    }}
-                    className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <PlusCircle size={12} /> {showGameForm ? "Zavřít formulář" : "Vytvořit výzvu"}
-                  </button>
-                </div>
+                  {/* Tlačítko pro rychlý přechod na minihry */}
+                  <div className="pt-3 border-t border-[#2e2721]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRightSidebarTab("minigames");
+                        if (!showGameForm && questions.length === 0) {
+                          setShowGameForm(true);
+                          applyBuilderMode("mood", selectedCard);
+                        }
+                      }}
+                      className="w-full py-2.5 px-3 rounded-lg bg-[#241c14] hover:bg-[#33261a] border border-[#d4af37]/40 text-[#ffd580] text-xs font-bold flex items-center justify-between transition cursor-pointer shadow"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-[#d4af37]" /> Písařské výzvy k tomuto rukopisu
+                      </span>
+                      <span className="bg-[#17120d] px-2 py-0.5 rounded-full text-[10px] border border-[#d4af37]/30">
+                        {questions.length} výzev →
+                      </span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* MINIHRY PRO TÝM (PÍSAŘSKÉ VÝZVY) */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#2e2721]">
+                      <button
+                        type="button"
+                        onClick={() => setRightSidebarTab("card")}
+                        className="text-[11px] text-[#b39e87] hover:text-[#ffd580] flex items-center gap-1 cursor-pointer transition font-medium"
+                      >
+                        <ArrowLeft size={12} /> Zpět na úpravu karty
+                      </button>
+                      <span className="text-[10px] text-[#7d6f62] truncate max-w-[170px]">
+                        {selectedCard.title}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#c9a96e] flex items-center gap-1.5">
+                        Minihry k tomuto kolofonu ({questions.length})
+                      </h3>
+                      <button
+                        onClick={() => {
+                          if (!showGameForm) applyBuilderMode(builderMode, selectedCard);
+                          setShowGameForm(!showGameForm);
+                        }}
+                        className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                      >
+                        <PlusCircle size={12} /> {showGameForm ? "Zavřít formulář" : "+ Vytvořit výzvu"}
+                      </button>
+                    </div>
 
                 {questions.map((q, idx) => {
                   const isTrans = q.mode === "transcription" || Boolean(q.target_transcription);
@@ -2413,9 +2481,12 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </>
           )}
-        </aside>
+        </div>
+      </div>
+    )}
+  </aside>
       </div>
 
       {/* MODÁLNÍ OKNO: SPRÁVA TÝMU A ROLÍ */}

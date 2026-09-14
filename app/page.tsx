@@ -1071,7 +1071,7 @@ function PacksScreen({
         <div className="pack-odds-badge">
           {selectedTier === "masterwork" && "💎 Rare 34% · Epic 32% · Legendary 26% · Unique 8%"}
           {selectedTier === "refined" && "✨ Uncommon 20% · Rare 50% · Epic 27% · Legendary 3%"}
-          {selectedTier === "standard" && "📜 Common 50% · Uncommon 28% · Rare 15% · Epic 5.5%"}
+          {selectedTier === "standard" && "📜 Common 50% · Uncommon 28% · Rare 15% · Epic 5% · Legendary 1.5% · Unique 0.5%"}
         </div>
 
         <p>
@@ -1080,7 +1080,7 @@ function PacksScreen({
             : selectedTier === "refined"
             ? "Učenecký balíček s výrazně posílenou šancí na Rare a Epic kolofony pro pokročilé badatele."
             : dailyRemaining > 0
-            ? "Denní příděl pěti kolofonů pod voskovou pečetí skriptoria. Odemkněte si nové karty."
+            ? "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendary a Unique poklady."
             : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže."}
         </p>
 

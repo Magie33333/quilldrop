@@ -513,30 +513,83 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 
 /* Třídy stylů pro jednotlivé balíčky */
 .sealed-pack.tier-standard { outline: 2px solid #bd8f4f; }
+.sealed-pack.tier-standard h2,
+.sealed-pack.tier-standard .pack-quality-title {
+  color: #452408 !important;
+  text-shadow: 0 1px 0 rgba(255, 245, 220, 0.9) !important;
+}
+.sealed-pack.tier-standard p {
+  color: #5c3810 !important;
+  font-size: 11.5px !important;
+  font-weight: 500;
+}
+.sealed-pack.tier-standard .pack-odds-badge {
+  background: rgba(90, 48, 14, 0.14) !important;
+  color: #4a2807 !important;
+  border: 1px solid rgba(140, 85, 25, 0.4) !important;
+  font-weight: 800 !important;
+}
+
 .sealed-pack.tier-scholar, .sealed-pack.tier-refined {
   background:
-    radial-gradient(circle at 50% 30%, rgba(32, 63, 138, 0.35) 0%, transparent 65%),
+    radial-gradient(circle at 50% 30%, rgba(32, 63, 138, 0.45) 0%, transparent 65%),
     linear-gradient(145deg, #1d3266, #0d1a38);
   box-shadow: 0 16px 36px rgba(10, 22, 54, 0.55), 0 0 28px rgba(45, 96, 219, 0.35);
   color: #e3edff;
   outline: 2px solid #4a82f7;
 }
-.sealed-pack.tier-scholar h2, .sealed-pack.tier-refined h2 { color: #c9dcff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
-.sealed-pack.tier-scholar p, .sealed-pack.tier-refined p { color: #9ab4e6; }
+.sealed-pack.tier-scholar h2,
+.sealed-pack.tier-refined h2,
+.sealed-pack.tier-scholar .pack-quality-title,
+.sealed-pack.tier-refined .pack-quality-title {
+  color: #ffffff !important;
+  text-shadow: 0 0 18px rgba(120, 180, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.9) !important;
+}
+.sealed-pack.tier-scholar p,
+.sealed-pack.tier-refined p {
+  color: #dbeafe !important;
+  font-size: 11.5px !important;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7) !important;
+}
+.sealed-pack.tier-scholar .pack-odds-badge,
+.sealed-pack.tier-refined .pack-odds-badge {
+  background: rgba(14, 30, 70, 0.88) !important;
+  color: #bfdbfe !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+  font-weight: 800 !important;
+}
 .sealed-pack.tier-scholar::before, .sealed-pack.tier-refined::before { border-color: #3b6bcc; box-shadow: inset 0 0 0 4px #152752, inset 0 0 0 5px #5187fc; }
 .sealed-pack.tier-scholar .wax-seal, .sealed-pack.tier-refined .wax-seal { background: radial-gradient(circle at 36% 28%, #578cff, #204ec2 52%, #11296c 80%); box-shadow: 0 8px 16px rgba(10, 24, 66, 0.65), inset 0 0 0 6px #3b6bcc, 0 0 18px rgba(74, 130, 247, 0.5); }
 .sealed-pack.tier-scholar button, .sealed-pack.tier-refined button { background: linear-gradient(180deg, #2458c9, #13337a); border-color: #10265a; box-shadow: inset 0 0 0 2px #5f95ff, 0 5px 14px rgba(16, 42, 102, 0.5); color: #f0f5ff; }
 
 .sealed-pack.tier-masterwork {
   background:
-    radial-gradient(circle at 50% 25%, rgba(106, 61, 115, 0.4) 0%, transparent 65%),
+    radial-gradient(circle at 50% 25%, rgba(106, 61, 115, 0.45) 0%, transparent 65%),
     linear-gradient(145deg, #271434, #12091a);
   box-shadow: 0 20px 42px rgba(22, 7, 30, 0.65), 0 0 35px rgba(187, 95, 226, 0.4);
   color: #f7ebff;
   outline: 2px solid #c975eb;
 }
-.sealed-pack.tier-masterwork h2 { color: #ffd875; text-shadow: 0 0 12px rgba(255, 216, 117, 0.35); }
-.sealed-pack.tier-masterwork p { color: #d1b4e0; }
+.sealed-pack.tier-masterwork h2,
+.sealed-pack.tier-masterwork .pack-quality-title {
+  color: #fef08a !important;
+  text-shadow: 0 0 20px rgba(250, 204, 21, 0.95), 0 2px 6px rgba(0, 0, 0, 0.95) !important;
+}
+.sealed-pack.tier-masterwork p {
+  color: #f5d0fe !important;
+  font-size: 11.5px !important;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7) !important;
+}
+.sealed-pack.tier-masterwork .pack-odds-badge {
+  background: rgba(45, 15, 60, 0.88) !important;
+  color: #f5d0fe !important;
+  border: 1px solid rgba(216, 110, 255, 0.5) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
+  font-weight: 800 !important;
+}
 .sealed-pack.tier-masterwork::before { border-color: #9c4ec2; box-shadow: inset 0 0 0 4px #210d2d, inset 0 0 0 5px #ffd580; }
 .sealed-pack.tier-masterwork .wax-seal { background: radial-gradient(circle at 36% 28%, #e070ff, #8728a8 52%, #3c0c4e 80%); box-shadow: 0 8px 18px rgba(35, 7, 48, 0.7), inset 0 0 0 6px #ba5ae3, 0 0 22px rgba(224, 112, 255, 0.55); }
 .sealed-pack.tier-masterwork button { background: linear-gradient(180deg, #9b3fc9, #591678); border-color: #3b0a52; box-shadow: inset 0 0 0 2px #e08aff, 0 6px 18px rgba(70, 15, 94, 0.6); color: #fff4d6; }
@@ -640,8 +693,9 @@ h1, h2, h3, .section-title, .brand-lockup, .illuminated-initial, .avatar { font-
 .quality-standard { color: #6d4b23; }
 .quality-refined, .quality-scholar { color: #173f9c; text-shadow: 0 1px #e3edff; }
 .quality-masterwork { color: #60336e; text-shadow: 0 1px #ffeac4, 0 0 9px #bd78cd45; }
-.pack-ribbon.quality-refined, .pack-ribbon.quality-scholar { color: #fff2d0; background: linear-gradient(90deg, #163275, #2956bd); box-shadow: 3px 4px 0 #0d1e4750; }
-.pack-ribbon.quality-masterwork { color: #fff2c7; background: linear-gradient(90deg, #392044, #72487e, #392044); box-shadow: 3px 4px 0 #32183960, 0 0 15px #9a5aab66; }
+.pack-ribbon.quality-standard { color: #fff7ed !important; background: linear-gradient(90deg, #881c1c, #b92b27) !important; box-shadow: 3px 4px 0 #541111 !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 800 !important; }
+.pack-ribbon.quality-refined, .pack-ribbon.quality-scholar { color: #ffffff !important; background: linear-gradient(90deg, #16367a, #2563eb) !important; box-shadow: 3px 4px 0 #0f234f, 0 0 12px rgba(37, 99, 235, 0.4) !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important; font-weight: 800 !important; }
+.pack-ribbon.quality-masterwork { color: #fef08a !important; background: linear-gradient(90deg, #581c87, #9333ea, #581c87) !important; box-shadow: 3px 4px 0 #3b0764, 0 0 16px rgba(147, 51, 234, 0.5) !important; text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important; font-weight: 800 !important; }
 .bonus-vault small { display: flex; align-items: baseline; gap: 3px; }
 .sealed-pack h2 .pack-quality-title { display: inline-block; letter-spacing: -.2px; }
 
