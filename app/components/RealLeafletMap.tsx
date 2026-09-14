@@ -59,14 +59,14 @@ export default function RealLeafletMap({
           preferCanvas: true,
         });
 
-        // 1. Podkladové dlaždice s opravenou URL ({y})
-        // CartoDB Voyager bez nápisů - vytváří historický plastický terén a moře
+        // 1. Podkladové dlaždice bez vodoznaku a bez nutnosti API klíče
+        // Standardní čistá OpenStreetMap vrstva
         const tileLayer = L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
           {
-            subdomains: ["a", "b", "c", "d"],
-            maxZoom: 14,
-            opacity: 0.65,
+            maxZoom: 18,
+            opacity: 0.7,
+            attribution: '&copy; OpenStreetMap contributors',
           }
         );
         tileLayer.addTo(map);
@@ -76,7 +76,7 @@ export default function RealLeafletMap({
           const res = await fetch("/data/europe.json");
           if (res.ok) {
             const europeData = await res.json();
-            if (!isCancelled) {
+            if (!isCancelled && mapInstanceRef.current && mapInstanceRef.current._container) {
               const geoLayer = L.geoJSON(europeData, {
                 style: (feature) => {
                   const countryName = feature?.properties?.NAME || "";
@@ -137,8 +137,10 @@ export default function RealLeafletMap({
                 },
               });
 
-              geoLayer.addTo(map);
-              geoJsonLayerRef.current = geoLayer;
+              if (!isCancelled && mapInstanceRef.current && mapInstanceRef.current._container) {
+                geoLayer.addTo(map);
+                geoJsonLayerRef.current = geoLayer;
+              }
             }
           }
         } catch (geoErr) {
@@ -146,27 +148,24 @@ export default function RealLeafletMap({
         }
 
         // 3. Středověké říční toky (přirozené geografické koridory písemnictví)
-        MEDIEVAL_RIVERS.forEach((river) => {
-          const riverLine = L.polyline(river.coords, {
-            color: "#3a658a",
-            weight: river.id === "vltava" || river.id === "labe" ? 2.4 : 1.8,
-            opacity: 0.72,
-            smoothFactor: 1.2,
-          }).addTo(map);
+        if (!isCancelled && mapInstanceRef.current && mapInstanceRef.current._container) {
+          MEDIEVAL_RIVERS.forEach((river) => {
+            const riverLine = L.polyline(river.coords, {
+              color: "#3a658a",
+              weight: river.id === "vltava" || river.id === "labe" ? 2.4 : 1.8,
+              opacity: 0.72,
+              smoothFactor: 1.2,
+            }).addTo(map);
 
-          riverLine.bindTooltip(
-            `<div class="medieval-river-tooltip">🌊 <strong>${river.name}</strong></div>`,
-            { sticky: true }
-          );
-        });
+            riverLine.bindTooltip(
+              `<div class="medieval-river-tooltip">🌊 <strong>${river.name}</strong></div>`,
+              { sticky: true }
+            );
+          });
+        }
 
         mapInstanceRef.current = map;
         setMapReady(true);
-
-        // Vynutit správné překreslení rozměrů mapy
-        setTimeout(() => map.invalidateSize(), 50);
-        setTimeout(() => map.invalidateSize(), 200);
-        setTimeout(() => map.invalidateSize(), 600);
       } catch (err) {
         console.error("Chyba při inicializaci Leaflet mapy:", err);
       }
@@ -174,10 +173,20 @@ export default function RealLeafletMap({
 
     init();
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize();
+    const safeInvalidate = () => {
+      if (!isCancelled && mapInstanceRef.current && mapInstanceRef.current._container && mapContainerRef.current) {
+        try {
+          mapInstanceRef.current.invalidateSize();
+        } catch {}
       }
+    };
+
+    const t1 = window.setTimeout(safeInvalidate, 70);
+    const t2 = window.setTimeout(safeInvalidate, 250);
+    const t3 = window.setTimeout(safeInvalidate, 650);
+
+    const resizeObserver = new ResizeObserver(() => {
+      safeInvalidate();
     });
 
     if (mapContainerRef.current) {
@@ -186,9 +195,14 @@ export default function RealLeafletMap({
 
     return () => {
       isCancelled = true;
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
       resizeObserver.disconnect();
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.remove();
+        } catch {}
         mapInstanceRef.current = null;
       }
     };
@@ -260,38 +274,48 @@ export default function RealLeafletMap({
 
   // Posun kamery při změně vybraného místa (pouze v nekompaktním režimu)
   useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !selectedPlace || compact) return;
+    if (!mapReady || !mapInstanceRef.current || !mapInstanceRef.current._container || !selectedPlace || compact) return;
     const map = mapInstanceRef.current;
 
-    markersMapRef.current.forEach((marker, id) => {
-      if (id === selectedPlace.id) {
-        marker.setZIndexOffset(1000);
-      } else {
-        marker.setZIndexOffset(100);
-      }
-    });
+    try {
+      markersMapRef.current.forEach((marker, id) => {
+        if (id === selectedPlace.id) {
+          marker.setZIndexOffset(1000);
+        } else {
+          marker.setZIndexOffset(100);
+        }
+      });
 
-    map.flyTo([selectedPlace.lat, selectedPlace.lng], Math.max(map.getZoom(), 8), {
-      duration: 0.7,
-      easeLinearity: 0.25,
-    });
+      map.flyTo([selectedPlace.lat, selectedPlace.lng], Math.max(map.getZoom(), 8), {
+        duration: 0.7,
+        easeLinearity: 0.25,
+      });
+    } catch {}
   }, [selectedPlace, mapReady, compact]);
 
   // Ovládací tlačítka mapy
   const handleZoomIn = () => {
-    if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
+    if (mapInstanceRef.current && mapInstanceRef.current._container) {
+      try { mapInstanceRef.current.zoomIn(); } catch {}
+    }
   };
   const handleZoomOut = () => {
-    if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
+    if (mapInstanceRef.current && mapInstanceRef.current._container) {
+      try { mapInstanceRef.current.zoomOut(); } catch {}
+    }
   };
   const handleCenterBohemia = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([49.8, 15.0], compact ? 6.2 : 7, { duration: 0.8 });
+    if (mapInstanceRef.current && mapInstanceRef.current._container) {
+      try {
+        mapInstanceRef.current.flyTo([49.8, 15.0], compact ? 6.2 : 7, { duration: 0.8 });
+      } catch {}
     }
   };
   const handleCenterEurope = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([49.2, 15.2], compact ? 4.8 : 5.2, { duration: 0.8 });
+    if (mapInstanceRef.current && mapInstanceRef.current._container) {
+      try {
+        mapInstanceRef.current.flyTo([49.2, 15.2], compact ? 4.8 : 5.2, { duration: 0.8 });
+      } catch {}
     }
   };
 

@@ -324,11 +324,9 @@ export default function Home() {
         if (session?.user) {
           setCurrentUser(session.user);
           await loadUserData(session.user, cards);
+          setShowAuthModal(false);
         } else {
-          const isGuest = typeof window !== "undefined" ? sessionStorage.getItem("quilldrop-guest-mode") : null;
-          if (!isGuest) {
-            setShowAuthModal(true);
-          }
+          setShowAuthModal(true);
         }
       } catch (e) {
         console.warn("Auth initialization error:", e);
@@ -348,6 +346,7 @@ export default function Home() {
       } else {
         setCurrentUser(null);
         setCurrentProfile(null);
+        setShowAuthModal(true);
       }
     });
 
@@ -368,7 +367,7 @@ export default function Home() {
     const dayOfYear = Math.floor(diff / oneDay);
     setCurioIndex(dayOfYear % DEFAULT_CURIOS.length);
 
-    // Načtení případných upravených glos ze Studia (localStorage / Supabase)
+    // Načtení případných upravených glos ze Studia (localStorage)
     if (typeof window !== "undefined") {
       try {
         const savedCurios = localStorage.getItem("quilldrop-curios");
@@ -383,25 +382,6 @@ export default function Home() {
         // fallback to DEFAULT_CURIOS
       }
     }
-
-    async function fetchLiveCurios() {
-      try {
-        const { data, error } = await supabase
-          .from("scriptorium_curios")
-          .select("*")
-          .order("id", { ascending: true });
-        if (!error && data && data.length > 0) {
-          setCurios(data as Curio[]);
-          setCurioIndex(dayOfYear % data.length);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("quilldrop-curios", JSON.stringify(data));
-          }
-        }
-      } catch {
-        // Supabase tabulka nemusí existovat, ignorujeme
-      }
-    }
-    fetchLiveCurios();
   }, []);
 
   const toggleSound = () => {
@@ -655,20 +635,12 @@ export default function Home() {
     }
   };
 
-  const handleContinueAsGuest = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("quilldrop-guest-mode", "true");
-    }
-    setShowAuthModal(false);
-    setToast("Pokračujete v režimu hosta.");
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setCurrentProfile(null);
-    setState(loadState());
-    setToast("Byli jste odhlášeni ze skriptoria.");
+    setShowAuthModal(true);
+    setToast("Byli jste odhlášeni z Quilldrop.");
   };
 
   useEffect(() => {
@@ -932,8 +904,6 @@ export default function Home() {
             onLogin={handleLogin}
             onRegister={handleRegister}
             onGoogle={handleGoogleSignIn}
-            onGuest={handleContinueAsGuest}
-            onClose={() => setShowAuthModal(false)}
           />
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
@@ -1290,7 +1260,7 @@ function HomeScreen({
                   {remaining
                     ? "Pět skrytých hlasů písařů čeká pod voskovou pečetí."
                     : hasBonus
-                    ? "Získaná odměna z písařské výzvy čeká na rozpečetění."
+                    ? "Získaná odměna z písařské výzvy čeká na otevření."
                     : gamesLeft
                     ? "Splňte písařskou výzvu vedle a získejte další balíček!"
                     : "Vraťte se zítra za rozbřesku, až zapálíme nové svíce."}
@@ -1321,7 +1291,7 @@ function HomeScreen({
             </div>
           </div>
           <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
-            {remaining || hasBonus ? "Rozpečetit balíček (5 karet)" : "Přejít do pokladnice"} <span>→</span>
+            {remaining || hasBonus ? "Otevřít balíček (5 karet)" : "Přejít do pokladnice"} <span>→</span>
           </button>
         </section>
 
@@ -1372,7 +1342,7 @@ function HomeScreen({
         <div className="showcase-header">
           <div>
             <h2>{uniqueOwned > 0 ? "Výběr z vašeho archivu" : "Ukázka kolofonů k objevení"}</h2>
-            <small style={{ color: "#765228" }}>{uniqueOwned > 0 ? "Naposledy prozkoumané a odemčené iluminované karty" : "Rozpečeťte balíček a odhalte první rukopisy"}</small>
+            <small style={{ color: "#765228" }}>{uniqueOwned > 0 ? "Naposledy prozkoumané a odemčené iluminované karty" : "Otevřete balíček a odhalte první rukopisy"}</small>
           </div>
           <button onClick={onCollection}>Zobrazit celou sbírku ({uniqueOwned}/{totalCards}) →</button>
         </div>
@@ -1384,7 +1354,7 @@ function HomeScreen({
                 key={card.id}
                 className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`}
                 onClick={() => count ? onDetail(card) : onPacks()}
-                aria-label={count ? `Otevřít detail ${card.title}` : "Neobjevená karta, rozpečeťte balíček"}
+                aria-label={count ? `Otevřít detail ${card.title}` : "Neobjevená karta, otevřete balíček"}
               >
                 <span className="rarity-label">{count ? card.rarity : "K objevení"}</span>
                 <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
@@ -1507,7 +1477,7 @@ function PacksScreen({
 
   return (
     <div className="screen packs-screen">
-      <PageTitle kicker="Denní skriptorium">Rozpečetění balíčků</PageTitle>
+      <PageTitle kicker="Denní skriptorium">Otevření balíčků</PageTitle>
 
       {/* Denní přehled */}
       <div className="daily-ledger">
@@ -1626,7 +1596,7 @@ function PacksScreen({
 
         {countForSelected > 0 ? (
           <button onClick={() => onOpen(selectedTier)}>
-            Rozpečetit {qualityLabel(selectedTier)} (5 karet)
+            Otevřít {qualityLabel(selectedTier)} (5 karet)
           </button>
         ) : (
           <div className="empty-pack-prompt">
@@ -1852,7 +1822,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
 
 function TrophiesScreen({ state, cards }: { state: GameState; cards: Colophon[] }) {
   const trophies = [
-    ["first-spark", "První jiskra", "Rozpečeťte svůj první denní balíček", "100 XP", "Q"],
+    ["first-spark", "První jiskra", "Otevřete svůj první denní balíček", "100 XP", "Q"],
     ["first-pack", "Lamač pečetí", "Objevte pět různých kolofonů", "150 XP", "S"],
     ["collector", "Napříč staletími", "Získejte 8 různých kodexů do sbírky", "250 XP", "A"],
     ["streak", "Vytrvalý iluminátor", "Udržte 16 dní nepřetržité návštěvy", "300 XP", "I"],
@@ -2074,8 +2044,6 @@ function AuthModal({
   onLogin,
   onRegister,
   onGoogle,
-  onGuest,
-  onClose,
 }: {
   mode: "login" | "register";
   setMode: (m: "login" | "register") => void;
@@ -2091,34 +2059,14 @@ function AuthModal({
   onLogin: (e: React.FormEvent) => void;
   onRegister: (e: React.FormEvent) => void;
   onGoogle: () => void;
-  onGuest: () => void;
-  onClose: () => void;
 }) {
   return (
-    <div className="auth-overlay" onClick={onClose}>
-      <section className="auth-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <button
-          className="close"
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 14,
-            background: "none",
-            border: "none",
-            fontSize: 22,
-            cursor: "pointer",
-            color: "var(--brown)",
-          }}
-          aria-label="Zavřít"
-        >
-          ×
-        </button>
-
+    <div className="auth-overlay">
+      <section className="auth-box" role="dialog" aria-modal="true">
         <div style={{ fontSize: 32, marginBottom: 6 }}>🪶</div>
-        <h2>Vstup do Skriptoria</h2>
+        <h2>Vstup do Quilldrop</h2>
         <p>
-          Ukládejte svou sbírku rukopisů do cloudu, sbírejte pečetě a připravte se na budoucí obchodování s ostatními písaři.
+          Přihlaste se nebo si vytvořte bezplatný písařský účet pro přístup k denním kodexům, plnění výzev a ukládání sbírky do cloudu.
         </p>
 
         <div className="auth-tabs">
@@ -2193,7 +2141,7 @@ function AuthModal({
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? "Pečetění svitku..." : mode === "login" ? "Vstoupit do skriptoria" : "Vytvořit písařský účet"}
+            {loading ? "Ověřuji pečeť..." : mode === "login" ? "Vstoupit do Quilldrop" : "Vytvořit písařský účet"}
           </button>
         </form>
 
@@ -2221,10 +2169,6 @@ function AuthModal({
             />
           </svg>
           Pokračovat přes Google
-        </button>
-
-        <button type="button" className="guest-link-btn" onClick={onGuest}>
-          Pokračovat jako host (vyzkoušet bez přihlášení)
         </button>
       </section>
     </div>
