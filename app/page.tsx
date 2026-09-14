@@ -7,6 +7,7 @@ import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
 import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
+import RealLeafletMap from "./components/RealLeafletMap";
 import {
   isSoundEnabled,
   setSoundEnabled,
@@ -871,7 +872,7 @@ function HomeScreen({
                 <strong>Rozlušti šifru</strong>
                 <small>Kryptogramy a hříčky · Střední</small>
               </div>
-              <span className="home-quest-reward reward-scholar">✨ Scholar Pack (Rare+) →</span>
+              <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
               <span className="home-quest-icon icon-script"><ScrollText size={19} /></span>
@@ -879,7 +880,7 @@ function HomeScreen({
                 <strong>Poznej písmo a století</strong>
                 <small>Typologie & datace kodexu · Pokročilá</small>
               </div>
-              <span className="home-quest-reward reward-scholar">📜 Scholar Pack (Epic+) →</span>
+              <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
               <span className="home-quest-icon icon-paleo"><PenTool size={19} /></span>
@@ -1222,7 +1223,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
-              ✨ Scholar Pack (Rare+)
+              ✨ Scholar Pack
             </span>
             <span className="game-action-arrow">Hrát →</span>
           </div>
@@ -1246,7 +1247,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
-              📜 Scholar Pack (Epic+)
+              ✨ Scholar Pack
             </span>
             <span className="game-action-arrow">Hrát →</span>
           </div>
@@ -1270,7 +1271,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-masterwork">
-              💎 Masterwork Pack →
+              💎 Masterwork Pack
             </span>
             <span className="game-action-arrow">Hrát →</span>
           </div>
@@ -1639,11 +1640,11 @@ function GameModal({
   } | null>(null);
 
   const reward = isTranscription
-    ? "Masterwork Pack · Legendary a lepší (+120 XP)"
+    ? "Masterwork Pack · Garantuje Rare+ s šancí na Legendary (+120 XP)"
     : question.mode === "script" || kind === "paleo"
-    ? "Scholar Pack · Epic a lepší (+75 XP)"
+    ? "Scholar Pack · Vzácnější kodexy a iluminace (+75 XP)"
     : kind === "cipher"
-    ? "Scholar Pack · Zvýšená šance na Rare (+60 XP)"
+    ? "Scholar Pack · Vzácnější kodexy a iluminace (+60 XP)"
     : "Standard Pack (+35 XP)";
 
   const handleCheckTranscription = () => {
@@ -1973,33 +1974,33 @@ function MapModal({
           </div>
         </div>
 
-        <div className="map-layout">
-          {/* Levá část: interaktivní mapa */}
-          <div className="medieval-map-container" aria-label="Mapa Evropy s piny skriptorií">
-            <div className="map-decor-border" />
-            <div className="map-cartouche">ORBIS SCRIPTORIORUM</div>
-            <span className="map-sea-label sea-baltic">MARE BALTICUM</span>
-            <span className="map-sea-label sea-adriatic">MARE ADRIATICUM</span>
+        <div className="map-places-pills">
+          {scriptoriaWithCards.map(({ place, cards: pCards, owned }) => {
+            const isSelected = selectedPlace.id === place.id;
+            return (
+              <button
+                key={place.id}
+                type="button"
+                className={`map-place-pill ${isSelected ? "active" : ""}`}
+                onClick={() => setSelectedPlace(place)}
+              >
+                <span>{place.icon}</span>
+                <span>{place.name}</span>
+                <small style={{ opacity: 0.85, fontSize: "9.5px" }}>
+                  ({owned.length}/{pCards.length})
+                </small>
+              </button>
+            );
+          })}
+        </div>
 
-            {scriptoriaWithCards.map(({ place, owned, cards: pCards }) => {
-              const hasOwned = owned.length > 0;
-              const isSelected = selectedPlace.id === place.id;
-              return (
-                <button
-                  key={place.id}
-                  className={`map-pin ${hasOwned ? "has-owned" : ""} ${isSelected ? "active" : ""}`}
-                  style={{ left: `${place.x}%`, top: `${place.y}%` }}
-                  onClick={() => setSelectedPlace(place)}
-                  title={`${place.name} (${owned.length}/${pCards.length} objeveno)`}
-                >
-                  <span className="pin-seal">{place.icon}</span>
-                  <span className="pin-tag">
-                    {place.name} <b>{owned.length}/{pCards.length}</b>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="map-layout">
+          {/* Levá část: reálná interaktivní mapa Leaflet */}
+          <RealLeafletMap
+            scriptoria={scriptoriaWithCards}
+            selectedPlace={selectedPlace}
+            onSelectPlace={setSelectedPlace}
+          />
 
           {/* Pravá část: detail vybraného skriptoria */}
           <div className="map-panel">
@@ -2010,6 +2011,9 @@ function MapModal({
               <p>
                 {currentSelection.place.region} · {currentSelection.place.country}
               </p>
+              <div className="map-panel-coords">
+                📍 {currentSelection.place.lat.toFixed(4)}° s. š., {currentSelection.place.lng.toFixed(4)}° v. d.
+              </div>
             </div>
             <p className="map-panel-desc">{currentSelection.place.description}</p>
 
@@ -2054,7 +2058,7 @@ function MapModal({
                               fontWeight: "bold",
                             }}
                           >
-                            ?
+                            🔒
                           </span>
                         )}
                       </div>
