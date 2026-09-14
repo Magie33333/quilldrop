@@ -25,7 +25,7 @@ export const MODERN_COUNTRIES: Record<string, ModernCountryInfo> = {
   "Poland": {
     name: "Polsko",
     hasManuscripts: true,
-    cities: ["Krakov & Kazimierz"],
+    cities: ["Krakov"],
     repositories: [
       "Biblioteka Jagiellońska, Uniwersytet Jagielloński w Krakowie",
     ],

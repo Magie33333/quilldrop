@@ -18,7 +18,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   {
     id: "praha",
     name: "Praha",
-    region: "Pražský hrad, Klementinum & Nové Město",
+    region: "Pražský hrad, Klementinum a Nové Město",
     country: "Česká republika",
     modernRepository: "Národní knihovna ČR (Klementinum), Knihovna Národního muzea, Archiv Pražského hradu",
     description: "Srdce českého písemnictví a královské moci. Kodexy a kolofony jsou dnes uchovány v Národní knihovně ČR (Klementinum), Knihovně Národního muzea a v Archivu Pražského hradu.",
@@ -92,7 +92,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   },
   {
     id: "krakow",
-    name: "Krakov & Kazimierz",
+    name: "Krakov",
     region: "Malopolsko",
     country: "Polsko",
     modernRepository: "Biblioteka Jagiellońska, Uniwersytet Jagielloński w Krakowie",
@@ -167,8 +167,8 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   },
   {
     id: "austria",
-    name: "Vídeň & Rakousko",
-    region: "Dolní Rakousy & Vídeň",
+    name: "Vídeň",
+    region: "Dolní Rakousy",
     country: "Rakousko",
     modernRepository: "Österreichische Nationalbibliothek (ÖNB), Vídeň / Stiftsbibliothek Melk",
     description: "Klíčová středoevropská paměťová centra. Kodexy jsou uloženy v Rakouské národní knihovně ve Vídni a v podunajských klášterech.",
@@ -182,8 +182,8 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   },
   {
     id: "germany",
-    name: "Lipsko & Německo",
-    region: "Sasko & Bavorsko",
+    name: "Lipsko",
+    region: "Sasko",
     country: "Německo",
     modernRepository: "Universitätsbibliothek Leipzig, Stadtbibliothek Nürnberg",
     description: "Německá univerzitní a městská centra. Bohemikální i německé rukopisy jsou uchovány v Lipské univerzitní knihovně a v Norimberku.",

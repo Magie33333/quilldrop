@@ -192,6 +192,8 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Modální okno sjednoceno pod název **„Vstup do Quilldrop“**.
 * **Sjednocení herní terminologie:**
   * Archaické slovo „Rozpečetit“ bylo napříč všemi texty, tlačítky a achievementy nahrazeno přirozeným a srozumitelným slovem **„Otevřít“** (*Otevřít balíček*, *Otevření balíčků*, *Otevřete balíček a odhalte první rukopisy*).
+* **Zpřesnění a vyčištění názvů měst na mapě skriptorií:**
+  * Odstraněny matoucí duplicity typu „Lipsko & Německo · Německo“ či „Vídeň & Rakousko · Rakousko“. Každé skriptorium je nyní pojmenováno čistě názvem města (Lipsko, Vídeň, Krakov), přičemž stát je uveden za tím jako země původu.
 * **Příprava projektu pro bezproblémové nasazení na Vercel:**
   * Přepnuta výchozí sestavovací pipeline na nativní **Next.js 16 (Turbopack)** (`next build`), která generuje standardní `.next` adresář vyžadovaný Vercel platformou.
   * Odstraněna závislost na privátním OpenAI pluginu (`sites-vite-plugin`), který se nacházel v ignorované složce `build/` a na Vercelu by způsoboval pád sestavení.
