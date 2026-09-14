@@ -773,8 +773,18 @@ function HomeScreen({
           <div>
             <div className="home-pack-header">
               <span>{hasBonus && remaining === 0 ? "Připravená odměna" : "Denní příděl balíčků"}</span>
-              <span className="home-pack-badge">
-                {remaining > 0 ? formatPacksCount(remaining) : hasBonus ? `${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
+              <span
+                className={`home-pack-badge ${
+                  remaining > 0
+                    ? "standard"
+                    : hasBonus
+                    ? state.bonusPacks[0] === "masterwork"
+                      ? "vault-masterwork"
+                      : "vault-scholar"
+                    : "empty"
+                }`}
+              >
+                {remaining > 0 ? `📜 ${formatPacksCount(remaining)}` : hasBonus ? `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
               </span>
             </div>
             <div className="home-pack-body">
@@ -799,43 +809,43 @@ function HomeScreen({
         </section>
 
         <section className="home-quests-box">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <h3>Písařské výzvy dne</h3>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--blue)" }}>{gamesLeft}/10 k dispozici</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+            <h3 style={{ margin: 0 }}>Písařské výzvy dne</h3>
+            <span className="quests-counter-badge">{gamesLeft}/10 k dispozici</span>
           </div>
           <p>Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice.</p>
           <div className="home-quests-list">
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("mood")}>
-              <span className="home-quest-icon"><Smile size={18} /></span>
+              <span className="home-quest-icon icon-mood"><Smile size={19} /></span>
               <div className="home-quest-info">
                 <strong>Nálada písaře</strong>
                 <small>Výběr emoce · 4 možnosti · Snadná</small>
               </div>
-              <span className="home-quest-reward">Standard Pack →</span>
+              <span className="home-quest-reward reward-standard">📜 Standard Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
-              <span className="home-quest-icon"><KeyRound size={18} /></span>
+              <span className="home-quest-icon icon-cipher"><KeyRound size={19} /></span>
               <div className="home-quest-info">
                 <strong>Rozlušti šifru</strong>
                 <small>Kryptogramy a hříčky · Střední</small>
               </div>
-              <span className="home-quest-reward">Scholar Pack (Rare+) →</span>
+              <span className="home-quest-reward reward-scholar">✨ Scholar Pack (Rare+) →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
-              <span className="home-quest-icon"><ScrollText size={18} /></span>
+              <span className="home-quest-icon icon-script"><ScrollText size={19} /></span>
               <div className="home-quest-info">
                 <strong>Poznej písmo a století</strong>
                 <small>Typologie & datace kodexu · Pokročilá</small>
               </div>
-              <span className="home-quest-reward">Scholar Pack (Epic+) →</span>
+              <span className="home-quest-reward reward-scholar">📜 Scholar Pack (Epic+) →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
-              <span className="home-quest-icon"><PenTool size={18} /></span>
+              <span className="home-quest-icon icon-paleo"><PenTool size={19} /></span>
               <div className="home-quest-info">
                 <strong>Paleografický mistr</strong>
                 <small>Přepis autentického textu s lupou · Expertní</small>
               </div>
-              <span className="home-quest-reward" style={{ color: "var(--brown)", fontWeight: 800 }}>Masterwork Pack (Legendary+) →</span>
+              <span className="home-quest-reward reward-masterwork">💎 Masterwork Pack →</span>
             </button>
           </div>
         </section>
@@ -1118,53 +1128,110 @@ function PacksScreen({
 
       {/* Výzvy o další balíčky */}
       <div className="section-title">
-        <h2>Získejte další balíček do pokladnice</h2>
-        <span>{gamesLeft}/10 výzev k dispozici</span>
+        <div>
+          <h2>Získejte další balíček do pokladnice</h2>
+          <small style={{ color: "#765228", display: "block", marginTop: "2px", fontSize: "11px" }}>
+            Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček.
+          </small>
+        </div>
+        <span className="quests-counter-badge">{gamesLeft}/10 výzev k dispozici</span>
       </div>
-      <div className="game-list">
-        <button disabled={!gamesLeft} onClick={() => onGame("mood")}>
-          <span>
-            <Smile size={23} />
-          </span>
-          <div>
+
+      <div className="game-grid-4">
+        {/* HRA 1: NÁLADA PÍSAŘE */}
+        <button
+          className="game-grid-card tier-standard"
+          disabled={!gamesLeft}
+          onClick={() => onGame("mood")}
+        >
+          <div className="game-card-top">
+            <span className="game-seal-medallion seal-mood">
+              <Smile size={23} />
+            </span>
+            <span className="game-difficulty-pill diff-easy">Snadná</span>
+          </div>
+          <div className="game-card-content">
             <strong>Nálada písaře</strong>
-            <small>Výběr emoce · 4 možnosti</small>
-            <em>Standard Pack</em>
+            <p>Odhadněte z autentického citátu a překladu rozpoložení středověkého písaře.</p>
           </div>
-          <b>→</b>
+          <div className="game-card-footer">
+            <span className="game-reward-tag reward-standard">
+              📜 Standard Pack
+            </span>
+            <span className="game-action-arrow">Hrát →</span>
+          </div>
         </button>
-        <button disabled={!gamesLeft} onClick={() => onGame("cipher")}>
-          <span>
-            <KeyRound size={23} />
-          </span>
-          <div>
+
+        {/* HRA 2: ROZLUŠTI ŠIFRU */}
+        <button
+          className="game-grid-card tier-scholar"
+          disabled={!gamesLeft}
+          onClick={() => onGame("cipher")}
+        >
+          <div className="game-card-top">
+            <span className="game-seal-medallion seal-cipher">
+              <KeyRound size={23} />
+            </span>
+            <span className="game-difficulty-pill diff-medium">Střední</span>
+          </div>
+          <div className="game-card-content">
             <strong>Rozlušti šifru</strong>
-            <small>Kryptogramy a hříčky</small>
-            <em>Scholar Pack (Rare+)</em>
+            <p>Odhalte písařský kryptogram, hříčku nebo substituční šifru v kolofonu.</p>
           </div>
-          <b>→</b>
+          <div className="game-card-footer">
+            <span className="game-reward-tag reward-scholar">
+              ✨ Scholar Pack (Rare+)
+            </span>
+            <span className="game-action-arrow">Hrát →</span>
+          </div>
         </button>
-        <button disabled={!gamesLeft} onClick={() => onGame("script")}>
-          <span>
-            <ScrollText size={23} />
-          </span>
-          <div>
+
+        {/* HRA 3: POZNEJ PÍSMO A STOLETÍ */}
+        <button
+          className="game-grid-card tier-scholar"
+          disabled={!gamesLeft}
+          onClick={() => onGame("script")}
+        >
+          <div className="game-card-top">
+            <span className="game-seal-medallion seal-script">
+              <ScrollText size={23} />
+            </span>
+            <span className="game-difficulty-pill diff-advanced">Pokročilá</span>
+          </div>
+          <div className="game-card-content">
             <strong>Poznej písmo a století</strong>
-            <small>Typologie písma a datace</small>
-            <em>Scholar Pack (Epic+)</em>
+            <p>Zařaďte duktus písma kodexu: textura, bastarda, kurzíva a století vzniku.</p>
           </div>
-          <b>→</b>
+          <div className="game-card-footer">
+            <span className="game-reward-tag reward-scholar">
+              📜 Scholar Pack (Epic+)
+            </span>
+            <span className="game-action-arrow">Hrát →</span>
+          </div>
         </button>
-        <button disabled={!gamesLeft} onClick={() => onGame("paleo")}>
-          <span>
-            <PenTool size={23} />
-          </span>
-          <div>
-            <strong>Paleografický mistr</strong>
-            <small>Přepis autentických řádků s lupou</small>
-            <em>Masterwork Pack (Legendary+)</em>
+
+        {/* HRA 4: PALEOGRAFICKÝ MISTR */}
+        <button
+          className="game-grid-card tier-masterwork"
+          disabled={!gamesLeft}
+          onClick={() => onGame("paleo")}
+        >
+          <div className="game-card-top">
+            <span className="game-seal-medallion seal-paleo">
+              <PenTool size={23} />
+            </span>
+            <span className="game-difficulty-pill diff-expert">Expertní</span>
           </div>
-          <b>→</b>
+          <div className="game-card-content">
+            <strong>Paleografický mistr</strong>
+            <p>Přepis autentických latinských řádků přímo z rukopisu s paleografickou lupou.</p>
+          </div>
+          <div className="game-card-footer">
+            <span className="game-reward-tag reward-masterwork">
+              💎 Masterwork Pack →
+            </span>
+            <span className="game-action-arrow">Hrát →</span>
+          </div>
         </button>
       </div>
     </div>
