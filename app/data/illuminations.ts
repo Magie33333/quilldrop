@@ -34,7 +34,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
     id: "scriptorium-monk",
     cycle: 2,
     title: "Písař v dílně (Scriptorium Master)",
-    source: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Eadwine_the_Scribe.jpg/640px-Eadwine_the_Scribe.jpg",
+    source: "/illuminations/eadwine-scribe.jpg",
     origin: "Eadwine Psalter, Trinity College Cambridge",
     century: "12. století",
     tierName: "Cyklus tovaryše (Dny 17–32)",
@@ -47,7 +47,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
     id: "bohemian-lion",
     cycle: 3,
     title: "Český královský lev (Bohemian Lion)",
-    source: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Gelnhausen_Codex_Wenceslaus_II.jpg/640px-Gelnhausen_Codex_Wenceslaus_II.jpg",
+    source: "/illuminations/bohemian-lion.jpg",
     origin: "Gelnhausenův kodex, Státní okresní archiv Jihlava",
     century: "Konec 14. století",
     tierName: "Cyklus mistra (Dny 33–48)",
@@ -60,7 +60,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
     id: "wenceslas-initial",
     cycle: 4,
     title: "Královská iniciála 'W' (Wenceslas Bible)",
-    source: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Wenzelsbibel_001.jpg/640px-Wenzelsbibel_001.jpg",
+    source: "/illuminations/wenceslas-initial.jpg",
     origin: "Bible Václava IV. (ÖNB Vídeň, Cod. 2759–2764), Praha",
     century: "Kolem roku 1390",
     tierName: "Cyklus kanovníka (Dny 49–64)",
@@ -73,7 +73,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
     id: "astrolabe-spheres",
     cycle: 5,
     title: "Nebeské sféry a astroláb (Cosmographia)",
-    source: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Medieval_astrolabe.jpg/640px-Medieval_astrolabe.jpg",
+    source: "/illuminations/astrolabe-spheres.jpg",
     origin: "Astronomický sborník krále Václava IV., Praha",
     century: "Konec 14. století",
     tierName: "Cyklus iluminátora (Dny 65–80)",
@@ -86,7 +86,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
     id: "codex-gigas-devil",
     cycle: 6,
     title: "Podlažický ďábel (Codex Gigas)",
-    source: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Devil_in_the_Codex_Gigas.jpg/640px-Devil_in_the_Codex_Gigas.jpg",
+    source: "/illuminations/codex-gigas-devil.jpg",
     origin: "Benediktinský klášter Podlažice u Chrudimi (dnes Kungliga biblioteket, Stockholm)",
     century: "Počátek 13. století",
     tierName: "Cyklus legendárního bibliofila (Dny 81–96+)",
@@ -97,7 +97,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   },
 ];
 
-// Načtení iluminací z localStorage nebo výchozích
+// Načtení iluminací z localStorage nebo výchozích (s automatickou migrací starých Wikimedia URL)
 export function getStoredIlluminations(): IlluminationMosaicItem[] {
   if (typeof window === "undefined") return DEFAULT_ILLUMINATIONS;
   try {
@@ -105,7 +105,21 @@ export function getStoredIlluminations(): IlluminationMosaicItem[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.sort((a, b) => a.cycle - b.cycle);
+        let changed = false;
+        const migrated = parsed.map((item: IlluminationMosaicItem) => {
+          if (item.source && item.source.includes("upload.wikimedia.org")) {
+            const defMatch = DEFAULT_ILLUMINATIONS.find(d => d.id === item.id || d.cycle === item.cycle);
+            if (defMatch) {
+              changed = true;
+              return { ...item, source: defMatch.source };
+            }
+          }
+          return item;
+        });
+        if (changed) {
+          localStorage.setItem("quilldrop-illuminations", JSON.stringify(migrated));
+        }
+        return migrated.sort((a, b) => a.cycle - b.cycle);
       }
     }
   } catch {

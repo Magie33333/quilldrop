@@ -2124,6 +2124,9 @@ function ProfileScreen({
               "/illumination-rabbit.png"
             }
             alt="Vybraný portrét"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+            }}
           />
         ) : (
           "Q"
@@ -2174,7 +2177,13 @@ function ProfileScreen({
           if (!art) return null;
           return (
             <article key={id}>
-              <img src={art.source} alt={art.title} />
+              <img
+                src={art.source}
+                alt={art.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+                }}
+              />
               <div>
                 <span className={`rarity-tag rarity-${art.rarity.toLowerCase()}`} style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase" }}>
                   {art.rarity}
@@ -2248,7 +2257,18 @@ function IlluminationMosaic({
       className={`illumination-mosaic ${compact ? "compact" : ""}`}
       aria-label={`${pieces} z 16 fragmentů iluminace odhaleno: ${art.title}`}
     >
-      <img src={art.source} alt={art.title} loading="lazy" decoding="async" />
+      <img
+        src={art.source}
+        alt={art.title}
+        loading="lazy"
+        decoding="async"
+        onError={(e) => {
+          const target = e.currentTarget as HTMLImageElement;
+          if (!target.src.includes("illumination-rabbit.png")) {
+            target.src = "/illumination-rabbit.png";
+          }
+        }}
+      />
       <div className="mosaic-cover" aria-hidden="true">
         {Array.from({ length: 16 }).map((_, i) => (
           <span key={i} className={i < pieces ? "revealed" : "hidden"}>
