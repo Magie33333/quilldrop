@@ -252,7 +252,7 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   overflow: hidden;
   border: 2px solid var(--brown);
   box-shadow: inset 0 0 25px rgba(0,0,0,0.35), 0 8px 24px rgba(66, 37, 9, 0.25);
-  background: #eedcb6;
+  background: #ecdcb9;
 }
 .real-map-element {
   width: 100%;
@@ -261,13 +261,73 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   background: #eedcb6;
 }
 
-/* Středověký pergamenový filtr na dlaždice mapy */
+/* Středověký pergamenový filtr na podkladové dlaždice mapy */
 .real-map-element .leaflet-tile-pane {
-  filter: sepia(0.62) contrast(1.15) brightness(0.92) hue-rotate(-14deg);
+  filter: sepia(0.55) contrast(1.18) brightness(0.94) hue-rotate(-12deg);
+  opacity: 0.65;
+}
+
+/* Vektorová slepá mapa Evropy (SVG cesty v Leafletu) */
+.real-map-element .leaflet-overlay-pane path {
+  transition: fill 0.2s ease, stroke-width 0.2s ease;
+  cursor: pointer;
+}
+
+.map-country-tooltip {
+  background: #fff9ed !important;
+  border: 1.5px solid #8c5c28 !important;
+  color: #4a2805 !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 11.5px !important;
+  line-height: 1.35 !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
+  max-width: 250px;
+}
+.map-country-tooltip strong {
+  color: #78350f;
+  font-size: 12px;
+}
+.map-country-tooltip em {
+  color: #92400e;
+  font-size: 10.5px;
+}
+.map-country-tooltip small {
+  color: #5c3a16;
+  font-size: 10px;
+  display: block;
+  margin-top: 3px;
+}
+
+.medieval-river-tooltip {
+  background: #f0f7ff !important;
+  border: 1px solid #3a658a !important;
+  color: #1e3a5f !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
 }
 
 .map-decor-border { position: absolute; inset: 6px; border: 1px dashed #a7773b88; pointer-events: none; z-index: 1001; }
-.map-cartouche { position: absolute; top: 12px; left: 14px; z-index: 1002; background: #fbf1d8ee; border: 1.5px solid var(--brown); padding: 4px 10px; border-radius: 4px; font-family: var(--font-display, Georgia, serif); font-size: 11.5px; font-weight: 800; color: var(--brown); letter-spacing: 1.4px; box-shadow: 0 3px 8px rgba(0,0,0,0.25); pointer-events: none; }
+.map-cartouche {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  z-index: 1002;
+  background: rgba(251, 241, 216, 0.94);
+  backdrop-filter: blur(4px);
+  border: 1.5px solid var(--brown);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brown);
+  letter-spacing: 1.1px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+  pointer-events: none;
+}
 
 .real-map-controls {
   position: absolute;
@@ -548,33 +608,43 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   outline-offset: -6px;
 }
 .home-pack-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.home-pack-header span { font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px; color: var(--brown); }
+.home-pack-header > span:first-child { font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px; color: var(--brown); }
+.home-pack-header .home-pack-badge,
 .home-pack-badge {
   padding: 4px 10px;
   border-radius: 6px;
-  background: linear-gradient(90deg, #881c1c, #b92b27);
-  color: #fff7ed;
-  font-size: 10.5px;
-  font-weight: 800;
+  background: linear-gradient(90deg, #991b1b, #dc2626) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
   letter-spacing: .5px;
-  box-shadow: 0 2px 6px rgba(136, 28, 28, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 6px rgba(153, 27, 27, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85) !important;
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
+.home-pack-header .home-pack-badge.standard,
+.home-pack-badge.standard {
+  background: linear-gradient(90deg, #991b1b, #dc2626) !important;
+  color: #ffffff !important;
+}
+.home-pack-header .home-pack-badge.vault-scholar,
 .home-pack-badge.vault-scholar {
-  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  background: linear-gradient(90deg, #1d4ed8, #2563eb) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
+.home-pack-header .home-pack-badge.vault-masterwork,
 .home-pack-badge.vault-masterwork {
-  background: linear-gradient(90deg, #701a75, #a21caf);
-  color: #fef08a;
-  box-shadow: 0 2px 8px rgba(162, 28, 175, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  background: linear-gradient(90deg, #701a75, #9333ea) !important;
+  color: #fef08a !important;
+  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.45), inset 0 0 0 1px rgba(254, 240, 138, 0.4);
 }
+.home-pack-header .home-pack-badge.empty,
 .home-pack-badge.empty {
-  background: #7a634e;
-  color: #ded1c2;
+  background: #6e543d !important;
+  color: #ffffff !important;
   box-shadow: none;
 }
 .home-pack-body { display: flex; align-items: center; gap: 18px; margin: 10px 0 16px; }

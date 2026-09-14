@@ -826,6 +826,12 @@ function HomeScreen({
                       : "vault-scholar"
                     : "empty"
                 }`}
+                style={{
+                  color: remaining > 0 ? "#ffffff" : hasBonus ? (state.bonusPacks[0] === "masterwork" ? "#fef08a" : "#ffffff") : "#ffffff",
+                  background: remaining > 0 ? "linear-gradient(90deg, #991b1b, #dc2626)" : undefined,
+                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.85)",
+                  fontWeight: 800,
+                }}
               >
                 {remaining > 0 ? `📜 ${formatPacksCount(remaining)}` : hasBonus ? `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
               </span>
