@@ -40,6 +40,8 @@ import {
   BookOpen,
   Puzzle,
   Flame,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -561,6 +563,25 @@ export default function AdminPage() {
       saveStoredIlluminations(DEFAULT_ILLUMINATIONS);
       handleNewMosaicForm();
     }
+  };
+
+  const handleMosaicFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setMosaicForm((prev) => ({
+          ...prev,
+          source: result,
+          title: prev.title || file.name.replace(/\.[^/.]+$/, ""),
+        }));
+        setMosaicSuccessMsg(`Obrázek „${file.name}“ byl úspěšně načten z počítače!`);
+        setTimeout(() => setMosaicSuccessMsg(""), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Kontrola přihlášení při načtení
@@ -3727,14 +3748,29 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">URL adresa obrazu</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-[#c9a96e]">Zdroj obrazu / URL</label>
+                        <label className="cursor-pointer bg-[#2c221a] hover:bg-[#3d3024] text-[#ffd580] px-2 py-0.5 rounded border border-[#4a3928] text-[10.5px] flex items-center gap-1 transition">
+                          <Upload size={11} />
+                          <span>Nahrát z PC</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleMosaicFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                       <input
                         type="text"
                         value={mosaicForm.source}
                         onChange={(e) => setMosaicForm({ ...mosaicForm, source: e.target.value })}
-                        placeholder="/illumination-rabbit.png nebo https://..."
+                        placeholder="/illuminations/nazev.jpg nebo https://..."
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       />
+                      <span className="block text-[10px] text-[#8c7b6d] mt-1">
+                        Lze zadat webový odkaz, nahrát soubor z PC, nebo vložit do složky <code>public/illuminations/</code>.
+                      </span>
                     </div>
                   </div>
 
