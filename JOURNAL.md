@@ -177,6 +177,28 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 
 ---
 
+### [2026-09-14] Vizuální polish, sjednocení UI komponent, povinná autentizace a příprava na Vercel deployment
+* **Sjednocení luxusních tlačítek (`.illuminated-button`):**
+  * Tlačítko na domovské obrazovce i tlačítko pro otevření balíčků na stránce *Balíčky* (`PacksScreen`) mají nyní jednotný luxusní vzhled s písmem Cinzel (váha 800), zlatým lemováním (`#d7a347`), plynulým světelným reflexem (`::after` shimmer sweep) a animovanou šipkou při hoveru.
+  * Zavedeny tier varianty tlačítka přesně korespondující s vybranou edicí balíčku (Standard – jantar/zlato, Scholar – královský safír, Masterwork – císařský ametyst).
+* **Sjednocení písařských odznaků (`.home-pack-badge` vs. `.pack-ribbon`):**
+  * Z odznaku na domovské stránce byly odstraněny nekonzistentní inline styly.
+  * Styl byl stoprocentně synchronizován s páskou balíčků na stránce Balíčky (shodné barevné přechody, stínování s medieval hloubkou, typografie s uppercase letter-spacingem a vnitřní světelné linky).
+* **Čistá interaktivní mapa bez licenčního vodoznaku:**
+  * Přepnut podkladový dlaždicový zdroj Leaflet mapy z CartoDB (který vkládal rušivý vodoznak „API required“) na standardní otevřené OpenStreetMap dlaždice doplněné o jemný pergamenový filtr (`sepia` a teplý kontrast).
+  * Ošetřena chyba `TypeError: Cannot read properties of undefined (reading '_leaflet_pos')` čistým rušením časovačů a kontrolou existence kontejneru při odhlášení či změně záložek.
+* **Povinné uživatelské účty a odstranění režimu hosta:**
+  * Odstraněna možnost neregistrovaného hraní (režim hosta), aby měl každý uživatel zaručeno bezpečné ukládání sbírky, postupu v mozaice a odemykání achievementů do Supabase cloudu.
+  * Modální okno sjednoceno pod název **„Vstup do Quilldrop“**.
+* **Sjednocení herní terminologie:**
+  * Archaické slovo „Rozpečetit“ bylo napříč všemi texty, tlačítky a achievementy nahrazeno přirozeným a srozumitelným slovem **„Otevřít“** (*Otevřít balíček*, *Otevření balíčků*, *Otevřete balíček a odhalte první rukopisy*).
+* **Příprava projektu pro bezproblémové nasazení na Vercel:**
+  * Přepnuta výchozí sestavovací pipeline na nativní **Next.js 16 (Turbopack)** (`next build`), která generuje standardní `.next` adresář vyžadovaný Vercel platformou.
+  * Odstraněna závislost na privátním OpenAI pluginu (`sites-vite-plugin`), který se nacházel v ignorované složce `build/` a na Vercelu by způsoboval pád sestavení.
+  * Zachována plná zpětná kompatibilita pro lokální vývoj jak přes Vite (`npm run dev`), tak přes Next.js (`npm run dev:next`).
+
+---
+
 ### Následující kroky (Fáze 2):
 * [ ] **Napojení dynamických miniher ze Supabase (`game_questions`):**
   * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
