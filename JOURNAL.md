@@ -222,6 +222,17 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Součástí Studia je interaktivní 16dílný slicer s plynulým posuvníkem 0–16 dílků, který přímo v reálném čase demonstruje, jak bude nový obraz rozdělen na 16 očíslovaných zlacených fragmentů v mřížce $4 \times 4$.
 * **Integrovaná simulace pro prezentaci:**
   * Na stránce profilu přibyly rychlé demonstrační spínače `Simulovat další den (+1 fragment)` a `Simulovat přerušení streaku (reset na Den 1)`, umožňující okamžitě předvést fungování celého systému prof. Doležalové bez nutnosti čekat 24 hodin.
+* **100% lokální hosting iluminací a eliminace závislosti na externích odkazech:**
+  * Všechny historické iluminace pro 6 cyklů byly staženy ve vysokém rozlišení přímo do repozitáře (`public/illuminations/`):
+    * `public/illuminations/eadwine-scribe.jpg` (Eadwine Psalter, Trinity College Cambridge)
+    * `public/illuminations/bohemian-lion.jpg` (Gelnhausenův kodex, Jihlava)
+    * `public/illuminations/wenceslas-initial.jpg` (Bible Václava IV., ÖNB Vídeň)
+    * `public/illuminations/astrolabe-spheres.jpg` (Astronomický sborník Václava IV.)
+    * `public/illuminations/codex-gigas-devil.jpg` (Codex Gigas, Podlažice / Stockholm)
+    * `public/illumination-rabbit.png` (Učený zajíc z marginalií)
+  * Odstraněna zranitelnost vůči blokování hotlinkování z Wikimedia Commons (chyby HTTP 400 / 404).
+  * Do `getStoredIlluminations()` implementována automatická migrace, která v `localStorage` klientů detekuje a nahradí staré externí URL bezpečnými lokálními cestami.
+  * Přidány robustní `onError` fallbacky do komponenty `IlluminationMosaic`, profilové galerie i Studia, garantující zobrazení i při nepředvídaném výpadku.
 
 ---
 
@@ -232,5 +243,6 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Nahradit provizorní mapu skutečnou interaktivní mapou historické Evropy s lokalitami ze záznamů (Praha, Olomouc, Bologna, Heidelberg, Krakov atd.).
 * [ ] **Synchronizace hráčského profilu a inventáře do Supabase:**
   * Propojit herní postup s tabulkami `profiles` a `user_cards` v Supabase.
+
 
 
