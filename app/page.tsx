@@ -2,11 +2,20 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, type LucideIcon } from "lucide-react";
+import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
 import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
+import {
+  isSoundEnabled,
+  setSoundEnabled,
+  playSealCrack,
+  playParchmentFlip,
+  playQuillScratch,
+  playTriumphFanfare,
+  playSoftClick,
+} from "./audio";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
@@ -156,6 +165,18 @@ export default function Home() {
   const [showMap, setShowMap] = useState(false);
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [pendingPackLevel, setPendingPackLevel] = useState<number | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+
+  useEffect(() => {
+    setSoundOn(isSoundEnabled());
+  }, []);
+
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) playSoftClick();
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -359,6 +380,7 @@ export default function Home() {
     }
 
     const drawn = Array.from({ length: 5 }, () => chooseCard(chosenTier));
+    playSealCrack();
     setOpened(drawn);
     setReveal(0);
     setCardShown(false);
@@ -386,6 +408,7 @@ export default function Home() {
 
   const finishReveal = () => {
     if (!opened) return;
+    playParchmentFlip(0.25);
     if (reveal < opened.length - 1) { setReveal(r => r + 1); setCardShown(false); }
     else {
       setOpened(null);
@@ -425,6 +448,7 @@ export default function Home() {
     const isTranscription = activeQuestion?.mode === "transcription" || Boolean(activeQuestion?.target_transcription);
     const quality: PackQuality = isTranscription ? "masterwork" : (game === "paleo" || game === "cipher") ? "refined" : "standard";
     if (correct) {
+      playTriumphFanfare(isTranscription ? "legendary" : "rare");
       const earnedXp = isTranscription ? 120 : game === "paleo" ? 75 : game === "cipher" ? 60 : 35;
       const nextLevel = levelForXp(state.xp + earnedXp);
       setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 25 }, earnedXp));
@@ -434,6 +458,7 @@ export default function Home() {
         setToast(`Správně! ${qualityLabel(quality)} byl uložen do vaší pokladnice.`);
       }
     } else {
+      playParchmentFlip(0.2);
       setState(s => ({ ...s, gamesPlayed: s.gamesPlayed + 1 }));
       setToast(`Pokus využit — dnes zbývá ${Math.max(0, 9 - state.gamesPlayed)} výzev.`);
     }
@@ -463,6 +488,8 @@ export default function Home() {
           setTab={setTab}
           uniqueOwned={uniqueOwned}
           totalCards={cards.length}
+          soundOn={soundOn}
+          onToggleSound={toggleSound}
         />
 
         <div className="scroll-area">
@@ -525,6 +552,8 @@ function StatusBar({
   setTab,
   uniqueOwned,
   totalCards,
+  soundOn,
+  onToggleSound,
 }: {
   state: GameState;
   isLive?: boolean;
@@ -532,6 +561,8 @@ function StatusBar({
   setTab: (t: Tab) => void;
   uniqueOwned: number;
   totalCards: number;
+  soundOn?: boolean;
+  onToggleSound?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -571,6 +602,17 @@ function StatusBar({
         <span title="Dní v řadě bez přerušení" aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
         <span title="16denní iluminace" aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
         <span title="Zkušenostní body (XP)" aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
+        {onToggleSound && (
+          <button
+            type="button"
+            className={`sound-toggle-btn ${soundOn ? "active" : "muted"}`}
+            onClick={onToggleSound}
+            title={soundOn ? "Zvuk skriptoria je zapnutý (kliknutím ztlumit)" : "Zvuk je ztlumený (kliknutím zapnout)"}
+            aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
+          >
+            {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
+        )}
       </div>
     </header>
   );
@@ -1484,9 +1526,17 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
   const isMonumental = card.rarity === "Legendary" || card.rarity === "Unique";
   const beginReveal = () => {
     if (tension) return;
-    if (!isMonumental) return onReveal();
+    playParchmentFlip(0.28);
+    if (!isMonumental) {
+      onReveal();
+      playTriumphFanfare(card.rarity);
+      return;
+    }
     setTension(true);
-    window.setTimeout(onReveal, card.rarity === "Unique" ? 1500 : 1050);
+    window.setTimeout(() => {
+      onReveal();
+      playTriumphFanfare(card.rarity);
+    }, card.rarity === "Unique" ? 1500 : 1050);
   };
   return <div className={`modal-backdrop reveal-bg aura-${card.rarity.toLowerCase()} ${shown ? "is-revealed" : "is-sealed"} ${tension ? "is-tension" : ""}`}>
     <div className="particle-field" aria-hidden="true">{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ "--i": i } as React.CSSProperties}>✦</i>)}</div>
@@ -1507,7 +1557,7 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
         <div className="large-illustration"><ColophonImage card={card} /><b>{card.year}</b></div>
         <h2>{card.title}</h2><p>“{card.quote}”</p><small>{card.scribe} · {card.place}</small>
       </section>
-      <div className="reveal-actions"><span>{position === total ? "Poslední karta balíčku" : `Ještě zbývá ${total - position} karet`}</span><button onClick={onNext}>{position === total ? "Uložit do sbírky" : "Táhnout další kartu"} →</button></div>
+      <div className="reveal-actions"><span>{position === total ? "Poslední karta balíčku" : `Ještě zbývá ${total - position} karet`}</span><button onClick={() => { playParchmentFlip(0.28); onNext(); }}>{position === total ? "Uložit do sbírky" : "Táhnout další kartu"} →</button></div>
     </>}
   </div>;
 }
@@ -1730,7 +1780,10 @@ function GameModal({
                 placeholder="Zde přepište latinský text z osvětlených řádků..."
                 value={userText}
                 disabled={answer === "correct"}
-                onChange={(e) => setUserText(e.target.value)}
+                onChange={(e) => {
+                  setUserText(e.target.value);
+                  playQuillScratch();
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !answer && userText.trim()) {
                     handleCheckTranscription();
@@ -1798,7 +1851,10 @@ function GameModal({
                     key={i}
                     disabled={!!answer}
                     className={answer ? (i === question.correct_index ? "correct" : "dim") : ""}
-                    onClick={() => onAnswer(i === question.correct_index)}
+                    onClick={() => {
+                      playSoftClick();
+                      onAnswer(i === question.correct_index);
+                    }}
                   >
                     <span className="opt-icon">{icon}</span>
                     <span className="opt-text">
