@@ -209,6 +209,70 @@ export default function AdminPage() {
     { x: 10, y: 70, w: 80, h: 8, line_number: 1 },
   ]);
 
+  // Vizuální interaktivní vyznačení řádků (Studio Spotlight na velkém rukopisu)
+  const [centerMode, setCenterMode] = useState<"crop" | "strips">("crop");
+  const [activeStripIdx, setActiveStripIdx] = useState<number>(0);
+  const stripContainerRef = useRef<HTMLDivElement>(null);
+  const [stripDrag, setStripDrag] = useState<{
+    action: "move" | "resize-se" | "resize-e" | "resize-s";
+    stripIdx: number;
+    startX: number;
+    startY: number;
+    initX: number;
+    initY: number;
+    initW: number;
+    initH: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!stripDrag) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!stripContainerRef.current) return;
+      const rect = stripContainerRef.current.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const deltaPctX = ((e.clientX - stripDrag.startX) / rect.width) * 100;
+      const deltaPctY = ((e.clientY - stripDrag.startY) / rect.height) * 100;
+
+      setBuilderStrips((prev) => {
+        const next = [...prev];
+        const cur = next[stripDrag.stripIdx];
+        if (!cur) return prev;
+
+        if (stripDrag.action === "move") {
+          const maxLeft = 100 - cur.w;
+          const maxTop = 100 - cur.h;
+          const nx = Math.max(0, Math.min(maxLeft, stripDrag.initX + deltaPctX));
+          const ny = Math.max(0, Math.min(maxTop, stripDrag.initY + deltaPctY));
+          next[stripDrag.stripIdx] = { ...cur, x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+        } else if (stripDrag.action === "resize-se") {
+          const nw = Math.max(8, Math.min(100 - cur.x, stripDrag.initW + deltaPctX));
+          const nh = Math.max(3, Math.min(100 - cur.y, stripDrag.initH + deltaPctY));
+          next[stripDrag.stripIdx] = { ...cur, w: Math.round(nw * 10) / 10, h: Math.round(nh * 10) / 10 };
+        } else if (stripDrag.action === "resize-e") {
+          const nw = Math.max(8, Math.min(100 - cur.x, stripDrag.initW + deltaPctX));
+          next[stripDrag.stripIdx] = { ...cur, w: Math.round(nw * 10) / 10 };
+        } else if (stripDrag.action === "resize-s") {
+          const nh = Math.max(3, Math.min(100 - cur.y, stripDrag.initH + deltaPctY));
+          next[stripDrag.stripIdx] = { ...cur, h: Math.round(nh * 10) / 10 };
+        }
+        return next;
+      });
+    };
+
+    const handlePointerUp = () => {
+      setStripDrag(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [stripDrag]);
+
   // Přidání nového kolofonu
   const [showNewModal, setShowNewModal] = useState(false);
   const [newForm, setNewForm] = useState({
@@ -614,6 +678,8 @@ export default function AdminPage() {
       setBuilderStrips([
         { x: 10, y: 70, w: 80, h: 8, line_number: 1 },
       ]);
+      setCenterMode("strips");
+      setActiveStripIdx(0);
       setBuilderExplanation("Správný latinský přepis včetně rozvedených zkratek a ligatur.");
       setBuilderHint("Pozor na záměnu písmen u/v, dlouhé 's' a zkracovací vlnovky.");
     }
@@ -1233,72 +1299,393 @@ export default function AdminPage() {
           </div>
         </aside>
 
-        {/* STŘEDNÍ PANEL: Plnohodnotný PowerPoint-style ořez */}
+        {/* STŘEDNÍ PANEL: Plnohodnotný PowerPoint-style ořez NEBO vizuální vyznačení řádků */}
         <main className="flex-1 bg-[#0a0908] flex flex-col overflow-hidden">
           <div className="p-3 border-b border-[#2e2721] bg-[#14110f] flex items-center justify-between text-xs">
-            <div className="flex items-center gap-3">
-              <span className="text-[#c9a96e] font-semibold flex items-center gap-1.5">
-                <CropIcon size={14} /> Výřez rukopisu
-              </span>
-              <span className="text-[#8c7b6d]">
-                (Táhněte za <b>rohy rámečku</b> pro změnu velikosti, nebo <b>uvnitř</b> pro posunutí)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setLockRatio(!lockRatio)}
-                className={`text-[11px] px-2.5 py-1 rounded border flex items-center gap-1.5 transition cursor-pointer ${
-                  lockRatio
-                    ? "bg-[#3d3120] border-[#d4af37] text-[#ffd580]"
-                    : "bg-[#231d18] border-[#3b322a] text-[#8c7b6d]"
-                }`}
-                title="Zamkne poměr stran 4:3 pro formát karty"
-              >
-                {lockRatio ? <Lock size={12} /> : <Unlock size={12} />}
-                Poměr 4:3 (Karta)
-              </button>
-
-              <button
-                onClick={() => {
-                  if (imgRef.current) {
-                    setCrop(defaultCrop(imgRef.current.width, imgRef.current.height));
-                  }
-                }}
-                className="text-[11px] text-[#b39e87] hover:text-[#e8ded1] px-2 py-1 bg-[#231d18] rounded border border-[#3b322a] flex items-center gap-1 cursor-pointer"
-                title="Vycentrovat výřez"
-              >
-                <RotateCcw size={12} /> Vycentrovat
-              </button>
-            </div>
-          </div>
-
-          {/* PLÁTNO S OŘEZEM (ReactCrop) */}
-          <div className="flex-1 overflow-auto p-6 flex items-center justify-center relative select-none">
-            {selectedCard ? (
-              <div className="max-w-full max-h-full border border-[#3d3226] shadow-2xl bg-[#14110f]">
-                <ReactCrop
-                  crop={crop}
-                  onChange={(c, percentCrop) => {
-                    setCrop(percentCrop);
-                  }}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={lockRatio ? 4 / 3 : undefined}
-                  minWidth={80}
-                  minHeight={60}
-                  className="max-h-[72vh]"
+            <div className="flex items-center gap-2.5">
+              {/* Přepínač režimu plátna */}
+              <div className="inline-flex rounded bg-[#1c1611] p-0.5 border border-[#3b322a]">
+                <button
+                  type="button"
+                  onClick={() => setCenterMode("crop")}
+                  className={`px-2.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                    centerMode === "crop"
+                      ? "bg-[#3d3120] text-[#ffd580] shadow"
+                      : "text-[#8c7b6d] hover:text-[#e8ded1]"
+                  }`}
                 >
-                  <img
-                    ref={imgRef}
-                    src={selectedCard.image_url}
-                    alt="Folio rukopisu"
-                    onLoad={onImageLoad}
-                    className="max-h-[72vh] w-auto block select-none"
-                  />
-                </ReactCrop>
+                  <CropIcon size={12} /> Výřez karty (4:3)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCenterMode("strips")}
+                  className={`px-2.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                    centerMode === "strips"
+                      ? "bg-[#3d3120] text-[#ffd580] shadow"
+                      : "text-[#8c7b6d] hover:text-[#e8ded1]"
+                  }`}
+                >
+                  <PenTool size={12} /> Vyznačení řádků
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#14110f] text-[9.5px] border border-[#d4af37]/40 text-[#ffd580] font-mono">
+                    {builderStrips.length}/3
+                  </span>
+                </button>
+              </div>
+
+              {centerMode === "crop" ? (
+                <span className="text-[#8c7b6d] hidden md:inline">
+                  (Táhněte za <b>rohy rámečku</b> pro velikost, nebo <b>uvnitř</b> pro posun)
+                </span>
+              ) : (
+                <span className="text-[#c9a96e] hidden md:inline font-medium">
+                  🎯 Klikněte a táhněte přímo po rukopisu pro označení a úpravu řádků
+                </span>
+              )}
+            </div>
+
+            {centerMode === "crop" ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setLockRatio(!lockRatio)}
+                  className={`text-[11px] px-2.5 py-1 rounded border flex items-center gap-1.5 transition cursor-pointer ${
+                    lockRatio
+                      ? "bg-[#3d3120] border-[#d4af37] text-[#ffd580]"
+                      : "bg-[#231d18] border-[#3b322a] text-[#8c7b6d]"
+                  }`}
+                  title="Zamkne poměr stran 4:3 pro formát karty"
+                >
+                  {lockRatio ? <Lock size={12} /> : <Unlock size={12} />}
+                  Poměr 4:3 (Karta)
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (imgRef.current) {
+                      setCrop(defaultCrop(imgRef.current.width, imgRef.current.height));
+                    }
+                  }}
+                  className="text-[11px] text-[#b39e87] hover:text-[#e8ded1] px-2 py-1 bg-[#231d18] rounded border border-[#3b322a] flex items-center gap-1 cursor-pointer"
+                  title="Vycentrovat výřez"
+                >
+                  <RotateCcw size={12} /> Vycentrovat
+                </button>
               </div>
             ) : (
-              <p className="text-xs text-[#7d6f62]">Vyberte kartu vlevo pro úpravu výřezu.</p>
+              <div className="flex items-center gap-2">
+                {builderStrips.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const lastY = builderStrips[builderStrips.length - 1]?.y || 60;
+                      const nextStrips = [
+                        ...builderStrips,
+                        {
+                          x: 10,
+                          y: Math.min(88, lastY + 11),
+                          w: 80,
+                          h: 8,
+                          line_number: builderStrips.length + 1,
+                        },
+                      ];
+                      setBuilderStrips(nextStrips);
+                      setActiveStripIdx(nextStrips.length - 1);
+                    }}
+                    className="text-[11px] bg-[#2a2118] text-[#ffd580] hover:bg-[#3d3120] px-2.5 py-1 rounded border border-[#d4af37]/50 flex items-center gap-1 cursor-pointer font-bold"
+                  >
+                    <PlusCircle size={12} /> Přidat řádek ({builderStrips.length}/3)
+                  </button>
+                )}
+                {builderStrips.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextStrips = builderStrips.filter((_, i) => i !== activeStripIdx);
+                      setBuilderStrips(nextStrips);
+                      setActiveStripIdx(Math.max(0, activeStripIdx - 1));
+                    }}
+                    className="text-[11px] text-[#ff7878] hover:text-[#ff9999] px-2 py-1 bg-[#241515] rounded border border-[#522424] flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={12} /> Smazat #{activeStripIdx + 1}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextStrips = [...builderStrips];
+                    if (nextStrips[activeStripIdx]) {
+                      nextStrips[activeStripIdx] = {
+                        ...nextStrips[activeStripIdx],
+                        x: 10,
+                        w: 80,
+                        h: 8,
+                      };
+                      setBuilderStrips(nextStrips);
+                    }
+                  }}
+                  className="text-[11px] text-[#b39e87] hover:text-[#e8ded1] px-2 py-1 bg-[#231d18] rounded border border-[#3b322a] flex items-center gap-1 cursor-pointer"
+                  title="Nastavit standardní šířku 80 % a výšku 8 %"
+                >
+                  <RotateCcw size={12} /> Standardní rozměr
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* PLÁTNO: OŘEZ (ReactCrop) NEBO VIZUÁLNÍ OZNAČENÍ ŘÁDKŮ */}
+          <div className="flex-1 overflow-auto p-6 flex items-center justify-center relative select-none">
+            {centerMode === "crop" ? (
+              selectedCard ? (
+                <div className="max-w-full max-h-full border border-[#3d3226] shadow-2xl bg-[#14110f]">
+                  <ReactCrop
+                    crop={crop}
+                    onChange={(c, percentCrop) => {
+                      setCrop(percentCrop);
+                    }}
+                    onComplete={(c) => setCompletedCrop(c)}
+                    aspect={lockRatio ? 4 / 3 : undefined}
+                    minWidth={80}
+                    minHeight={60}
+                    className="max-h-[72vh]"
+                  >
+                    <img
+                      ref={imgRef}
+                      src={selectedCard.image_url}
+                      alt="Folio rukopisu"
+                      onLoad={onImageLoad}
+                      className="max-h-[72vh] w-auto block select-none"
+                    />
+                  </ReactCrop>
+                </div>
+              ) : (
+                <p className="text-xs text-[#7d6f62]">Vyberte kartu vlevo pro úpravu výřezu.</p>
+              )
+            ) : (
+              selectedCard ? (
+                <div className="flex flex-col items-center gap-3 max-w-full max-h-full">
+                  <div
+                    ref={stripContainerRef}
+                    onPointerDown={(e) => {
+                      if (!stripContainerRef.current) return;
+                      const rect = stripContainerRef.current.getBoundingClientRect();
+                      const clickX = Math.max(0, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+                      const clickY = Math.max(0, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+
+                      if (builderStrips.length < 3) {
+                        const newIdx = builderStrips.length;
+                        const initialWidth = 75;
+                        const initialHeight = 8;
+                        const startX = Math.max(2, Math.min(100 - initialWidth, clickX - 10));
+                        const newStrip = {
+                          x: Math.round(startX * 10) / 10,
+                          y: Math.round(clickY * 10) / 10,
+                          w: initialWidth,
+                          h: initialHeight,
+                          line_number: newIdx + 1,
+                        };
+                        setBuilderStrips([...builderStrips, newStrip]);
+                        setActiveStripIdx(newIdx);
+                        setStripDrag({
+                          action: "move",
+                          stripIdx: newIdx,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          initX: startX,
+                          initY: clickY,
+                          initW: initialWidth,
+                          initH: initialHeight,
+                        });
+                      } else {
+                        const curIdx = activeStripIdx < builderStrips.length ? activeStripIdx : 0;
+                        const cur = builderStrips[curIdx];
+                        const newY = Math.max(0, Math.min(100 - cur.h, clickY));
+                        const next = [...builderStrips];
+                        next[curIdx] = { ...cur, y: Math.round(newY * 10) / 10 };
+                        setBuilderStrips(next);
+                        setStripDrag({
+                          action: "move",
+                          stripIdx: curIdx,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          initX: cur.x,
+                          initY: newY,
+                          initW: cur.w,
+                          initH: cur.h,
+                        });
+                      }
+                    }}
+                    className="relative border border-[#4a3928] shadow-2xl bg-[#0f0d0b] max-h-[72vh] select-none cursor-crosshair overflow-hidden"
+                  >
+                    <img
+                      src={selectedCard.image_url}
+                      alt="Folio pro vyznačení řádků"
+                      className="max-h-[72vh] w-auto block pointer-events-none select-none"
+                    />
+
+                    {/* Tmavá iluminovaná maska přes rukopis */}
+                    <svg
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <mask id="admin-interactive-mask">
+                          <rect x="0" y="0" width="100" height="100" fill="white" />
+                          {builderStrips.map((st, i) => (
+                            <rect
+                              key={i}
+                              x={st.x}
+                              y={st.y}
+                              width={st.w}
+                              height={st.h}
+                              fill="black"
+                              rx="0.5"
+                            />
+                          ))}
+                        </mask>
+                      </defs>
+                      <rect
+                        x="0"
+                        y="0"
+                        width="100"
+                        height="100"
+                        fill="rgba(0,0,0,0.68)"
+                        mask="url(#admin-interactive-mask)"
+                      />
+                    </svg>
+
+                    {/* Interaktivní obdélníky jednotlivých řádků */}
+                    {builderStrips.map((st, idx) => {
+                      const isActive = activeStripIdx === idx;
+                      return (
+                        <div
+                          key={idx}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setActiveStripIdx(idx);
+                            setStripDrag({
+                              action: "move",
+                              stripIdx: idx,
+                              startX: e.clientX,
+                              startY: e.clientY,
+                              initX: st.x,
+                              initY: st.y,
+                              initW: st.w,
+                              initH: st.h,
+                            });
+                          }}
+                          style={{
+                            left: `${st.x}%`,
+                            top: `${st.y}%`,
+                            width: `${st.w}%`,
+                            height: `${st.h}%`,
+                          }}
+                          className={`absolute border-2 transition-colors cursor-move flex items-center justify-between ${
+                            isActive
+                              ? "border-[#ffd580] bg-[#ffd580]/20 shadow-[0_0_18px_rgba(255,213,128,0.5)] z-20"
+                              : "border-[#d4af37]/60 border-dashed bg-[#ffd580]/5 hover:border-[#ffd580] z-10"
+                          }`}
+                        >
+                          {/* Odznáček s číslem řádku */}
+                          <div className="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-[#1c150e] border border-[#ffd580] text-[9.5px] font-bold text-[#ffd580] flex items-center gap-1 shadow pointer-events-none">
+                            <span>#{st.line_number || idx + 1}</span>
+                            <span className="opacity-80 font-mono text-[8.5px]">
+                              {Math.round(st.w)}% × {Math.round(st.h)}%
+                            </span>
+                          </div>
+
+                          {/* Úchyty pro změnu velikosti (zobrazeny pro aktivní řádek) */}
+                          {isActive && (
+                            <>
+                              {/* Pravý úchyt (šířka) */}
+                              <div
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setActiveStripIdx(idx);
+                                  setStripDrag({
+                                    action: "resize-e",
+                                    stripIdx: idx,
+                                    startX: e.clientX,
+                                    startY: e.clientY,
+                                    initX: st.x,
+                                    initY: st.y,
+                                    initW: st.w,
+                                    initH: st.h,
+                                  });
+                                }}
+                                className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-[#ffd580]/40 flex items-center justify-center"
+                                title="Změnit šířku řádku"
+                              >
+                                <div className="w-1 h-3.5 bg-[#ffd580] rounded-full" />
+                              </div>
+
+                              {/* Spodní úchyt (výška) */}
+                              <div
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setActiveStripIdx(idx);
+                                  setStripDrag({
+                                    action: "resize-s",
+                                    stripIdx: idx,
+                                    startX: e.clientX,
+                                    startY: e.clientY,
+                                    initX: st.x,
+                                    initY: st.y,
+                                    initW: st.w,
+                                    initH: st.h,
+                                  });
+                                }}
+                                className="absolute left-0 right-0 bottom-0 h-3 cursor-ns-resize hover:bg-[#ffd580]/40 flex items-center justify-center"
+                                title="Změnit výšku řádku"
+                              >
+                                <div className="w-4 h-1 bg-[#ffd580] rounded-full" />
+                              </div>
+
+                              {/* Jihovýchodní rohový úchyt (šířka i výška současně) */}
+                              <div
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setActiveStripIdx(idx);
+                                  setStripDrag({
+                                    action: "resize-se",
+                                    stripIdx: idx,
+                                    startX: e.clientX,
+                                    startY: e.clientY,
+                                    initX: st.x,
+                                    initY: st.y,
+                                    initW: st.w,
+                                    initH: st.h,
+                                  });
+                                }}
+                                className="absolute -right-1.5 -bottom-1.5 w-3.5 h-3.5 bg-[#ffd580] border border-[#1a120b] rounded cursor-nwse-resize shadow"
+                                title="Táhněte za roh pro změnu velikosti"
+                              />
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Pomocný proužek pod plátnem */}
+                  <div className="text-[11px] text-[#b39e87] flex flex-wrap items-center justify-center gap-4 bg-[#14110f] px-3.5 py-1.5 rounded border border-[#2e2721]">
+                    <span>
+                      🖱️ <b>Posun:</b> uchopte řádek a táhněte
+                    </span>
+                    <span>
+                      📐 <b>Velikost:</b> táhněte za roh nebo úchyty po stranách
+                    </span>
+                    <span>
+                      ➕ <b>Nový řádek:</b> klikněte na volné místo na rukopisu
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-[#7d6f62]">Vyberte kartu vlevo pro vyznačení řádků.</p>
+              )
             )}
           </div>
 
@@ -1724,169 +2111,110 @@ export default function AdminPage() {
 
                     {/* REŽIM 4: PALEOGRAFICKÝ MISTR (TRANSCRIPTION) */}
                     {builderMode === "transcription" ? (
-                      <div className="space-y-2.5 pt-2 border-t border-[#2e2620]">
+                      <div className="space-y-3 pt-2 border-t border-[#2e2620]">
                         <div className="flex justify-between items-center">
-                          <label className="text-[10px] uppercase font-bold text-[#c9a96e]">
-                            Vyznačení řádků k přepisu (Spotlight)
+                          <label className="text-[10px] uppercase font-bold text-[#ffd580] flex items-center gap-1.5">
+                            <PenTool size={12} /> Vyznačení řádků k přepisu
                           </label>
-                          {builderStrips.length < 3 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const lastY = builderStrips[builderStrips.length - 1]?.y || 60;
-                                setBuilderStrips([
-                                  ...builderStrips,
-                                  {
-                                    x: 10,
-                                    y: Math.min(88, lastY + 10),
-                                    w: 80,
-                                    h: 8,
-                                    line_number: builderStrips.length + 1,
-                                  },
-                                ]);
-                              }}
-                              className="text-[10px] text-[#ffd580] hover:underline flex items-center gap-1"
-                            >
-                              <PlusCircle size={11} /> Přidat řádek
-                            </button>
-                          )}
+                          <span className="text-[10px] text-[#ffd580] bg-[#241a10] px-1.5 py-0.5 rounded border border-[#d4af37]/30 font-mono">
+                            {builderStrips.length}/3 řádků
+                          </span>
                         </div>
 
-                        {/* Miniaturní náhled s osvětlenými řádky */}
-                        <div className="relative w-full h-32 bg-[#120d09] border border-[#423121] rounded overflow-hidden">
-                          <img
-                            src={selectedCard?.image_url}
-                            alt=""
-                            className="w-full h-full object-contain"
-                          />
-                          <svg
-                            className="absolute inset-0 w-full h-full pointer-events-none"
-                            viewBox="0 0 100 100"
-                            preserveAspectRatio="none"
-                          >
-                            <defs>
-                              <mask id="admin-spotlight-mask">
-                                <rect x="0" y="0" width="100" height="100" fill="white" />
-                                {builderStrips.map((st, i) => (
-                                  <rect key={i} x={st.x} y={st.y} width={st.w} height={st.h} fill="black" rx="0.5" />
-                                ))}
-                              </mask>
-                            </defs>
-                            <rect
-                              x="0"
-                              y="0"
-                              width="100"
-                              height="100"
-                              fill="rgba(0,0,0,0.72)"
-                              mask="url(#admin-spotlight-mask)"
-                            />
-                            {builderStrips.map((st, i) => (
-                              <g key={i}>
-                                <rect
-                                  x={st.x}
-                                  y={st.y}
-                                  width={st.w}
-                                  height={st.h}
-                                  fill="none"
-                                  stroke="#ffd580"
-                                  strokeWidth="0.8"
-                                  strokeDasharray="2 1"
-                                />
-                                <text
-                                  x={st.x + 1}
-                                  y={st.y + Math.min(st.h * 0.8, 5)}
-                                  fill="#ffd580"
-                                  fontSize="3.5"
-                                  fontWeight="bold"
-                                >
-                                  {st.line_number || i + 1}.
-                                </text>
-                              </g>
-                            ))}
-                          </svg>
-                        </div>
+                        {/* Akční tlačítko pro přechod na velký rukopis */}
+                        <button
+                          type="button"
+                          onClick={() => setCenterMode("strips")}
+                          className={`w-full py-2 px-3 rounded text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                            centerMode === "strips"
+                              ? "bg-[#3d3120] text-[#ffd580] border border-[#ffd580] shadow-[0_0_12px_rgba(255,213,128,0.3)]"
+                              : "bg-[#231d18] text-[#c9a96e] hover:bg-[#2d251e] border border-[#3b322a]"
+                          }`}
+                        >
+                          <CropIcon size={13} />
+                          {centerMode === "strips"
+                            ? "✓ Režim vyznačení na plátně aktivní"
+                            : "🎯 Vyznačit řádky myší na rukopisu vlevo"}
+                        </button>
 
-                        {/* Nastavení souřadnic jednotlivých řádků */}
-                        <div className="space-y-2">
-                          {builderStrips.map((strip, idx) => (
-                            <div key={idx} className="p-2 bg-[#14100d] border border-[#2b221a] rounded text-[11px] space-y-1">
-                              <div className="flex justify-between items-center text-[#c9a96e] font-bold">
-                                <span>Řádek #{strip.line_number || idx + 1}</span>
+                        {/* Přehledné karty vyznačených řádků */}
+                        <div className="space-y-1.5">
+                          {builderStrips.map((strip, idx) => {
+                            const isActive = activeStripIdx === idx && centerMode === "strips";
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  setActiveStripIdx(idx);
+                                  setCenterMode("strips");
+                                }}
+                                className={`p-2 rounded border text-[11px] flex items-center justify-between transition cursor-pointer ${
+                                  isActive
+                                    ? "bg-[#2b2216] border-[#ffd580] text-[#ffd580] shadow"
+                                    : "bg-[#14100d] border-[#2b221a] text-[#b39e87] hover:border-[#423528]"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-[#1b150f] border border-current flex items-center justify-center font-bold text-[10px]">
+                                    #{strip.line_number || idx + 1}
+                                  </span>
+                                  <div>
+                                    <strong className="block text-[11px]">
+                                      {isActive ? "Aktivní řádek (vybrán na plátně)" : `Řádek #${strip.line_number || idx + 1}`}
+                                    </strong>
+                                    <span className="text-[9.5px] opacity-75 font-mono">
+                                      X: {Math.round(strip.x)}% · Y: {Math.round(strip.y)}% · Š: {Math.round(strip.w)}% · V: {Math.round(strip.h)}%
+                                    </span>
+                                  </div>
+                                </div>
                                 {builderStrips.length > 1 && (
                                   <button
                                     type="button"
-                                    onClick={() => setBuilderStrips(builderStrips.filter((_, i) => i !== idx))}
-                                    className="text-[#ff6b6b] hover:underline cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const next = builderStrips.filter((_, i) => i !== idx);
+                                      setBuilderStrips(next);
+                                      setActiveStripIdx(Math.max(0, idx - 1));
+                                    }}
+                                    className="p-1 text-[#ff7878] hover:text-[#ff9999] hover:bg-[#2e1515] rounded cursor-pointer"
+                                    title="Odstranit tento řádek"
                                   >
-                                    Odstranit
+                                    <Trash2 size={12} />
                                   </button>
                                 )}
                               </div>
-                              <div className="grid grid-cols-4 gap-1.5 text-[10px]">
-                                <div>
-                                  <label className="text-[#8c7b6d] block">X: {Math.round(strip.x)}%</label>
-                                  <input
-                                    type="range"
-                                    min="0"
-                                    max="80"
-                                    value={strip.x}
-                                    onChange={(e) => {
-                                      const next = [...builderStrips];
-                                      next[idx] = { ...strip, x: Number(e.target.value) };
-                                      setBuilderStrips(next);
-                                    }}
-                                    className="w-full"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[#8c7b6d] block">Y: {Math.round(strip.y)}%</label>
-                                  <input
-                                    type="range"
-                                    min="0"
-                                    max="90"
-                                    value={strip.y}
-                                    onChange={(e) => {
-                                      const next = [...builderStrips];
-                                      next[idx] = { ...strip, y: Number(e.target.value) };
-                                      setBuilderStrips(next);
-                                    }}
-                                    className="w-full"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[#8c7b6d] block">Šířka: {Math.round(strip.w)}%</label>
-                                  <input
-                                    type="range"
-                                    min="10"
-                                    max="100"
-                                    value={strip.w}
-                                    onChange={(e) => {
-                                      const next = [...builderStrips];
-                                      next[idx] = { ...strip, w: Number(e.target.value) };
-                                      setBuilderStrips(next);
-                                    }}
-                                    className="w-full"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[#8c7b6d] block">Výška: {Math.round(strip.h)}%</label>
-                                  <input
-                                    type="range"
-                                    min="4"
-                                    max="30"
-                                    value={strip.h}
-                                    onChange={(e) => {
-                                      const next = [...builderStrips];
-                                      next[idx] = { ...strip, h: Number(e.target.value) };
-                                      setBuilderStrips(next);
-                                    }}
-                                    className="w-full"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
+
+                        {builderStrips.length < 3 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const lastY = builderStrips[builderStrips.length - 1]?.y || 60;
+                              const next = [
+                                ...builderStrips,
+                                {
+                                  x: 10,
+                                  y: Math.min(88, lastY + 11),
+                                  w: 80,
+                                  h: 8,
+                                  line_number: builderStrips.length + 1,
+                                },
+                              ];
+                              setBuilderStrips(next);
+                              setActiveStripIdx(next.length - 1);
+                              setCenterMode("strips");
+                            }}
+                            className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer font-semibold"
+                          >
+                            <PlusCircle size={12} /> Přidat další řádek ({builderStrips.length}/3)
+                          </button>
+                        )}
+
+                        <p className="text-[10px] text-[#8c7b6d] leading-relaxed">
+                          💡 <b>Tip:</b> Na velkém plátně rukopisu můžete řádky posouvat tažením myši, měnit jejich velikost za rohy nebo kliknutím na prázdné místo vytvořit nový řádek.
+                        </p>
 
                         <div>
                           <label className="text-[10px] text-[#9c8976] block">
