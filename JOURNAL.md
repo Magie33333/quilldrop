@@ -234,6 +234,29 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Do `getStoredIlluminations()` implementována automatická migrace, která v `localStorage` klientů detekuje a nahradí staré externí URL bezpečnými lokálními cestami.
   * Přidány robustní `onError` fallbacky do komponenty `IlluminationMosaic`, profilové galerie i Studia, garantující zobrazení i při nepředvídaném výpadku.
 
+### [2026-09-14] Interaktivní Heurist katalog v Quilldrop Studiu & 1-Click zařazování karet
+* **Extrakce 3 640 digitalizovaných kolofonů z 55MB vědeckého exportu:**
+  * Vytvořen skript `scripts/generate-heurist-catalog.mjs`, který z 32 064 položek Heurist exportu vyfiltroval a propojil 3 640 textových kolofonů disponujících přímými odkazy na digitalizáty:
+    * 567 digitalizátů přímo z fakultního serveru FF UK (`img.scribes.ff.cuni.cz`)
+    * 2 940 digitalizátů z `imagines.manuscriptorium.com`
+    * desítky dalších z Lipska, Švýcarska, Drážďan, Berlína a Stanfordu
+  * Vygenerován kompaktní JSON index `app/data/heuristCatalog.json`, načítaný dynamicky na vyžádání pouze v administraci (bez dopadu na rychlost hráčské aplikace).
+* **Nový prohlížeč Heurist soupisu (`HeuristCatalogModal.tsx`):**
+  * Plnohodnotný modální dialog s volbou mezi vědeckým katalogem a ručním zadáním.
+  * **Chytré filtry a značky:**
+    * `⚡ Pouze dosud nezařazené` – v reálném čase porovnává Heurist ID se Supabase a zobrazuje pouze nové dosud nezpracované kolofony.
+    * `🎨 S kresbou / ilustrací` (142 kolofonů se zvířaty, figurami či ornamenty).
+    * `🔴 S rubrikou / změnou barvy písma` (659 kolofonů s rubrikami).
+    * Filtry zdrojových serverů (FF UK Scribes, Manuscriptorium, ostatní archivy).
+    * Výběr měst (Praha, Vyšší Brod, Olomouc, Plzeň, Jihlava, Lipsko, Vídeň...).
+  * **1-Click magické předvyplnění:**
+    * Kliknutím na libovolný záznam se okamžitě načte fotografie folia, signatura, folio (locus), latinský text, český překlad, písař, místo vzniku a rok.
+    * Systém inteligentně navrhne název karty i odpovídající raritu (Common až Epic).
+    * Po stisku `Zařadit kolofon a přejít k ořezu →` se karta vytvoří v Supabase a editor je automaticky přepnut přímo do PowerPointového ořezávače 4:3 pro zaměření rámečku.
+* **Zpřehlednění celkového workflow Studia:**
+  * Přidáno výrazné zlaté tlačítko `+ Kolofon (Heurist)` do horní lišty i levého panelu.
+  * Zobrazení poměru karet: *„X ve hře · 3 640 v Heuristu“*.
+
 ---
 
 ### Následující kroky (Fáze 2):
@@ -241,8 +264,8 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
 * [ ] **Interaktivní mapa evropských skriptorií:**
   * Nahradit provizorní mapu skutečnou interaktivní mapou historické Evropy s lokalitami ze záznamů (Praha, Olomouc, Bologna, Heidelberg, Krakov atd.).
-* [ ] **Synchronizace hráčského profilu a inventáře do Supabase:**
-  * Propojit herní postup s tabulkami `profiles` a `user_cards` v Supabase.
+* [ ] **Reálné darování a výměna duplikátů (P2P Trading):**
+  * Propojit herní postup a darování karet se Supabase účty spolužáků.
 
 
 

@@ -52,6 +52,7 @@ import {
   getStoredIlluminations,
   saveStoredIlluminations,
 } from "../data/illuminations";
+import HeuristCatalogModal from "./HeuristCatalogModal";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -287,20 +288,8 @@ export default function AdminPage() {
     };
   }, [stripDrag]);
 
-  // Přidání nového kolofonu
+  // Přidání nového kolofonu (Heurist katalog / ruční zadání)
   const [showNewModal, setShowNewModal] = useState(false);
-  const [newForm, setNewForm] = useState({
-    imageUrl: "https://img.scribes.ff.cuni.cz/",
-    shelfmark: "",
-    locus: "",
-    quote: "",
-    translation: "",
-    scribe: "",
-    place: "",
-    year: 1420,
-    title: "",
-    rarity: "Common" as Rarity,
-  });
 
   // Správa historických glos a mouder ze skriptoria
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
@@ -1123,60 +1112,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleCreateNewColophon(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newForm.imageUrl || !newForm.quote) return;
-
-    setSaving(true);
-    const newHeuristId = Date.now();
-
-    const { data: colophon, error: colError } = await supabase
-      .from("colophons")
-      .insert({
-        heurist_id: newHeuristId,
-        quote: newForm.quote,
-        translation_cs: newForm.translation || null,
-        scribe: newForm.scribe || "Unknown scribe",
-        place: newForm.place || "Unknown place",
-        year: Number(newForm.year) || 1400,
-        locus: newForm.locus || "1r",
-        manuscript_shelfmark: newForm.shelfmark || "Neznámý rukopis",
-        source_url: newForm.imageUrl,
-      })
-      .select()
-      .single();
-
-    if (!colError && colophon) {
-      const { data: newCard, error: cardError } = await supabase
-        .from("cards")
-        .insert({
-          colophon_id: colophon.id,
-          slug: `card-${newHeuristId}`,
-          title: newForm.title || "Nový kolofon",
-          rarity: newForm.rarity,
-          status: "published",
-          image_url: newForm.imageUrl,
-          crop_x: 15,
-          crop_y: 15,
-          crop_w: 70,
-          crop_h: 52.5,
-        })
-        .select(`
-          *,
-          colophons (
-            id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
-          )
-        `)
-        .single();
-
-      if (!cardError && newCard) {
-        setCards([newCard as CardData, ...cards]);
-        selectCard(newCard as CardData);
-        setShowNewModal(false);
-      }
-    }
-    setSaving(false);
-  }
 
   async function handleAddGame() {
     if (!selectedCard) return;
@@ -1467,6 +1402,14 @@ export default function AdminPage() {
           )}
 
           <button
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-1.5 text-xs bg-[#2e2518] hover:bg-[#3d3120] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#52422b] cursor-pointer transition font-bold shadow-xs"
+            title="Přidat nový kolofon z 3 640 digitalizátů Heurist"
+          >
+            <PlusCircle size={14} className="text-[#d4af37]" /> + Kolofon (Heurist)
+          </button>
+
+          <button
             onClick={() => {
               setShowCuriosModal(true);
               setEditingCurio(null);
@@ -1526,14 +1469,20 @@ export default function AdminPage() {
         <aside className="w-80 border-r border-[#2e2721] bg-[#14110f] flex flex-col min-h-0 overflow-hidden">
           <div className="p-3 border-b border-[#2e2721] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#c9a96e] uppercase tracking-wider">
-                Katalog ({cards.length})
-              </span>
+              <div>
+                <span className="text-xs font-bold text-[#c9a96e] uppercase tracking-wider block">
+                  Katalog karet
+                </span>
+                <small className="text-[10px] text-[#7d6f62]">
+                  {cards.length} ve hře · 3 640 v Heuristu
+                </small>
+              </div>
               <button
                 onClick={() => setShowNewModal(true)}
-                className="text-xs text-[#ffd580] hover:text-white bg-[#2e2518] hover:bg-[#3d3120] border border-[#52422b] px-2 py-1 rounded flex items-center gap-1 cursor-pointer transition"
+                className="text-xs text-[#ffd580] hover:text-white bg-[#2e2518] hover:bg-[#3d3120] border border-[#52422b] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition font-bold shadow-xs"
+                title="Vybrat kolofon z 3 640 digitalizátů Heurist"
               >
-                <PlusCircle size={13} /> Nový kolofon
+                <PlusCircle size={13} className="text-[#d4af37]" /> + Kolofon
               </button>
             </div>
 
@@ -3082,171 +3031,19 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO: PŘIDÁNÍ NOVÉHO KOLOFONU */}
-      {showNewModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1a1613] border border-[#3d3226] rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 border-b border-[#2e2721] flex justify-between items-center bg-[#211c18]">
-              <h3 className="text-sm font-bold text-[#ffd580] flex items-center gap-2">
-                <FilePlus size={16} /> Přidat nový kolofon do databáze
-              </h3>
-              <button
-                onClick={() => setShowNewModal(false)}
-                className="text-[#9c8976] hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewColophon} className="p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[11px] text-[#9c8976] mb-1">
-                  URL adresa obrázku (IIIF nebo přímý odkaz na JPG/PNG) *
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={newForm.imageUrl}
-                  onChange={(e) => setNewForm({ ...newForm, imageUrl: e.target.value })}
-                  placeholder="https://img.scribes.ff.cuni.cz/.../folio.jpg"
-                  className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] text-[#9c8976] mb-1">
-                    Signatura rukopisu *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newForm.shelfmark}
-                    onChange={(e) => setNewForm({ ...newForm, shelfmark: e.target.value })}
-                    placeholder="Např. CO 340"
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-[#9c8976] mb-1">Folio (locus) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newForm.locus}
-                    onChange={(e) => setNewForm({ ...newForm, locus: e.target.value })}
-                    placeholder="Např. 193r"
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-[#9c8976] mb-1">
-                  Původní text kolofonu (latinsky) *
-                </label>
-                <textarea
-                  required
-                  rows={2}
-                  value={newForm.quote}
-                  onChange={(e) => setNewForm({ ...newForm, quote: e.target.value })}
-                  placeholder="Explicit liber..."
-                  className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] text-[#9c8976] mb-1">
-                  Český překlad (volitelné)
-                </label>
-                <textarea
-                  rows={2}
-                  value={newForm.translation}
-                  onChange={(e) => setNewForm({ ...newForm, translation: e.target.value })}
-                  placeholder="Kniha je dokončena..."
-                  className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[10px] text-[#9c8976] mb-1">Písař</label>
-                  <input
-                    type="text"
-                    value={newForm.scribe}
-                    onChange={(e) => setNewForm({ ...newForm, scribe: e.target.value })}
-                    placeholder="Neznámý písař"
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2 py-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[#9c8976] mb-1">Místo</label>
-                  <input
-                    type="text"
-                    value={newForm.place}
-                    onChange={(e) => setNewForm({ ...newForm, place: e.target.value })}
-                    placeholder="Praha"
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2 py-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[#9c8976] mb-1">Rok</label>
-                  <input
-                    type="number"
-                    value={newForm.year}
-                    onChange={(e) => setNewForm({ ...newForm, year: Number(e.target.value) })}
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2 py-1 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-[10px] text-[#9c8976] mb-1">Název karty</label>
-                  <input
-                    type="text"
-                    value={newForm.title}
-                    onChange={(e) => setNewForm({ ...newForm, title: e.target.value })}
-                    placeholder="Např. Hlas z kláštera"
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2 py-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[#9c8976] mb-1">Rarita</label>
-                  <select
-                    value={newForm.rarity}
-                    onChange={(e) => setNewForm({ ...newForm, rarity: e.target.value as Rarity })}
-                    className="w-full bg-[#14110f] border border-[#3b322a] rounded px-2 py-1 text-xs"
-                  >
-                    <option value="Common">Common</option>
-                    <option value="Uncommon">Uncommon</option>
-                    <option value="Rare">Rare</option>
-                    <option value="Epic">Epic</option>
-                    <option value="Legendary">Legendary</option>
-                    <option value="Unique">Unique</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2 border-t border-[#2e2721]">
-                <button
-                  type="button"
-                  onClick={() => setShowNewModal(false)}
-                  className="px-3 py-1.5 rounded text-[#9c8976] hover:bg-[#231d18]"
-                >
-                  Zrušit
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-[#d4af37] text-black font-bold px-4 py-1.5 rounded hover:bg-[#c39e2e] transition disabled:opacity-50"
-                >
-                  {saving ? "Ukládám..." : "Vytvořit a otevřít k ořezu"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* MODÁLNÍ OKNO: VÝBĚR Z HEURIST SOUPISU A PŘIDÁNÍ NOVÉHO KOLOFONU */}
+      <HeuristCatalogModal
+        isOpen={showNewModal}
+        onClose={() => setShowNewModal(false)}
+        existingCards={cards}
+        onCardCreated={(newCard) => {
+          setCards([newCard as CardData, ...cards]);
+          selectCard(newCard as CardData);
+          setLastSavedSummary("Nový kolofon zařazen z Heuristu");
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 4000);
+        }}
+      />
       {/* MODAL: SPRÁVA HISTORICKÝCH GLOS A MOUDER */}
       {showCuriosModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
