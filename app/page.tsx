@@ -1242,12 +1242,6 @@ function HomeScreen({
                       : "vault-scholar"
                     : "empty"
                 }`}
-                style={{
-                  color: remaining > 0 ? "#ffffff" : hasBonus ? (state.bonusPacks[0] === "masterwork" ? "#fef08a" : "#ffffff") : "#ffffff",
-                  background: remaining > 0 ? "linear-gradient(90deg, #991b1b, #dc2626)" : undefined,
-                  textShadow: "0 1px 2px rgba(0, 0, 0, 0.85)",
-                  fontWeight: 800,
-                }}
               >
                 {remaining > 0 ? `📜 ${formatPacksCount(remaining)}` : hasBonus ? `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
               </span>
@@ -1595,8 +1589,12 @@ function PacksScreen({
         </p>
 
         {countForSelected > 0 ? (
-          <button onClick={() => onOpen(selectedTier)}>
-            Otevřít {qualityLabel(selectedTier)} (5 karet)
+          <button
+            className={`illuminated-button tier-${selectedTier}`}
+            onClick={() => onOpen(selectedTier)}
+            style={{ width: "100%", maxWidth: "340px", justifyContent: "center" }}
+          >
+            Otevřít {qualityLabel(selectedTier)} (5 karet) <span>→</span>
           </button>
         ) : (
           <div className="empty-pack-prompt">
@@ -1608,18 +1606,33 @@ function PacksScreen({
                 : "Standardní balíčky se obnoví zítra za svítání, nebo splňte výzvu níže."}
             </span>
             {selectedTier === "masterwork" && (
-              <button disabled={!gamesLeft} onClick={() => onGame("paleo")}>
-                Spustit Paleografického mistra →
+              <button
+                className="illuminated-button tier-masterwork"
+                disabled={!gamesLeft}
+                onClick={() => onGame("paleo")}
+                style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
+              >
+                Spustit Paleografického mistra <span>→</span>
               </button>
             )}
             {selectedTier === "refined" && (
-              <button disabled={!gamesLeft} onClick={() => onGame("cipher")}>
-                Spustit Rozlušti šifru →
+              <button
+                className="illuminated-button tier-scholar"
+                disabled={!gamesLeft}
+                onClick={() => onGame("cipher")}
+                style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
+              >
+                Spustit Rozlušti šifru <span>→</span>
               </button>
             )}
             {selectedTier === "standard" && (
-              <button disabled={!gamesLeft} onClick={() => onGame("mood")}>
-                Spustit Náladu písaře →
+              <button
+                className="illuminated-button tier-standard"
+                disabled={!gamesLeft}
+                onClick={() => onGame("mood")}
+                style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
+              >
+                Spustit Náladu písaře <span>→</span>
               </button>
             )}
           </div>

@@ -725,41 +725,53 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .home-pack-header > span:first-child { font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px; color: var(--brown); }
 .home-pack-header .home-pack-badge,
 .home-pack-badge {
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #991b1b, #dc2626) !important;
-  color: #ffffff !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  letter-spacing: .5px;
-  box-shadow: 0 2px 6px rgba(153, 27, 27, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.85) !important;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-family: var(--font-ui), "Avenir Next", system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 .home-pack-header .home-pack-badge.standard,
 .home-pack-badge.standard {
-  background: linear-gradient(90deg, #991b1b, #dc2626) !important;
-  color: #ffffff !important;
+  color: #fff7ed !important;
+  background: linear-gradient(90deg, #881c1c, #b92b27) !important;
+  border: 1px solid #541111;
+  box-shadow: 2px 3px 0 #541111, inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 2px 8px rgba(136, 28, 28, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
 }
 .home-pack-header .home-pack-badge.vault-scholar,
-.home-pack-badge.vault-scholar {
-  background: linear-gradient(90deg, #1d4ed8, #2563eb) !important;
+.home-pack-badge.vault-scholar,
+.home-pack-badge.scholar {
   color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  background: linear-gradient(90deg, #16367a, #2563eb) !important;
+  border: 1px solid #0f234f;
+  box-shadow: 2px 3px 0 #0f234f, inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 12px rgba(37, 99, 235, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6) !important;
 }
 .home-pack-header .home-pack-badge.vault-masterwork,
-.home-pack-badge.vault-masterwork {
-  background: linear-gradient(90deg, #701a75, #9333ea) !important;
+.home-pack-badge.vault-masterwork,
+.home-pack-badge.masterwork {
   color: #fef08a !important;
-  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.45), inset 0 0 0 1px rgba(254, 240, 138, 0.4);
+  background: linear-gradient(90deg, #581c87, #9333ea, #581c87) !important;
+  border: 1px solid #3b0764;
+  box-shadow: 2px 3px 0 #3b0764, inset 0 0 0 1px rgba(254, 240, 138, 0.35), 0 0 16px rgba(147, 51, 234, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7) !important;
 }
 .home-pack-header .home-pack-badge.empty,
 .home-pack-badge.empty {
-  background: #6e543d !important;
-  color: #ffffff !important;
-  box-shadow: none;
+  color: #cbb49c !important;
+  background: linear-gradient(90deg, #543c26, #3d2919) !important;
+  border: 1px solid #281a0e;
+  box-shadow: 2px 3px 0 #180f07;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 .home-pack-body { display: flex; align-items: center; gap: 18px; margin: 10px 0 16px; }
 .home-pack-seal {
@@ -986,8 +998,8 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   will-change: transform;
 }
 .sealed-pack:hover .wax-seal { transform: translate3d(0, -4px, 0); }
-.sealed-pack button { position: relative; z-index: 2; max-width: 260px; background: linear-gradient(180deg, #a66b12, #734007); border: 1px solid #4f2c05; box-shadow: inset 0 0 0 2px #d7a347, 0 4px 10px rgba(65, 35, 6, 0.3); transition: transform .15s ease, filter .15s ease; backface-visibility: hidden; transform: translateZ(0); }
-.sealed-pack button:hover { transform: translate3d(0, -2px, 0); filter: brightness(1.06); }
+.sealed-pack button:not(.illuminated-button) { position: relative; z-index: 2; max-width: 260px; background: linear-gradient(180deg, #a66b12, #734007); border: 1px solid #4f2c05; box-shadow: inset 0 0 0 2px #d7a347, 0 4px 10px rgba(65, 35, 6, 0.3); transition: transform .15s ease, filter .15s ease; backface-visibility: hidden; transform: translateZ(0); }
+.sealed-pack button:not(.illuminated-button):hover { transform: translate3d(0, -2px, 0); filter: brightness(1.06); }
 .sealed-pack.bonus-refined, .sealed-pack.bonus-scholar { outline-color: #3b82f6; box-shadow: 0 0 20px rgba(37, 99, 235, 0.35), 0 8px 24px rgba(89, 51, 11, 0.25); }
 .sealed-pack.bonus-masterwork { outline-color: #a855f7; box-shadow: 0 0 24px rgba(168, 85, 247, 0.38), 0 8px 24px rgba(89, 51, 11, 0.25); }
 
@@ -1059,7 +1071,7 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 }
 .sealed-pack.tier-scholar::before, .sealed-pack.tier-refined::before { border-color: #3b6bcc; box-shadow: inset 0 0 0 4px #152752, inset 0 0 0 5px #5187fc; }
 .sealed-pack.tier-scholar .wax-seal, .sealed-pack.tier-refined .wax-seal { background: radial-gradient(circle at 36% 28%, #578cff, #204ec2 52%, #11296c 80%); box-shadow: 0 8px 16px rgba(10, 24, 66, 0.65), inset 0 0 0 6px #3b6bcc, 0 0 18px rgba(74, 130, 247, 0.5); }
-.sealed-pack.tier-scholar button, .sealed-pack.tier-refined button { background: linear-gradient(180deg, #2458c9, #13337a); border-color: #10265a; box-shadow: inset 0 0 0 2px #5f95ff, 0 5px 14px rgba(16, 42, 102, 0.5); color: #f0f5ff; }
+.sealed-pack.tier-scholar button:not(.illuminated-button), .sealed-pack.tier-refined button:not(.illuminated-button) { background: linear-gradient(180deg, #2458c9, #13337a); border-color: #10265a; box-shadow: inset 0 0 0 2px #5f95ff, 0 5px 14px rgba(16, 42, 102, 0.5); color: #f0f5ff; }
 
 .sealed-pack.tier-masterwork {
   background:
@@ -1089,7 +1101,7 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 }
 .sealed-pack.tier-masterwork::before { border-color: #9c4ec2; box-shadow: inset 0 0 0 4px #210d2d, inset 0 0 0 5px #ffd580; }
 .sealed-pack.tier-masterwork .wax-seal { background: radial-gradient(circle at 36% 28%, #e070ff, #8728a8 52%, #3c0c4e 80%); box-shadow: 0 8px 18px rgba(35, 7, 48, 0.7), inset 0 0 0 6px #ba5ae3, 0 0 22px rgba(224, 112, 255, 0.55); }
-.sealed-pack.tier-masterwork button { background: linear-gradient(180deg, #9b3fc9, #591678); border-color: #3b0a52; box-shadow: inset 0 0 0 2px #e08aff, 0 6px 18px rgba(70, 15, 94, 0.6); color: #fff4d6; }
+.sealed-pack.tier-masterwork button:not(.illuminated-button) { background: linear-gradient(180deg, #9b3fc9, #591678); border-color: #3b0a52; box-shadow: inset 0 0 0 2px #e08aff, 0 6px 18px rgba(70, 15, 94, 0.6); color: #fff4d6; }
 
 .pack-odds-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; margin: 8px auto 14px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.2); letter-spacing: .4px; }
 .empty-pack-prompt { margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -2057,7 +2069,7 @@ html, body {
   transform: translateY(-1px);
 }
 
-/* Styl tlačítka otevření balíčku na domovské stránce (.illuminated-button) */
+/* Styl luxusního tlačítka otevření balíčku (.illuminated-button) - sdílený domů i v balíčcích */
 .illuminated-button {
   display: inline-flex;
   align-items: center;
@@ -2078,6 +2090,7 @@ html, body {
   position: relative;
   overflow: hidden;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  z-index: 2;
 }
 .illuminated-button::after {
   content: "";
@@ -2086,21 +2099,21 @@ html, body {
   left: -70%;
   width: 50%;
   height: 200%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
   transform: rotate(25deg);
   transition: transform 0.65s ease;
   pointer-events: none;
 }
-.illuminated-button:hover {
+.illuminated-button:hover:not(:disabled) {
   background: linear-gradient(180deg, #cf8b2b, #8e4a10);
   transform: translateY(-2px);
   box-shadow: inset 0 0 0 2px #f0c568, 0 8px 24px rgba(65, 35, 6, 0.45);
   filter: brightness(1.06);
 }
-.illuminated-button:hover::after {
+.illuminated-button:hover:not(:disabled)::after {
   transform: translateX(380%) rotate(25deg);
 }
-.illuminated-button:active {
+.illuminated-button:active:not(:disabled) {
   transform: translateY(1px);
   box-shadow: inset 0 0 0 2px #b87a22, 0 2px 6px rgba(65, 35, 6, 0.3);
 }
@@ -2109,8 +2122,53 @@ html, body {
   font-size: 16px;
   transition: transform 0.2s ease;
 }
-.illuminated-button:hover span {
+.illuminated-button:hover:not(:disabled) span {
   transform: translateX(4px);
+}
+.illuminated-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Tier varianty luxusního tlačítka */
+.illuminated-button.tier-standard {
+  background: linear-gradient(180deg, #b87a22, #7a3e0b);
+  border-color: #4f2c05;
+  box-shadow: inset 0 0 0 2px #d7a347, 0 5px 16px rgba(65, 35, 6, 0.4);
+}
+.illuminated-button.tier-standard:hover:not(:disabled) {
+  background: linear-gradient(180deg, #cf8b2b, #8e4a10);
+  box-shadow: inset 0 0 0 2px #f0c568, 0 10px 26px rgba(65, 35, 6, 0.5);
+}
+
+.illuminated-button.tier-scholar,
+.illuminated-button.tier-refined {
+  background: linear-gradient(180deg, #2563eb, #143aa2);
+  border-color: #0f234f;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 2px #60a5fa, 0 5px 18px rgba(20, 58, 162, 0.45), 0 0 14px rgba(59, 130, 246, 0.3);
+}
+.illuminated-button.tier-scholar:hover:not(:disabled),
+.illuminated-button.tier-refined:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  box-shadow: inset 0 0 0 2px #93c5fd, 0 10px 28px rgba(37, 99, 235, 0.6), 0 0 20px rgba(59, 130, 246, 0.45);
+}
+
+.illuminated-button.tier-masterwork {
+  background: linear-gradient(180deg, #9333ea, #581c87);
+  border-color: #3b0764;
+  color: #fff4d6;
+  box-shadow: inset 0 0 0 2px #d8b4fe, 0 5px 20px rgba(88, 28, 135, 0.55), 0 0 18px rgba(168, 85, 247, 0.4);
+}
+.illuminated-button.tier-masterwork:hover:not(:disabled) {
+  background: linear-gradient(180deg, #a855f7, #6b21a8);
+  box-shadow: inset 0 0 0 2px #f0abfc, 0 10px 30px rgba(168, 85, 247, 0.7), 0 0 24px rgba(192, 132, 252, 0.55);
+}
+
+.sealed-pack .illuminated-button {
+  margin: 6px auto 0;
 }
 
 /* Jemný historický tón pro podkladovou mapu */
