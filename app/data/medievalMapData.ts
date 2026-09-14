@@ -1,4 +1,113 @@
-// Historická data pro slepou mapu Evropy (14.–15. století)
+// Data pro slepou mapu Evropy - moderní státy a uložení dochovaných rukopisů
+
+export interface ModernCountryInfo {
+  name: string;
+  hasManuscripts: boolean;
+  repositories: string[];
+  cities: string[];
+  note?: string;
+}
+
+export const MODERN_COUNTRIES: Record<string, ModernCountryInfo> = {
+  "Czech Republic": {
+    name: "Česká republika",
+    hasManuscripts: true,
+    cities: ["Praha", "Olomouc", "Vyšší Brod", "Brno", "Rajhrad"],
+    repositories: [
+      "Národní knihovna ČR (Klementinum), Praha",
+      "Zemský archiv v Opavě – pobočka Olomouc (Metropolitní kapitula)",
+      "Knihovna cisterciáckého opatství Vyšší Brod",
+      "Moravská zemská knihovna v Brně",
+      "Památník písemnictví na Moravě (Rajhrad)",
+    ],
+    note: "Hlavní centrum dochovaných rukopisů a kolofonů projektu.",
+  },
+  "Poland": {
+    name: "Polsko",
+    hasManuscripts: true,
+    cities: ["Krakov & Kazimierz"],
+    repositories: [
+      "Biblioteka Jagiellońska, Uniwersytet Jagielloński w Krakowie",
+    ],
+    note: "Rukopisy spojené s Jagellonskou univerzitou a krakovskými písaři.",
+  },
+  "Germany": {
+    name: "Německo",
+    hasManuscripts: true,
+    cities: ["Žitava (Zittau)", "Lipsko", "Norimberk", "Kostnice"],
+    repositories: [
+      "Christian-Weise-Bibliothek Zittau",
+      "Universitätsbibliothek Leipzig",
+      "Stadtbibliothek Nürnberg",
+      "Stadtarchiv Konstanz / Karlsruhe",
+    ],
+    note: "Hornolužické, saské a koncilní rukopisy a městské knihy.",
+  },
+  "Italy": {
+    name: "Itálie",
+    hasManuscripts: true,
+    cities: ["Bologna", "Florencie"],
+    repositories: [
+      "Biblioteca Universitaria di Bologna",
+      "Biblioteca Medicea Laurenziana, Florencie",
+    ],
+    note: "Univerzitní a humanistické kodexy s kolofony českých písařů.",
+  },
+  "Austria": {
+    name: "Rakousko",
+    hasManuscripts: true,
+    cities: ["Vídeň", "Melk", "Klosterneuburg"],
+    repositories: [
+      "Österreichische Nationalbibliothek (ÖNB), Vídeň",
+      "Stiftsbibliothek Melk",
+    ],
+    note: "Podunajské klášterní fondy a vídeňská dvorská knihovna.",
+  },
+  "Hungary": {
+    name: "Maďarsko",
+    hasManuscripts: true,
+    cities: ["Ostřihom (Esztergom)"],
+    repositories: [
+      "Főszékesegyházi Könyvtár (Katedrální knihovna Ostřihom)",
+    ],
+    note: "Katedrální knihovna a liturgické rukopisy na Dunaji.",
+  },
+  "Slovakia": {
+    name: "Slovensko",
+    hasManuscripts: false,
+    cities: ["Bratislava", "Spiš"],
+    repositories: ["Slovenská národná knižnica"],
+    note: "Bez evidovaných kodexů v aktuálním výběru.",
+  },
+  "France": {
+    name: "Francie",
+    hasManuscripts: false,
+    cities: ["Paříž", "Avignon"],
+    repositories: ["Bibliothèque nationale de France (BnF)"],
+    note: "Bez evidovaných kodexů v aktuálním výběru.",
+  },
+  "United Kingdom": {
+    name: "Velká Británie",
+    hasManuscripts: false,
+    cities: ["Londýn", "Oxford"],
+    repositories: ["British Library", "Bodleian Library"],
+    note: "Bez evidovaných kodexů v aktuálním výběru.",
+  },
+  "Switzerland": {
+    name: "Švýcarsko",
+    hasManuscripts: false,
+    cities: ["Basilej", "St. Gallen"],
+    repositories: ["Stiftsbibliothek St. Gallen"],
+    note: "Bez evidovaných kodexů v aktuálním výběru.",
+  },
+  "Spain": {
+    name: "Španělsko",
+    hasManuscripts: false,
+    cities: ["Madrid", "Salamanca"],
+    repositories: ["Biblioteca Nacional de España"],
+    note: "Bez evidovaných kodexů v aktuálním výběru.",
+  },
+};
 
 export interface MedievalRiver {
   id: string;
@@ -7,89 +116,11 @@ export interface MedievalRiver {
   coords: [number, number][]; // [lat, lng]
 }
 
-export const HISTORICAL_REALMS: Record<string, { latin: string; czech: string; note: string; isPrimary?: boolean }> = {
-  "Czech Republic": {
-    latin: "Corona Regni Bohemiae",
-    czech: "Země Koruny české (Čechy, Morava, Slezsko, Lužice)",
-    note: "Centrum písemnictví: Karlova univerzita, Emauzský klášter, Vyšší Brod, Olomouc, Brno, Rajhrad.",
-    isPrimary: true,
-  },
-  "Germany": {
-    latin: "Sacrum Romanum Imperium",
-    czech: "Svatá říše římská",
-    note: "Významná centra: Žitava, Norimberk, Mohuč, Kolín nad Rýnem, Lipsko.",
-    isPrimary: true,
-  },
-  "Poland": {
-    latin: "Regnum Poloniae",
-    czech: "Království polské",
-    note: "Centrum písemnictví: Krakov (Jagellonská univerzita) a Kazimierz.",
-    isPrimary: true,
-  },
-  "Italy": {
-    latin: "Regnum Italiae & Status Pontificius",
-    czech: "Italská města a Papežský stát",
-    note: "Centra humanismu a univerzit: Bologna, Florencie, Padova, Benátky, Řím.",
-    isPrimary: true,
-  },
-  "Austria": {
-    latin: "Ducatus Austriae",
-    czech: "Rakouské vévodství",
-    note: "Klášterní a univerzitní centra: Vídeň, Melk, Klosterneuburg.",
-    isPrimary: true,
-  },
-  "Slovakia": {
-    latin: "Partes Regni Hungariae (Hungaria Superior)",
-    czech: "Horní Uhry",
-    note: "Skriptoria a kapituly: Bratislava, Spiš, Nitra.",
-  },
-  "Hungary": {
-    latin: "Regnum Hungariae",
-    czech: "Uherské království",
-    note: "Královská a církevní centra: Budín, Ostřihom, Pécs.",
-  },
-  "France": {
-    latin: "Regnum Franciae",
-    czech: "Francouzské království",
-    note: "Univerzitní Paříž (Sorbonna) a papežský Avignon.",
-  },
-  "United Kingdom": {
-    latin: "Regnum Angliae & Scotiae",
-    czech: "Anglické a Skotské království",
-    note: "Univerzitní Oxford a Cambridge, Westminster.",
-  },
-  "Switzerland": {
-    latin: "Confoederatio Helvetica",
-    czech: "Stará švýcarská konfederace",
-    note: "Klášterní skriptorium Sankt Gallen a Basilej.",
-  },
-  "Spain": {
-    latin: "Corona Castellae & Corona Aragonum",
-    czech: "Kastilská a Aragonská koruna",
-    note: "Univerzita Salamanca, Toledo, Barcelona.",
-  },
-  "Portugal": {
-    latin: "Regnum Portugalliae",
-    czech: "Portugalské království",
-    note: "Univerzita v Coimbře a Lisabon.",
-  },
-  "Netherlands": {
-    latin: "Territoria Burgundica",
-    czech: "Burgundské Nizozemí",
-    note: "Centrum devotio moderna a opisování kodexů.",
-  },
-  "Belgium": {
-    latin: "Comitatus Flandriae & Brabantia",
-    czech: "Flandry a Brabantsko",
-    note: "Univerzita v Lovani, Bruggy, Gent.",
-  },
-};
-
 export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "vltava",
     name: "Vltava",
-    latin: "Wultha / Moldavia",
+    latin: "Moldau",
     coords: [
       [48.58, 14.28], // Šumava pramen
       [48.61, 14.31], // Vyšší Brod
@@ -109,7 +140,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "labe",
     name: "Labe",
-    latin: "Albis",
+    latin: "Elbe",
     coords: [
       [50.77, 15.54], // Krkonoše
       [50.43, 15.81], // Dvůr Králové
@@ -135,8 +166,8 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   },
   {
     id: "morava",
-    name: "Morava a Svratka",
-    latin: "Marus",
+    name: "Morava & Svratka",
+    latin: "March",
     coords: [
       [50.20, 16.85], // Kralický Sněžník
       [49.96, 16.97], // Šumperk
@@ -150,7 +181,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "danube",
     name: "Dunaj",
-    latin: "Danubius",
+    latin: "Danube",
     coords: [
       [48.00, 8.20],  // Donaueschingen
       [48.40, 9.99],  // Ulm
@@ -163,9 +194,9 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
       [48.41, 15.61], // Krems
       [48.30, 16.30], // Klosterneuburg
       [48.21, 16.37], // Vídeň (Wien)
-      [48.15, 17.11], // Bratislava (Prešpurk)
+      [48.15, 17.11], // Bratislava
       [47.80, 18.74], // Ostřihom (Esztergom)
-      [47.50, 19.04], // Budín a Pešť
+      [47.50, 19.04], // Budapešť
       [45.26, 19.84], // Novi Sad
       [44.82, 20.46], // Bělehrad
     ],
@@ -173,7 +204,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "rhine",
     name: "Rýn",
-    latin: "Rhenus",
+    latin: "Rhein",
     coords: [
       [46.63, 8.67],  // Alpy
       [47.56, 7.59],  // Basilej
@@ -193,10 +224,10 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "vistula",
     name: "Visla",
-    latin: "Vistula",
+    latin: "Wisła",
     coords: [
       [49.65, 18.96], // Beskydy
-      [50.06, 19.94], // Krakov a Kazimierz
+      [50.06, 19.94], // Krakov
       [50.68, 21.75], // Sandoměř
       [51.41, 21.97], // Puławy
       [52.23, 21.01], // Varšava
@@ -209,21 +240,21 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "po",
     name: "Pád",
-    latin: "Padus",
+    latin: "Po",
     coords: [
       [44.70, 7.18],  // Monviso
       [45.07, 7.69],  // Turín
       [45.18, 9.16],  // Pavia
       [45.05, 9.69],  // Piacenza
       [45.13, 10.02], // Cremona
-      [44.83, 11.62], // Ferrara (severně od Boloni)
+      [44.83, 11.62], // Ferrara
       [44.97, 12.33], // Delta Pádu / Jadran
     ],
   },
   {
     id: "arno",
     name: "Arno",
-    latin: "Arnus",
+    latin: "Arno",
     coords: [
       [43.88, 11.66], // Apeniny
       [43.77, 11.25], // Florencie (Firenze)

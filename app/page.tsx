@@ -800,6 +800,22 @@ function HomeScreen({
     return [...owned, ...unowned].slice(0, 6);
   }, [cards, state.collection]);
 
+  const scriptoriaWithCards = useMemo(() => {
+    return SCRIPTORIA_PLACES.map((place) => {
+      const placeCards = cards.filter((c) => getScriptoriumForCard(c).id === place.id);
+      const owned = placeCards.filter((c) => Boolean(state.collection[c.id]));
+      return {
+        place,
+        cards: placeCards,
+        owned,
+      };
+    });
+  }, [cards, state.collection]);
+
+  const [selectedHomePlace, setSelectedHomePlace] = useState<ScriptoriumPlace>(() => {
+    return scriptoriaWithCards.find((s) => s.owned.length > 0)?.place || SCRIPTORIA_PLACES[0];
+  });
+
   return (
     <div className="screen home-screen">
       <section className="welcome-panel">
@@ -972,24 +988,37 @@ function HomeScreen({
           </div>
         </section>
 
-        <section className="home-panel-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-              <div>
-                <h3>Historická mapa skriptorií</h3>
-                <p>Sledujte geografické stopy písařů napříč středověkou Evropou a českými zeměmi.</p>
-              </div>
-              <span style={{ width: "36px", height: "36px", display: "grid", placeItems: "center", background: "#eed8ab", borderRadius: "50%", color: "var(--brown)", border: "1px solid #a87940" }}>
-                <MapPinned size={18} />
-              </span>
+        <section className="home-panel-card home-map-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+            <div>
+              <h3 style={{ margin: "0 0 2px" }}>Historická mapa skriptorií a archivů</h3>
+              <p style={{ margin: 0, fontSize: "11px", color: "#735028" }}>
+                Kde jsou dochované středověké kodexy a kolofony dnes uloženy.
+              </p>
             </div>
-            <div style={{ background: "#ecd8ad", padding: "10px 12px", borderRadius: "6px", border: "1px solid #ba8c53", fontSize: "11.5px", color: "var(--brown)" }}>
-              📍 <strong>Místa původu:</strong> Praha, Břevnov, Sázava, Třeboň, Zlatá Koruna a další evropská centra písemnictví.
-            </div>
+            <button className="icon-label" onClick={onMap} style={{ padding: "4px 8px", fontSize: "11px" }}>
+              Celá mapa ({uniqueOwned}/{totalCards}) →
+            </button>
           </div>
-          <button className="illuminated-button" onClick={onMap} style={{ marginTop: "14px", width: "100%", justifyContent: "center" }}>
-            Otevřít historickou mapu <span>→</span>
-          </button>
+
+          <div className="home-map-container">
+            <RealLeafletMap
+              scriptoria={scriptoriaWithCards}
+              selectedPlace={selectedHomePlace}
+              onSelectPlace={(place) => setSelectedHomePlace(place)}
+              compact
+              onOpenFull={onMap}
+            />
+          </div>
+
+          <div className="home-map-bottom">
+            <div className="home-map-storage-pill">
+              🏛️ <strong>Uložení kodexů:</strong> Národní knihovna ČR (Praha), Zemský archiv v Opavě (Olomouc), Klášter Vyšší Brod, MZK Brno, Rajhrad, Krakov, Zittau, Bologna, Florencie.
+            </div>
+            <button className="illuminated-button" onClick={onMap} style={{ width: "100%", justifyContent: "center" }}>
+              Otevřít velkou mapu s detaily kodexů ({uniqueOwned}/{totalCards}) <span>→</span>
+            </button>
+          </div>
         </section>
       </div>
 
@@ -2023,6 +2052,11 @@ function MapModal({
             </div>
             <p className="map-panel-desc">{currentSelection.place.description}</p>
 
+            <div className="map-panel-repo-box">
+              🏛️ <strong>Uložení dochovaných fondů:</strong>
+              <div>{currentSelection.place.modernRepository}</div>
+            </div>
+
             <div className="map-panel-stats">
               <span>Dochované kodexy v archivu</span>
               <span>
@@ -2073,6 +2107,11 @@ function MapModal({
                         <small>
                           {isOwned ? `${card.scribe} (${card.year})` : "Získejte v balíčcích"}
                         </small>
+                        {isOwned && card.manuscript && (
+                          <div className="map-card-repo" title={card.manuscript}>
+                            🏛️ {card.manuscript}
+                          </div>
+                        )}
                       </div>
                       {isOwned ? (
                         <button

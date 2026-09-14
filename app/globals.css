@@ -273,6 +273,85 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   cursor: pointer;
 }
 
+.real-map-wrapper.compact-mode {
+  min-height: 240px;
+  height: 240px;
+  border-radius: 8px;
+}
+.real-map-wrapper.compact-mode .real-map-element {
+  min-height: 240px;
+  height: 240px;
+}
+.real-map-wrapper.compact-mode .map-cartouche {
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+.real-map-wrapper.compact-mode .real-map-controls {
+  top: 8px;
+  right: 8px;
+  gap: 4px;
+}
+.real-map-wrapper.compact-mode .real-map-controls button {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+}
+
+.map-compact-expand-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 1002;
+  background: rgba(255, 246, 224, 0.95);
+  border: 1.5px solid var(--brown);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brown);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: all 0.15s ease;
+}
+.map-compact-expand-btn:hover {
+  background: #fff;
+  transform: translateY(-1px);
+  border-color: #633306;
+}
+
+/* Hlavní strana - kontejner pro mapu skriptorií */
+.home-map-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.home-map-container {
+  width: 100%;
+  height: 240px;
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border: 1.5px solid var(--brown);
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.15);
+}
+.home-map-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.home-map-storage-pill {
+  background: #ecd8ad;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ba8c53;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--brown);
+}
+
 .map-country-tooltip {
   background: #fff9ed !important;
   border: 1.5px solid #8c5c28 !important;
@@ -282,21 +361,33 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   font-size: 11.5px !important;
   line-height: 1.35 !important;
   box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
-  max-width: 250px;
+  max-width: 270px;
 }
 .map-country-tooltip strong {
   color: #78350f;
   font-size: 12px;
 }
-.map-country-tooltip em {
-  color: #92400e;
-  font-size: 10.5px;
-}
 .map-country-tooltip small {
   color: #5c3a16;
   font-size: 10px;
   display: block;
-  margin-top: 3px;
+  margin-top: 4px;
+}
+.tooltip-storage-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #78350f;
+  margin-top: 4px;
+  border-top: 1px solid #e2c092;
+  padding-top: 3px;
+}
+.tooltip-repo-list {
+  margin: 3px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 10px;
+  color: #553310;
+  line-height: 1.35;
 }
 
 .medieval-river-tooltip {
@@ -494,7 +585,20 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .map-panel-header h3 { margin: 0 0 3px; font-size: 20px; color: var(--brown); display: flex; align-items: center; gap: 6px; }
 .map-panel-header p { margin: 0; font-size: 11px; color: #724d22; font-weight: 600; }
 .map-panel-coords { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 2px 7px; border-radius: 4px; background: #ecd3a0; border: 1px solid #c49a5b; color: #573612; font-size: 10.5px; font-family: monospace; font-weight: 700; }
-.map-panel-desc { font-size: 11px; line-height: 1.45; color: #583917; margin: 8px 0 12px; font-style: italic; }
+.map-panel-desc { font-size: 11px; line-height: 1.45; color: #583917; margin: 8px 0 8px; font-style: italic; }
+.map-panel-repo-box {
+  margin: 0 0 10px;
+  background: #ecd4a4;
+  border: 1px solid #b88a4b;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #4f300c;
+}
+.map-panel-repo-box strong {
+  color: #6f3b06;
+}
 .map-panel-stats { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--brown); margin-bottom: 4px; }
 .map-panel-bar { height: 8px; background: #deb87b; border: 1px solid #94652c; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
 .map-panel-bar i { display: block; height: 100%; background: linear-gradient(90deg, #881c1c, #b92b27); border-radius: 3px; transition: width .3s ease; }
@@ -504,6 +608,16 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .map-card-thumb { width: 60px; height: 45px; border-radius: 4px; overflow: hidden; background: #d4ba8a; border: 1px solid #9c6c2e; position: relative; }
 .map-card-info strong { display: block; font-size: 12px; color: var(--brown); line-height: 1.2; }
 .map-card-info small { display: block; font-size: 10px; color: #6a471f; margin-top: 2px; }
+.map-card-repo {
+  font-size: 10px;
+  color: #724c22;
+  margin-top: 3px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
 .map-card-action { padding: 5px 8px; font-size: 10px; font-weight: 700; background: var(--brown); color: #fff2d1; border: 1px solid #5a3407; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .map-card-action:hover { background: #764506; }
 .map-empty-state { text-align: center; padding: 24px 10px; color: #765028; font-style: italic; font-size: 12px; }

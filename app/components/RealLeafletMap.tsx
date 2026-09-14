@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ScriptoriumPlace } from "../data/scriptoria";
-import { HISTORICAL_REALMS, MEDIEVAL_RIVERS } from "../data/medievalMapData";
+import { MODERN_COUNTRIES, MEDIEVAL_RIVERS } from "../data/medievalMapData";
 
 type ScriptoriaData = {
   place: ScriptoriumPlace;
@@ -14,10 +14,14 @@ export default function RealLeafletMap({
   scriptoria,
   selectedPlace,
   onSelectPlace,
+  compact = false,
+  onOpenFull,
 }: {
   scriptoria: ScriptoriaData[];
   selectedPlace: ScriptoriumPlace;
   onSelectPlace: (place: ScriptoriumPlace) => void;
+  compact?: boolean;
+  onOpenFull?: () => void;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -41,18 +45,21 @@ export default function RealLeafletMap({
           mapInstanceRef.current = null;
         }
 
-        // Vytvoření mapy vycentrované na střední Evropu (Čechy, Morava, Polsko, Rakousko, Německo, Itálie)
+        // Vytvoření mapy vycentrované na střední Evropu (Česko, Polsko, Rakousko, Německo, Itálie)
+        const initialCenter: [number, number] = compact ? [49.3, 15.2] : [49.2, 15.2];
+        const initialZoom = compact ? 5.2 : 6;
+
         const map = L.map(mapContainerRef.current, {
-          center: [49.2, 15.2],
-          zoom: 6,
+          center: initialCenter,
+          zoom: initialZoom,
           minZoom: 4,
           maxZoom: 13,
           zoomControl: false,
           attributionControl: false,
         });
 
-        // 1. Podkladové dlaždice s opravenou URL (včetně parametru {y})
-        // CartoDB Voyager bez moderních nápisů - vytváří historický plastický terén a moře
+        // 1. Podkladové dlaždice s opravenou URL ({y})
+        // CartoDB Voyager bez nápisů - vytváří historický plastický terén a moře
         const tileLayer = L.tileLayer(
           "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
           {
@@ -63,12 +70,7 @@ export default function RealLeafletMap({
         );
         tileLayer.addTo(map);
 
-        // Fallback: Pokud by CartoDB selhalo, OpenStreetMap jako záloha
-        tileLayer.on("tileerror", () => {
-          // GeoJSON podklad zajistí, že mapa je VŽDY plně viditelná i offline
-        });
-
-        // 2. Vektorový GeoJSON podklad - SLEPÁ MAPA EVROPY (Offline-ready z public/data/europe.json)
+        // 2. Vektorový podklad slepé mapy Evropy s moderními státy a archivy uložení
         try {
           const res = await fetch("/data/europe.json");
           if (res.ok) {
@@ -77,51 +79,52 @@ export default function RealLeafletMap({
               const geoLayer = L.geoJSON(europeData, {
                 style: (feature) => {
                   const countryName = feature?.properties?.NAME || "";
+                  const info = MODERN_COUNTRIES[countryName];
                   const isCzech = countryName === "Czech Republic";
-                  const isPrimaryRealm = [
-                    "Czech Republic",
-                    "Poland",
-                    "Germany",
-                    "Italy",
-                    "Austria",
-                  ].includes(countryName);
+                  const hasManuscripts = info?.hasManuscripts ?? false;
 
                   return {
-                    fillColor: isCzech ? "#f5dfb8" : isPrimaryRealm ? "#f9ecd5" : "#fdf6ea",
-                    fillOpacity: 0.85,
-                    color: isCzech ? "#78350f" : isPrimaryRealm ? "#8c5c28" : "#af814e",
-                    weight: isCzech ? 2.2 : isPrimaryRealm ? 1.6 : 1.1,
+                    fillColor: isCzech ? "#edd5a8" : hasManuscripts ? "#f6e8cc" : "#faf4e8",
+                    fillOpacity: 0.88,
+                    color: isCzech ? "#925f2b" : hasManuscripts ? "#a47949" : "#cfb794",
+                    weight: isCzech ? 1.9 : hasManuscripts ? 1.3 : 0.85,
                     opacity: 0.9,
-                    dashArray: isPrimaryRealm ? undefined : "3, 3",
                   };
                 },
                 onEachFeature: (feature, layer) => {
                   const name = feature?.properties?.NAME || "";
-                  const realm = HISTORICAL_REALMS[name];
-                  const title = realm?.czech || name;
-                  const latin = realm?.latin ? `<em>${realm.latin}</em><br/>` : "";
-                  const note = realm?.note ? `<small>${realm.note}</small>` : "";
+                  const info = MODERN_COUNTRIES[name];
+                  const title = info?.name || name;
 
-                  layer.bindTooltip(
-                    `<div class="map-country-tooltip">
-                      <strong>${title}</strong><br/>
-                      ${latin}
-                      ${note}
-                    </div>`,
-                    { sticky: true, opacity: 0.95 }
-                  );
+                  let tooltipContent = `<div class="map-country-tooltip">
+                    <strong>📍 ${title}</strong>`;
+
+                  if (info?.hasManuscripts) {
+                    tooltipContent += `<div class="tooltip-storage-label">Archivy a knihovny s kodexy:</div>
+                      <ul class="tooltip-repo-list">
+                        ${info.repositories.map((r) => `<li>• ${r}</li>`).join("")}
+                      </ul>
+                      ${info.note ? `<small>${info.note}</small>` : ""}`;
+                  } else {
+                    tooltipContent += `<div style="font-size: 10px; color: #7a5a3a; margin-top: 3px;">
+                      Bez evidovaných kodexů v aktuální sbírce.
+                    </div>`;
+                  }
+
+                  tooltipContent += `</div>`;
+
+                  layer.bindTooltip(tooltipContent, { sticky: true, opacity: 0.95 });
 
                   layer.on({
                     mouseover: (e) => {
                       const l = e.target;
                       l.setStyle({
-                        fillColor: "#fed7aa",
+                        fillColor: "#ffd68a",
                         fillOpacity: 0.96,
-                        weight: 2.5,
-                        color: "#602203",
+                        weight: 2.2,
+                        color: "#6b350a",
                       });
                       if (l.bringToFront) l.bringToFront();
-                      // Udržet markery v popředí
                       markersMapRef.current.forEach((m) => {
                         if (m.bringToFront) m.bringToFront();
                       });
@@ -141,17 +144,17 @@ export default function RealLeafletMap({
           console.warn("Chyba při načítání GeoJSON slepé mapy Evropy:", geoErr);
         }
 
-        // 3. Středověké říční toky (Vltava, Labe, Dunaj, Rýn, Visla, Pád, Arno)
+        // 3. Středověké říční toky (přirozené geografické koridory písemnictví)
         MEDIEVAL_RIVERS.forEach((river) => {
           const riverLine = L.polyline(river.coords, {
             color: "#3a658a",
-            weight: river.id === "vltava" || river.id === "labe" ? 2.6 : 2.0,
+            weight: river.id === "vltava" || river.id === "labe" ? 2.4 : 1.8,
             opacity: 0.72,
             smoothFactor: 1.2,
           }).addTo(map);
 
           riverLine.bindTooltip(
-            `<div class="medieval-river-tooltip">🌊 <strong>${river.name}</strong> <em>(${river.latin})</em></div>`,
+            `<div class="medieval-river-tooltip">🌊 <strong>${river.name}</strong></div>`,
             { sticky: true }
           );
         });
@@ -159,8 +162,8 @@ export default function RealLeafletMap({
         mapInstanceRef.current = map;
         setMapReady(true);
 
-        // Vynutit správné překreslení rozměrů mapy v modálním okně
-        setTimeout(() => map.invalidateSize(), 60);
+        // Vynutit správné překreslení rozměrů mapy
+        setTimeout(() => map.invalidateSize(), 50);
         setTimeout(() => map.invalidateSize(), 200);
         setTimeout(() => map.invalidateSize(), 600);
       } catch (err) {
@@ -170,7 +173,6 @@ export default function RealLeafletMap({
 
     init();
 
-    // Sledování změn velikosti kontejneru
     const resizeObserver = new ResizeObserver(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -189,7 +191,7 @@ export default function RealLeafletMap({
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [compact]);
 
   // Vykreslení a aktualizace markerů skriptorií
   useEffect(() => {
@@ -209,21 +211,22 @@ export default function RealLeafletMap({
       scriptoria.forEach(({ place, cards, owned }) => {
         const hasOwned = owned.length > 0;
         const isSelected = selectedPlace.id === place.id;
+        const markerSize = compact ? 34 : 40;
 
         // Vytvoření custom DivIconu ve stylu voskové pečeti
         const iconHtml = `
-          <div class="medieval-leaf-marker ${hasOwned ? "has-owned" : ""} ${isSelected ? "is-selected" : ""}" title="${place.name}">
+          <div class="medieval-leaf-marker ${compact ? "is-compact" : ""} ${hasOwned ? "has-owned" : ""} ${isSelected ? "is-selected" : ""}" title="${place.name} (${place.country})">
             <span class="marker-seal">${place.icon}</span>
             <span class="marker-count">${owned.length}/${cards.length}</span>
-            <span class="marker-tooltip">${place.name}</span>
+            <span class="marker-tooltip">${place.name} · ${place.country}</span>
           </div>
         `;
 
         const customIcon = L.divIcon({
           html: iconHtml,
           className: "leaflet-medieval-icon-wrapper",
-          iconSize: [42, 42],
-          iconAnchor: [21, 21],
+          iconSize: [markerSize, markerSize],
+          iconAnchor: [markerSize / 2, markerSize / 2],
         });
 
         const marker = L.marker([place.lat, place.lng], {
@@ -233,10 +236,14 @@ export default function RealLeafletMap({
 
         marker.on("click", () => {
           onSelectPlace(place);
-          map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 8), {
-            duration: 0.8,
-            easeLinearity: 0.25,
-          });
+          if (compact && onOpenFull) {
+            onOpenFull();
+          } else {
+            map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 8), {
+              duration: 0.8,
+              easeLinearity: 0.25,
+            });
+          }
         });
 
         markersMapRef.current.set(place.id, marker);
@@ -248,14 +255,13 @@ export default function RealLeafletMap({
     return () => {
       isCancelled = true;
     };
-  }, [mapReady, scriptoria, selectedPlace, onSelectPlace]);
+  }, [mapReady, scriptoria, selectedPlace, onSelectPlace, compact, onOpenFull]);
 
-  // Posun kamery při změně vybraného místa
+  // Posun kamery při změně vybraného místa (pouze v nekompaktním režimu)
   useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !selectedPlace) return;
+    if (!mapReady || !mapInstanceRef.current || !selectedPlace || compact) return;
     const map = mapInstanceRef.current;
 
-    // Aktualizace z-indexu aktivního markeru
     markersMapRef.current.forEach((marker, id) => {
       if (id === selectedPlace.id) {
         marker.setZIndexOffset(1000);
@@ -268,7 +274,7 @@ export default function RealLeafletMap({
       duration: 0.7,
       easeLinearity: 0.25,
     });
-  }, [selectedPlace, mapReady]);
+  }, [selectedPlace, mapReady, compact]);
 
   // Ovládací tlačítka mapy
   const handleZoomIn = () => {
@@ -279,16 +285,16 @@ export default function RealLeafletMap({
   };
   const handleCenterBohemia = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([49.8, 15.0], 7, { duration: 0.8 });
+      mapInstanceRef.current.flyTo([49.8, 15.0], compact ? 6.2 : 7, { duration: 0.8 });
     }
   };
   const handleCenterEurope = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([49.2, 15.2], 5, { duration: 0.8 });
+      mapInstanceRef.current.flyTo([49.2, 15.2], compact ? 4.8 : 5.2, { duration: 0.8 });
     }
   };
 
-  // Formátování zeměpisných souřadnic
+  // Formátování souřadnic
   const formatCoord = (lat: number, lng: number) => {
     const latDir = lat >= 0 ? "s. š." : "j. š.";
     const lngDir = lng >= 0 ? "v. d." : "z. d.";
@@ -300,18 +306,34 @@ export default function RealLeafletMap({
   };
 
   return (
-    <div className="real-map-wrapper">
+    <div className={`real-map-wrapper ${compact ? "compact-mode" : ""}`}>
       {/* Kontejner Leaflet mapy */}
       <div ref={mapContainerRef} className="real-map-element" />
 
-      {/* Historická kartuše a dekorační rám */}
+      {/* Dekorační rám */}
       <div className="map-decor-border" pointer-events="none" />
+
+      {/* Kartuše */}
       <div className="map-cartouche">
         <span>📜 ORBIS SCRIPTORIORUM</span>
-        <small style={{ display: "block", fontSize: "9px", opacity: 0.85, fontWeight: 600 }}>
-          Slepá mapa středověké Evropy (14.–15. stol.)
-        </small>
+        {!compact && (
+          <small style={{ display: "block", fontSize: "9.5px", opacity: 0.88, fontWeight: 600 }}>
+            Geografické uložení kodexů a skriptorií
+          </small>
+        )}
       </div>
+
+      {/* Tlačítko zvětšení v kompaktním režimu */}
+      {compact && onOpenFull && (
+        <button
+          type="button"
+          className="map-compact-expand-btn"
+          onClick={onOpenFull}
+          title="Otevřít celou interaktivní mapu"
+        >
+          🔍 Otevřít velkou mapu ↗
+        </button>
+      )}
 
       {/* Ovládací prvky mapy */}
       <div className="real-map-controls">
@@ -324,27 +346,32 @@ export default function RealLeafletMap({
         <button
           type="button"
           onClick={handleCenterBohemia}
-          title="Zaměřit na České království"
-          aria-label="České království"
+          title="Zaměřit na Českou republiku"
+          aria-label="Česká republika"
         >
           🏰
         </button>
-        <button
-          type="button"
-          onClick={handleCenterEurope}
-          title="Zobrazit celou Evropu"
-          aria-label="Celá Evropa"
-        >
-          🗺️
-        </button>
+        {!compact && (
+          <button
+            type="button"
+            onClick={handleCenterEurope}
+            title="Zobrazit celou Evropu"
+            aria-label="Celá Evropa"
+          >
+            🗺️
+          </button>
+        )}
       </div>
 
       {/* Stavový štítek se souřadnicemi a lokalitou */}
-      <div className="real-map-status">
-        <span className="status-pin">{selectedPlace.icon}</span>
-        <strong>{selectedPlace.name}</strong>
-        <small>{formatCoord(selectedPlace.lat, selectedPlace.lng)}</small>
-      </div>
+      {!compact && (
+        <div className="real-map-status">
+          <span className="status-pin">{selectedPlace.icon}</span>
+          <strong>{selectedPlace.name}</strong>
+          <span className="status-country">({selectedPlace.country})</span>
+          <small>{formatCoord(selectedPlace.lat, selectedPlace.lng)}</small>
+        </div>
+      )}
     </div>
   );
 }
