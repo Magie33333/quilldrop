@@ -199,6 +199,30 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Odstraněna závislost na privátním OpenAI pluginu (`sites-vite-plugin`), který se nacházel v ignorované složce `build/` a na Vercelu by způsoboval pád sestavení.
   * Zachována plná zpětná kompatibilita pro lokální vývoj jak přes Vite (`npm run dev`), tak přes Next.js (`npm run dev:next`).
 
+### [2026-09-14] Funkční denní streaky, 16dílná iluminovaná mozaika (Cesta písaře) & Quilldrop Studio editor se slicerem
+* **Plně funkční kalendářní denní streaky a penalizace za vynechání dne:**
+  * Implementována striktní logika kalendářních dní (`getDaysDifference`).
+  * Každé přihlášení v bezprostředně následující den (`daysDiff === 1`) navyšuje streak o +1 a odemyká další fragment z $4 \times 4$ mřížky aktivní iluminace.
+  * Pokud uživatel vynechá den či více (`daysDiff > 1`), streak je porušen – dle pravidel hráč začíná od znovu (reset streaku na Den 1 a návrat na 1. dílek). Dříve dokončené a odemčené iluminace v galerii však zůstávají natrvalo uloženy jako získané trofeje.
+  * Během téhož dne (`daysDiff === 0`) se stav nemění – fragment za daný den již byl vyzvednut.
+* **Koncepce odstupňované vzácnosti: Cesta písaře (Ordered Tiered Progression):**
+  * Zvoleno pevně dané pořadí cyklů s eskalující prestiží a raritou (namísto nahodilého losování), které dává dlouhodobému hraní jasný cíl a odměňuje písařskou vytrvalost:
+    * **Cyklus 1 (Dny 1–16, Common):** *Učený zajíc (The Learned Hare)* – autentická humorná marginálie ze žaltáře.
+    * **Cyklus 2 (Dny 17–32, Uncommon):** *Písař v dílně (Scriptorium Master)* – Eadwine Psalter (12. stol., Cambridge).
+    * **Cyklus 3 (Dny 33–48, Rare):** *Český královský lev (Bohemian Lion)* – Gelnhausenův kodex (14. stol., Jihlava).
+    * **Cyklus 4 (Dny 49–64, Epic):** *Královská iniciála 'W'* – Bible Václava IV. (kolem 1390, ÖNB Vídeň).
+    * **Cyklus 5 (Dny 65–80, Legendary):** *Nebeské sféry a astroláb (Cosmographia)* – astronomický sborník Václava IV.
+    * **Cyklus 6 (Dny 81–96+, Unique):** *Podlažický ďábel (Codex Gigas)* – proslulá celostránková iluminace z největšího středověkého kodexu světa.
+* **Odměny za zkompletování 16dílné mozaiky:**
+  * Při dosažení 16. fragmentu je dílo slavnostně dokončeno: zapíše se do stálé `Galerie iluminací` v profilu hráče, připíše se velká odměna XP (150 až 1500 XP) a do pokladnice se vloží prémiový balíček (Standard, Scholar, Masterwork).
+  * Každé zkompletované dílo lze okamžitě aktivovat jako reprezentativní kruhový portrét (avatar) písaře v profilu i na záložkách aplikace.
+* **Quilldrop Studio: Správa iluminací a interaktivní 16dílný řez (Slicer preview):**
+  * Do horní lišty Studia (`/admin`) přidáno tlačítko `Iluminace & mozaiky`.
+  * Odborníci mohou přidávat nové rukopisy, editovat stávající cykly, přiřazovat raritní stupně, odměny a ikonografické popisy.
+  * Součástí Studia je interaktivní 16dílný slicer s plynulým posuvníkem 0–16 dílků, který přímo v reálném čase demonstruje, jak bude nový obraz rozdělen na 16 očíslovaných zlacených fragmentů v mřížce $4 \times 4$.
+* **Integrovaná simulace pro prezentaci:**
+  * Na stránce profilu přibyly rychlé demonstrační spínače `Simulovat další den (+1 fragment)` a `Simulovat přerušení streaku (reset na Den 1)`, umožňující okamžitě předvést fungování celého systému prof. Doležalové bez nutnosti čekat 24 hodin.
+
 ---
 
 ### Následující kroky (Fáze 2):
@@ -208,4 +232,5 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Nahradit provizorní mapu skutečnou interaktivní mapou historické Evropy s lokalitami ze záznamů (Praha, Olomouc, Bologna, Heidelberg, Krakov atd.).
 * [ ] **Synchronizace hráčského profilu a inventáře do Supabase:**
   * Propojit herní postup s tabulkami `profiles` a `user_cards` v Supabase.
+
 

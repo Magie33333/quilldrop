@@ -38,9 +38,18 @@ import {
   HelpCircle,
   Trash2,
   BookOpen,
+  Puzzle,
+  Flame,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
+import {
+  DEFAULT_ILLUMINATIONS,
+  type IlluminationMosaicItem,
+  type IlluminationRarity,
+  getStoredIlluminations,
+  saveStoredIlluminations,
+} from "../data/illuminations";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -422,6 +431,135 @@ export default function AdminPage() {
         localStorage.setItem("quilldrop-curios", JSON.stringify(DEFAULT_CURIOS));
       }
       handleNewCurioForm();
+    }
+  };
+
+  // Správa 16dílných iluminací a denních streaků (Cesta písaře)
+  const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
+  const [showMosaicsModal, setShowMosaicsModal] = useState(false);
+  const [mosaicSearch, setMosaicSearch] = useState("");
+  const [mosaicRarityFilter, setMosaicRarityFilter] = useState("Vše");
+  const [editingMosaic, setEditingMosaic] = useState<IlluminationMosaicItem | null>(null);
+  const [mosaicSuccessMsg, setMosaicSuccessMsg] = useState("");
+  const [previewPieces, setPreviewPieces] = useState(8); // Posuvník pro živý 16dílný řez
+  const [mosaicForm, setMosaicForm] = useState<{
+    id: string;
+    cycle: number;
+    title: string;
+    source: string;
+    origin: string;
+    century: string;
+    tierName: string;
+    rarity: IlluminationRarity;
+    description: string;
+    rewardXp: number;
+    rewardPack: "standard" | "refined" | "masterwork";
+  }>({
+    id: "",
+    cycle: 1,
+    title: "",
+    source: "",
+    origin: "",
+    century: "",
+    tierName: "Cyklus učedníka (Dny 1–16)",
+    rarity: "Common",
+    description: "",
+    rewardXp: 150,
+    rewardPack: "standard",
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIlluminations(getStoredIlluminations());
+    }
+  }, []);
+
+  const handleSelectMosaicToEdit = (m: IlluminationMosaicItem) => {
+    setEditingMosaic(m);
+    setMosaicForm({
+      id: m.id,
+      cycle: m.cycle || 1,
+      title: m.title || "",
+      source: m.source || "",
+      origin: m.origin || "",
+      century: m.century || "",
+      tierName: m.tierName || "",
+      rarity: m.rarity || "Common",
+      description: m.description || "",
+      rewardXp: m.rewardXp || 200,
+      rewardPack: m.rewardPack || "standard",
+    });
+    setMosaicSuccessMsg("");
+  };
+
+  const handleNewMosaicForm = () => {
+    const nextCycle = illuminations.length > 0 ? Math.max(...illuminations.map((i) => i.cycle)) + 1 : 1;
+    const startDay = (nextCycle - 1) * 16 + 1;
+    const endDay = nextCycle * 16;
+    setEditingMosaic(null);
+    setMosaicForm({
+      id: "",
+      cycle: nextCycle,
+      title: "",
+      source: "",
+      origin: "",
+      century: "",
+      tierName: `Cyklus ${nextCycle} (Dny ${startDay}–${endDay})`,
+      rarity: nextCycle >= 6 ? "Unique" : nextCycle === 5 ? "Legendary" : nextCycle === 4 ? "Epic" : nextCycle === 3 ? "Rare" : nextCycle === 2 ? "Uncommon" : "Common",
+      description: "",
+      rewardXp: nextCycle * 150,
+      rewardPack: nextCycle >= 4 ? "masterwork" : nextCycle >= 2 ? "refined" : "standard",
+    });
+    setMosaicSuccessMsg("");
+  };
+
+  const handleSaveMosaic = () => {
+    if (!mosaicForm.title.trim() || !mosaicForm.source.trim()) return;
+    const isNew = !mosaicForm.id;
+    const mosaicId = mosaicForm.id || `mosaic-${Date.now()}`;
+    const newMosaic: IlluminationMosaicItem = {
+      id: mosaicId,
+      cycle: Number(mosaicForm.cycle) || 1,
+      title: mosaicForm.title.trim(),
+      source: mosaicForm.source.trim(),
+      origin: mosaicForm.origin.trim() || "Neznámý rukopis",
+      century: mosaicForm.century.trim() || "14. století",
+      tierName: mosaicForm.tierName.trim() || `Cyklus ${mosaicForm.cycle}`,
+      rarity: mosaicForm.rarity,
+      description: mosaicForm.description.trim(),
+      rewardXp: Number(mosaicForm.rewardXp) || 200,
+      rewardPack: mosaicForm.rewardPack,
+    };
+
+    const nextList = (isNew
+      ? [...illuminations, newMosaic]
+      : illuminations.map((m) => (m.id === mosaicId ? newMosaic : m))
+    ).sort((a, b) => a.cycle - b.cycle);
+
+    setIlluminations(nextList);
+    saveStoredIlluminations(nextList);
+
+    setEditingMosaic(newMosaic);
+    setMosaicForm({ ...newMosaic });
+    setMosaicSuccessMsg(isNew ? "Nový cyklus iluminace byl zařazen do hry!" : "Změny v iluminaci byly úspěšně uloženy!");
+    setTimeout(() => setMosaicSuccessMsg(""), 3000);
+  };
+
+  const handleDeleteMosaic = (id: string) => {
+    if (!confirm("Opravdu chcete tento cyklus iluminace odstranit?")) return;
+    const nextList = illuminations.filter((m) => m.id !== id);
+    setIlluminations(nextList);
+    saveStoredIlluminations(nextList);
+    if (editingMosaic?.id === id) {
+      handleNewMosaicForm();
+    }
+  };
+
+  const handleResetMosaicsToDefault = () => {
+    if (confirm("Opravdu chcete obnovit všechny iluminace na výchozí 6-cyklovou Cestu písaře?")) {
+      setIlluminations(DEFAULT_ILLUMINATIONS);
+      saveStoredIlluminations(DEFAULT_ILLUMINATIONS);
+      handleNewMosaicForm();
     }
   };
 
@@ -1316,6 +1454,17 @@ export default function AdminPage() {
             title="Správa historických glos, mouder a zajímavostí z knižní kultury"
           >
             <BookOpen size={13} /> Glosy & moudra ({curios.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setShowMosaicsModal(true);
+              setEditingMosaic(null);
+            }}
+            className="flex items-center gap-1.5 text-xs bg-[#241e19] hover:bg-[#332b24] text-[#c9a96e] px-2.5 py-1.5 rounded border border-[#42372d] cursor-pointer transition"
+            title="Správa 16dílných iluminací a denních streaků (Cesta písaře)"
+          >
+            <Puzzle size={13} /> Iluminace & mozaiky ({illuminations.length})
           </button>
 
           {noChangesNotice && (
@@ -3337,6 +3486,432 @@ export default function AdminPage() {
                         className="bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs px-5 py-1.5 rounded shadow transition disabled:opacity-40 cursor-pointer"
                       >
                         {editingCurio ? "Uložit změny v glose" : "Vytvořit a zařadit glosu"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SPRÁVA 16DÍLNÝCH ILUMINACÍ A DENNÍCH STREAKŮ */}
+      {showMosaicsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#16120e] border border-[#3d3226] rounded-xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+            {/* Záhlaví modalu */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2721] bg-[#1d1712]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Puzzle size={18} className="text-[#ffd580]" />
+                  <h3 className="font-serif font-bold text-base text-[#ffd580] tracking-wide">
+                    16dílné iluminace & denní streaky (Cesta písaře)
+                  </h3>
+                  <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
+                    {illuminations.length} cyklů v posloupnosti
+                  </span>
+                </div>
+                <p className="text-xs text-[#8c7b6d] mt-1">
+                  Každá iluminace představuje 16denní cyklus složený ze 16 dílků (mřížka 4×4). Uživatel získává za každý den v řadě další fragment. Při přerušení streaku začíná od znovu.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMosaicsModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] transition cursor-pointer"
+                title="Zavřít okno"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Tělo modalu: Split layout */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-0 overflow-hidden">
+              {/* LEVÝ PANEL: Seznam cyklů a filtry */}
+              <div className="md:col-span-5 border-r border-[#2e2721] flex flex-col min-h-0 bg-[#120f0c]">
+                <div className="p-3 border-b border-[#2e2721] space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleNewMosaicForm}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs py-1.5 px-3 rounded shadow transition cursor-pointer"
+                    >
+                      <PlusCircle size={14} /> Přidat nový cyklus
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetMosaicsToDefault}
+                      className="text-[11px] text-[#8c7b6d] hover:text-[#d4af37] p-1.5 rounded hover:bg-[#1e1914] transition border border-[#2e2721]"
+                      title="Obnovit výchozí sadu 6 cyklů Cesty písaře"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Filtrovat iluminace, rukopisy, století..."
+                    value={mosaicSearch}
+                    onChange={(e) => setMosaicSearch(e.target.value)}
+                    className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
+                  />
+
+                  {/* Rarity filtry */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10.5px]">
+                    {["Vše", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Unique"].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setMosaicRarityFilter(r)}
+                        className={`whitespace-nowrap px-2 py-0.5 rounded transition cursor-pointer border ${
+                          mosaicRarityFilter === r
+                            ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                            : "bg-[#18130f] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rolovatelný seznam iluminací */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {illuminations
+                    .filter((m) => {
+                      const matchesSearch =
+                        !mosaicSearch ||
+                        m.title.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        m.origin.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        m.century.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        String(m.cycle).includes(mosaicSearch);
+                      const matchesRarity =
+                        mosaicRarityFilter === "Vše" || m.rarity === mosaicRarityFilter;
+                      return matchesSearch && matchesRarity;
+                    })
+                    .map((m) => {
+                      const isSelected = editingMosaic?.id === m.id;
+                      const startDay = (m.cycle - 1) * 16 + 1;
+                      const endDay = m.cycle * 16;
+                      return (
+                        <div
+                          key={m.id}
+                          onClick={() => handleSelectMosaicToEdit(m)}
+                          className={`p-2 rounded-lg border text-left cursor-pointer transition flex items-center gap-2.5 ${
+                            isSelected
+                              ? "bg-[#282017] border-[#d4af37] shadow-sm"
+                              : "bg-[#16120e] border-[#2e2721] hover:border-[#4a3928] hover:bg-[#1e1813]"
+                          }`}
+                        >
+                          <div className="w-10 h-10 rounded border border-[#4a3928] overflow-hidden shrink-0 bg-[#0d0a08]">
+                            <img
+                              src={m.source}
+                              alt={m.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="text-[10px] font-bold text-[#d4af37]">
+                                Cyklus {m.cycle} (Dny {startDay}–{endDay})
+                              </span>
+                              <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded rarity-pill rarity-${m.rarity.toLowerCase()}`}>
+                                {m.rarity}
+                              </span>
+                            </div>
+                            <h4 className="font-serif font-bold text-xs text-[#e8ded1] truncate">
+                              {m.title}
+                            </h4>
+                            <p className="text-[10.5px] text-[#8c7b6d] truncate">
+                              {m.origin} · {m.century}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* PRAVÝ PANEL: Editor a interaktivní 16dílný řez */}
+              <div className="md:col-span-7 flex flex-col min-h-0 bg-[#16120e] p-5 overflow-y-auto">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#2e2721]">
+                  <div>
+                    <h4 className="font-serif font-bold text-sm text-[#ffd580]">
+                      {editingMosaic
+                        ? `Cyklus ${editingMosaic.cycle}: ${editingMosaic.title}`
+                        : `Vytvořit nový cyklus iluminace (${mosaicForm.cycle})`}
+                    </h4>
+                    <span className="text-[11px] text-[#8c7b6d]">
+                      Dny {(mosaicForm.cycle - 1) * 16 + 1}–{mosaicForm.cycle * 16} denního streaku
+                    </span>
+                  </div>
+                  {mosaicSuccessMsg && (
+                    <span className="text-xs text-[#73d13d] bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800/80 flex items-center gap-1">
+                      <CheckCircle2 size={13} /> {mosaicSuccessMsg}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Pořadí cyklu</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={mosaicForm.cycle}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, cycle: Number(e.target.value) || 1 })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Rarita díla</label>
+                      <select
+                        value={mosaicForm.rarity}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, rarity: e.target.value as IlluminationRarity })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      >
+                        {["Common", "Uncommon", "Rare", "Epic", "Legendary", "Unique"].map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název fáze / tier</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.tierName}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, tierName: e.target.value })}
+                        placeholder="např. Cyklus mistra (Dny 33–48)"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="col-span-2">
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název iluminace</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.title}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, title: e.target.value })}
+                        placeholder="např. Český královský lev"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Datace / Století</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.century}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, century: e.target.value })}
+                        placeholder="např. 14. století"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Původní rukopis / Instituce</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.origin}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, origin: e.target.value })}
+                        placeholder="např. Gelnhausenův kodex, Jihlava"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">URL adresa obrazu</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.source}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, source: e.target.value })}
+                        placeholder="/illumination-rabbit.png nebo https://..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Odměna za složení (XP)</label>
+                      <input
+                        type="number"
+                        step={50}
+                        value={mosaicForm.rewardXp}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, rewardXp: Number(e.target.value) || 100 })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Bonusový balíček</label>
+                      <select
+                        value={mosaicForm.rewardPack}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, rewardPack: e.target.value as any })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      >
+                        <option value="standard">Standard Pack (5 karet)</option>
+                        <option value="refined">Scholar Pack (vyšší šance na Rare)</option>
+                        <option value="masterwork">Masterwork Pack (garance vzácností)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Popis díla pro badatele a hráče</label>
+                    <textarea
+                      rows={2}
+                      value={mosaicForm.description}
+                      onChange={(e) => setMosaicForm({ ...mosaicForm, description: e.target.value })}
+                      placeholder="Krátký historický a ikonografický komentář k iluminaci..."
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                    />
+                  </div>
+
+                  {/* INTERAKTIVNÍ 16DÍLNÝ ŘEZ A NÁHLED SLICOVÁNÍ */}
+                  <div className="bg-[#1a1410] border border-[#3b2f23] rounded-lg p-3.5 mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-[#ffd580] flex items-center gap-1.5">
+                        <Puzzle size={14} /> Interaktivní náhled rozsekání na 16 dílků (4×4)
+                      </span>
+                      <span className="text-[11px] bg-[#2a1f14] text-[#ffd580] px-2 py-0.5 rounded border border-[#4a3928] font-bold">
+                        Odhaleno: {previewPieces} z 16 dílků
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      {/* Vizuální mozaika se 16 dílky */}
+                      <div
+                        className="illumination-mosaic shrink-0"
+                        style={{
+                          width: 150,
+                          height: 150,
+                          position: "relative",
+                          overflow: "hidden",
+                          borderRadius: 8,
+                          border: "2px solid #7e4c14",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                          background: "#c5a36e",
+                        }}
+                      >
+                        <img
+                          src={mosaicForm.source || DEFAULT_ILLUMINATIONS[0].source}
+                          alt={mosaicForm.title || "Náhled"}
+                          style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            display: "grid",
+                            gridTemplateColumns: "repeat(4, 1fr)",
+                            gridTemplateRows: "repeat(4, 1fr)",
+                          }}
+                        >
+                          {Array.from({ length: 16 }).map((_, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                display: "grid",
+                                placeItems: "center",
+                                border: "0.5px solid rgba(113, 69, 21, 0.4)",
+                                fontSize: "9px",
+                                fontWeight: 800,
+                                fontFamily: "sans-serif",
+                                transition: "all 0.25s ease",
+                                color: i < previewPieces ? "transparent" : "#7c552c",
+                                background:
+                                  i < previewPieces
+                                    ? "transparent"
+                                    : "linear-gradient(145deg, #ead2a2, #caa66d)",
+                                boxShadow:
+                                  i < previewPieces
+                                    ? "inset 0 0 0 1px rgba(255, 243, 189, 0.2)"
+                                    : "inset 0 0 10px rgba(107, 66, 20, 0.25)",
+                              }}
+                            >
+                              {i >= previewPieces ? i + 1 : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Ovládání posuvníku */}
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex justify-between text-[11px] text-[#a89278]">
+                          <span>0 dílků (skryto)</span>
+                          <span className="font-bold text-[#ffd580]">{previewPieces}/16</span>
+                          <span>16 dílků (dokončeno)</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={16}
+                          value={previewPieces}
+                          onChange={(e) => setPreviewPieces(Number(e.target.value))}
+                          className="w-full accent-[#d4af37] cursor-pointer"
+                        />
+                        <div className="flex gap-1.5 flex-wrap pt-1">
+                          {[0, 1, 4, 8, 12, 15, 16].map((step) => (
+                            <button
+                              key={step}
+                              type="button"
+                              onClick={() => setPreviewPieces(step)}
+                              className={`text-[10px] px-2 py-0.5 rounded border transition ${
+                                previewPieces === step
+                                  ? "bg-[#d4af37] text-black font-bold border-[#d4af37]"
+                                  : "bg-[#211a14] text-[#8c7b6d] border-[#362b20] hover:text-[#ffd580]"
+                              }`}
+                            >
+                              {step === 0 ? "Den 0" : step === 16 ? "Den 16 (Dílo složeno)" : `Den ${step}`}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10.5px] text-[#8c7b6d] pt-1">
+                          Posuvníkem otestujte, jak se zlacené dílky odkrývají den po dni od levého horního rohu (1) po pravý dolní (16).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tlačítka akcí */}
+                  <div className="pt-2 flex items-center justify-between border-t border-[#2e2721]">
+                    {editingMosaic ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMosaic(editingMosaic.id)}
+                        className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 px-3 py-1.5 rounded transition cursor-pointer border border-red-900/40"
+                      >
+                        <Trash2 size={13} /> Smazat cyklus
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleNewMosaicForm}
+                        className="px-3 py-1.5 rounded text-xs text-[#9c8976] hover:bg-[#231d18] transition cursor-pointer"
+                      >
+                        Vyčistit formulář
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveMosaic}
+                        disabled={!mosaicForm.title.trim() || !mosaicForm.source.trim()}
+                        className="bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs px-5 py-1.5 rounded shadow transition disabled:opacity-40 cursor-pointer"
+                      >
+                        {editingMosaic ? "Uložit změny v iluminaci" : "Vytvořit a zařadit cyklus"}
                       </button>
                     </div>
                   </div>

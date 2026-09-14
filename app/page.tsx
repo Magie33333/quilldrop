@@ -8,6 +8,13 @@ import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
 import { DEFAULT_CURIOS, type Curio } from "./data/curios";
 import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
+import {
+  DEFAULT_ILLUMINATIONS,
+  type IlluminationMosaicItem,
+  getStoredIlluminations,
+  getActiveIllumination,
+  getDaysDifference,
+} from "./data/illuminations";
 import RealLeafletMap from "./components/RealLeafletMap";
 import {
   isSoundEnabled,
@@ -68,9 +75,7 @@ type GameState = {
   avatarArt: string | null;
 };
 
-const ILLUMINATIONS = [
-  { id: "rabbit-scribe", title: "The Learned Hare", source: "/illumination-rabbit.png" },
-];
+const ILLUMINATIONS = DEFAULT_ILLUMINATIONS;
 
 const COLOPHONS: Colophon[] = HEURIST_COLOPHONS.map(card => ({ ...card })) as Colophon[];
 
@@ -79,8 +84,8 @@ const INITIAL_STATE: GameState = {
   collection: Object.fromEntries(COLOPHONS.slice(0, 4).map((card, index) => [card.id, index === 1 ? 2 : 1])),
   xp: 120,
   coins: 140,
-  streak: 10,
-  puzzle: 3,
+  streak: 1,
+  puzzle: 1,
   trophies: ["first-spark"],
   lastPlayed: "",
   gamesPlayed: 0,
@@ -147,19 +152,71 @@ function loadState(userId?: string): GameState {
     if (!saved && userId) {
       saved = JSON.parse(localStorage.getItem("quilldrop-state") || "null");
     }
-    const hydrated: GameState = { ...INITIAL_STATE, ...(saved || {}), bonusPacks: saved?.bonusPacks || [], gallery: saved?.gallery || [] };
-    const hasCurrentCards = Object.keys(hydrated.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
-    if (!hasCurrentCards) hydrated.collection = { ...INITIAL_STATE.collection };
-    const dailyReset = hydrated.lastPlayed === today() ? hydrated : { ...hydrated, packsOpened: 0, gamesPlayed: 0, bonusPacks: [], lastPlayed: today() };
-    if (dailyReset.lastLoginDate === today()) return dailyReset;
-    const nextPuzzle = Math.min(16, dailyReset.puzzle + 1);
-    const completedId = nextPuzzle === 16 ? ILLUMINATIONS[0].id : null;
+    const base: GameState = {
+      ...INITIAL_STATE,
+      ...(saved || {}),
+      bonusPacks: saved?.bonusPacks || [],
+      gallery: saved?.gallery || [],
+    };
+    const hasCurrentCards = Object.keys(base.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
+    if (!hasCurrentCards) base.collection = { ...INITIAL_STATE.collection };
+
+    const todayStr = today();
+    const isNewDay = base.lastPlayed !== todayStr;
+    const dailyReset: GameState = isNewDay
+      ? { ...base, packsOpened: 0, gamesPlayed: 0, bonusPacks: [], lastPlayed: todayStr }
+      : base;
+
+    // Pokud se uživatel již dnes přihlásil, streak byl pro dnešek započten
+    if (dailyReset.lastLoginDate === todayStr) {
+      return dailyReset;
+    }
+
+    const illuminationsList = getStoredIlluminations();
+    const daysDiff = dailyReset.lastLoginDate ? getDaysDifference(dailyReset.lastLoginDate, todayStr) : 0;
+
+    let nextStreak = dailyReset.streak || 1;
+    let nextPuzzle = dailyReset.puzzle || 1;
+    let nextGallery = [...dailyReset.gallery];
+    let nextBonusPacks = [...dailyReset.bonusPacks];
+    let nextXp = dailyReset.xp;
+
+    if (!dailyReset.lastLoginDate) {
+      // Úplně první přihlášení uživatele
+      nextStreak = 1;
+      nextPuzzle = 1;
+    } else if (daysDiff === 1) {
+      // Nepřerušený denní streak (návštěva v po sobě jdoucí kalendářní den)
+      nextStreak = (dailyReset.streak || 0) + 1;
+      nextPuzzle = ((nextStreak - 1) % 16) + 1;
+
+      // Pokud právě dnes dosáhl 16. fragmentu, dokončil celou iluminaci
+      if (nextPuzzle === 16) {
+        const completedArt = getActiveIllumination(nextStreak, illuminationsList);
+        if (!nextGallery.includes(completedArt.id)) {
+          nextGallery.push(completedArt.id);
+        }
+        nextXp += completedArt.rewardXp || 200;
+        if (completedArt.rewardPack) {
+          nextBonusPacks.push(completedArt.rewardPack);
+        }
+      }
+    } else if (daysDiff > 1) {
+      // Vynechán jeden nebo více dní -> porušení streaku!
+      // Dle pravidel: uživatel musí začít od znovu (den 1, fragment 1)
+      nextStreak = 1;
+      nextPuzzle = 1;
+    }
+
     return {
       ...dailyReset,
+      streak: nextStreak,
       puzzle: nextPuzzle,
-      lastLoginDate: today(),
-      streak: dailyReset.streak + 1,
-      gallery: completedId && !dailyReset.gallery.includes(completedId) ? [...dailyReset.gallery, completedId] : dailyReset.gallery,
+      lastLoginDate: todayStr,
+      lastPlayed: todayStr,
+      gallery: nextGallery,
+      bonusPacks: nextBonusPacks,
+      xp: nextXp,
     };
   } catch {
     return INITIAL_STATE;
@@ -190,6 +247,19 @@ export default function Home() {
   const [soundOn, setSoundOn] = useState(true);
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
   const [curioIndex, setCurioIndex] = useState(0);
+
+  // 16dílné iluminace a denní streak (Cesta písaře)
+  const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIlluminations(getStoredIlluminations());
+    }
+  }, []);
+
+  const activeIllumination = useMemo(() => {
+    return getActiveIllumination(state.streak, illuminations);
+  }, [state.streak, illuminations]);
 
   // Uživatel a autentizace
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -805,6 +875,52 @@ export default function Home() {
     }
   };
 
+  const handleAdvanceDay = () => {
+    setState(prev => {
+      const nextStreak = (prev.streak || 0) + 1;
+      const nextPuzzle = ((nextStreak - 1) % 16) + 1;
+      let nextGallery = [...prev.gallery];
+      let nextBonusPacks = [...prev.bonusPacks];
+      let nextXp = prev.xp + 25;
+      let msg = `Den ${nextStreak}: Odhalen ${nextPuzzle}. dílek iluminace!`;
+
+      if (nextPuzzle === 16) {
+        const completedArt = getActiveIllumination(nextStreak, illuminations);
+        if (!nextGallery.includes(completedArt.id)) {
+          nextGallery.push(completedArt.id);
+        }
+        nextXp += completedArt.rewardXp || 200;
+        if (completedArt.rewardPack) {
+          nextBonusPacks.push(completedArt.rewardPack);
+        }
+        msg = `🎉 Cyklus ${completedArt.cycle} dokončen: „${completedArt.title}“! Získáváte +${completedArt.rewardXp} XP a ${qualityLabel(completedArt.rewardPack)}!`;
+      }
+
+      setToast(msg);
+      return {
+        ...prev,
+        streak: nextStreak,
+        puzzle: nextPuzzle,
+        xp: nextXp,
+        gallery: nextGallery,
+        bonusPacks: nextBonusPacks,
+        lastLoginDate: today(),
+      };
+    });
+  };
+
+  const handleBreakStreak = () => {
+    if (confirm("Chcete simulovat vynechání dne? Váš streak a aktivní mozaika se dle pravidel resetují na Den 1.")) {
+      setState(prev => ({
+        ...prev,
+        streak: 1,
+        puzzle: 1,
+        lastLoginDate: today(),
+      }));
+      setToast("Streak byl přerušen! Začínáte znovu od Dne 1 a 1. dílku.");
+    }
+  };
+
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
@@ -833,6 +949,7 @@ export default function Home() {
               totalCards={cards.length}
               curio={curios[curioIndex] || DEFAULT_CURIOS[0]}
               onNextCurio={nextCurio}
+              activeIllumination={activeIllumination}
               onPacks={() => setTab("packs")}
               onCollection={() => setTab("collection")}
               onMap={() => setShowMap(true)}
@@ -843,7 +960,7 @@ export default function Home() {
           )}
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
-          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} />}
+          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} activeIllumination={activeIllumination} />}
           {tab === "profile" && (
             <ProfileScreen
               state={state}
@@ -852,9 +969,13 @@ export default function Home() {
               isLive={isLive}
               currentUser={currentUser}
               currentProfile={currentProfile}
+              activeIllumination={activeIllumination}
+              illuminations={illuminations}
               onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
               onLogout={handleLogout}
               onReset={resetDemo}
+              onAdvanceDay={handleAdvanceDay}
+              onBreakStreak={handleBreakStreak}
               onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
             />
@@ -1168,6 +1289,7 @@ function HomeScreen({
   totalCards,
   curio,
   onNextCurio,
+  activeIllumination,
   onPacks,
   onCollection,
   onMap,
@@ -1181,6 +1303,7 @@ function HomeScreen({
   totalCards: number;
   curio: Curio;
   onNextCurio: (e?: React.MouseEvent) => void;
+  activeIllumination: IlluminationMosaicItem;
   onPacks: () => void;
   onCollection: () => void;
   onMap: () => void;
@@ -1380,25 +1503,34 @@ function HomeScreen({
         <section className="home-panel-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
             <div>
-              <h3>16denní iluminovaná mozaika</h3>
-              <p>Vraťte se každý den pro odhalení fragmentu středověkého Učeného zajíce.</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <h3 style={{ margin: 0 }}>16denní iluminovaná mozaika</h3>
+                <span className={`rarity-pill rarity-${activeIllumination.rarity.toLowerCase()}`} style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", fontWeight: 800, textTransform: "uppercase" }}>
+                  {activeIllumination.rarity}
+                </span>
+              </div>
+              <p style={{ margin: "3px 0 0", fontSize: "11px", color: "#684824" }}>
+                <strong>{activeIllumination.title}</strong> · {activeIllumination.origin} ({activeIllumination.century})
+              </p>
             </div>
             <button className="icon-label" onClick={onGallery} style={{ padding: "4px 8px", fontSize: "11px" }}>
               Detail →
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "10px" }}>
-            <IlluminationMosaic pieces={state.puzzle} compact />
+            <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px" }}>
-                <span>Postup iluminace</span>
+                <span>{activeIllumination.tierName || `Cyklus ${activeIllumination.cycle}`}</span>
                 <span>{state.puzzle} z 16</span>
               </div>
               <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
                 <i style={{ width: `${(state.puzzle / 16) * 100}%` }} />
               </div>
               <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px" }}>
-                {state.puzzle < 16 ? `Zbývá ${16 - state.puzzle} denních přihlášení do kompletního díla.` : "Iluminace je dokončena! Portrét byl odemčen v profilu."}
+                {state.puzzle < 16
+                  ? `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do dokončení celého díla.`
+                  : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu.`}
               </small>
             </div>
           </div>
@@ -1833,7 +1965,15 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
   </div>;
 }
 
-function TrophiesScreen({ state, cards }: { state: GameState; cards: Colophon[] }) {
+function TrophiesScreen({
+  state,
+  cards,
+  activeIllumination,
+}: {
+  state: GameState;
+  cards: Colophon[];
+  activeIllumination: IlluminationMosaicItem;
+}) {
   const trophies = [
     ["first-spark", "První jiskra", "Otevřete svůj první denní balíček", "100 XP", "Q"],
     ["first-pack", "Lamač pečetí", "Objevte pět různých kolofonů", "150 XP", "S"],
@@ -1845,12 +1985,12 @@ function TrophiesScreen({ state, cards }: { state: GameState; cards: Colophon[] 
     <PageTitle kicker="Poutníkovy milníky">Písařská ocenění</PageTitle>
     <section className="puzzle-board">
       <div className="puzzle-copy">
-        <p>16denní iluminovaná mozaika</p>
+        <p>16denní iluminovaná mozaika · Cyklus {activeIllumination.cycle}</p>
         <h2>{state.puzzle}/16 dní</h2>
-        <small>Vraťte se každý den pro odhalení nového fragmentu středověkého zajíce.</small>
+        <small>Denní přihlašování v řadě odhaluje: <strong>{activeIllumination.title}</strong> ({activeIllumination.rarity}).</small>
         <div className="progress"><i style={{ width: `${(state.puzzle / 16) * 100}%` }} /></div>
       </div>
-      <IlluminationMosaic pieces={state.puzzle} compact />
+      <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
     </section>
     <div className="section-title"><h2>Získané pocty</h2><span>{state.trophies.length}/5 splněno</span></div>
     <div className="trophy-list">
@@ -1880,9 +2020,13 @@ function ProfileScreen({
   isLive,
   currentUser,
   currentProfile,
+  activeIllumination,
+  illuminations,
   onOpenAuth,
   onLogout,
   onReset,
+  onAdvanceDay,
+  onBreakStreak,
   onSend,
   onSetAvatar,
 }: {
@@ -1892,9 +2036,13 @@ function ProfileScreen({
   isLive?: boolean;
   currentUser?: any;
   currentProfile?: UserProfile | null;
+  activeIllumination: IlluminationMosaicItem;
+  illuminations: IlluminationMosaicItem[];
   onOpenAuth: () => void;
   onLogout: () => void;
   onReset: () => void;
+  onAdvanceDay: () => void;
+  onBreakStreak: () => void;
   onSend: () => void;
   onSetAvatar: (id: string) => void;
 }) {
@@ -1968,7 +2116,18 @@ function ProfileScreen({
 
     <section className="profile-card" style={{ marginTop: 14 }}>
       <div className={`avatar ${state.avatarArt ? "art-avatar" : ""}`}>
-        {state.avatarArt ? <img src={ILLUMINATIONS.find(a => a.id === state.avatarArt)?.source} alt="Vybraný portrét" /> : "Q"}
+        {state.avatarArt ? (
+          <img
+            src={
+              illuminations.find(a => a.id === state.avatarArt)?.source ||
+              DEFAULT_ILLUMINATIONS.find(a => a.id === state.avatarArt)?.source ||
+              "/illumination-rabbit.png"
+            }
+            alt="Vybraný portrét"
+          />
+        ) : (
+          "Q"
+        )}
       </div>
       <div>
         <h2>{scribeName}</h2>
@@ -1984,41 +2143,112 @@ function ProfileScreen({
       <div><strong>{duplicates}</strong><span>duplikátů</span></div>
     </div>
 
-    <div className="section-title gallery-title"><h2>Galerie iluminací</h2><span>{state.gallery.length} dokončeno</span></div>
+    <div className="section-title gallery-title">
+      <h2>Galerie iluminací</h2>
+      <span>{state.gallery.length} dokončeno</span>
+    </div>
     <section className="current-illumination">
-      <IlluminationMosaic pieces={state.puzzle} />
+      <IlluminationMosaic pieces={state.puzzle} illumination={activeIllumination} />
       <div>
-        <p>Rozpracované dílo</p>
-        <h3>Učený zajíc (The Learned Hare)</h3>
-        <small>{state.puzzle < 16 ? `Zbývá ${16 - state.puzzle} denních přihlášení` : "Dílo kompletní!"}</small>
+        <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span>Rozpracované dílo · Cyklus {activeIllumination.cycle}</span>
+          <span className={`rarity-pill rarity-${activeIllumination.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "1px 5px", borderRadius: "8px", fontWeight: 800 }}>
+            {activeIllumination.rarity}
+          </span>
+        </p>
+        <h3 style={{ margin: "2px 0 4px" }}>{activeIllumination.title}</h3>
+        <small style={{ display: "block", color: "#784f1d", fontSize: "10.5px" }}>
+          {activeIllumination.origin} ({activeIllumination.century})
+        </small>
+        <div style={{ marginTop: 6, fontSize: "11px", color: "#684824" }}>
+          {state.puzzle < 16
+            ? `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do složení celého díla.`
+            : "🎉 Dílo je kompletní! Portrét byl odemčen v galerii níže."}
+        </div>
       </div>
     </section>
     {state.gallery.length ? (
       <div className="illumination-gallery">
         {state.gallery.map(id => {
-          const art = ILLUMINATIONS.find(item => item.id === id);
+          const art = illuminations.find(item => item.id === id) || DEFAULT_ILLUMINATIONS.find(item => item.id === id);
           if (!art) return null;
-          return <article key={id}><img src={art.source} alt={art.title} /><div><strong>{art.title}</strong><small>Dokončeno po 16 dnech</small><button className={state.avatarArt === id ? "selected" : ""} onClick={() => onSetAvatar(id)}>{state.avatarArt === id ? "Aktivní portrét" : "Zvolit jako portrét"}</button></div></article>;
+          return (
+            <article key={id}>
+              <img src={art.source} alt={art.title} />
+              <div>
+                <span className={`rarity-tag rarity-${art.rarity.toLowerCase()}`} style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase" }}>
+                  {art.rarity}
+                </span>
+                <strong>{art.title}</strong>
+                <small>{art.origin} · {art.century}</small>
+                <button
+                  className={state.avatarArt === id ? "selected" : ""}
+                  onClick={() => onSetAvatar(id)}
+                >
+                  {state.avatarArt === id ? "Aktivní portrét" : "Zvolit jako portrét"}
+                </button>
+              </div>
+            </article>
+          );
         })}
       </div>
     ) : (
-      <p className="empty-gallery">Složte 16denní mozaiku pro odemčení první celistvé iluminace.</p>
+      <p className="empty-gallery">Složte 16denní mozaiku pro odemčení první celistvé iluminace do své stálé galerie a portrétů.</p>
     )}
 
-    <div className="section-title"><h2>Kolegové ve skriptoriu</h2><button className="icon-label" onClick={() => onSend()}><UserPlus size={13} /> Odeslat duplikát</button></div>
+    <div className="section-title">
+      <h2>Kolegové ve skriptoriu</h2>
+      <button className="icon-label" onClick={() => onSend()}><UserPlus size={13} /> Odeslat duplikát</button>
+    </div>
     <div className="friends">
       <article><div className="friend-avatar">B</div><div><strong>BeatriceWrites</strong><small>14 dní v řadě · 9 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
       <article><div className="friend-avatar blue">T</div><div><strong>theo.history</strong><small>6 dní v řadě · 7 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
     </div>
 
-    <button className="settings-button" onClick={onReset}><RotateCcw size={12} /> Resetovat postup pro demonstraci</button>
+    <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="settings-button"
+          style={{ flex: 1, minWidth: 160 }}
+          onClick={onAdvanceDay}
+          title="Simulovat další den návštěvy (+1 fragment do mozaiky)"
+        >
+          <Sparkles size={12} /> Simulovat další den (+1 fragment)
+        </button>
+        <button
+          type="button"
+          className="settings-button"
+          style={{ flex: 1, minWidth: 160, color: "#b91c1c" }}
+          onClick={onBreakStreak}
+          title="Simulovat vynechání dne (reset streaku na Den 1 dle pravidel)"
+        >
+          <RotateCcw size={12} /> Simulovat přerušení streaku (reset)
+        </button>
+      </div>
+      <button className="settings-button" onClick={onReset}>
+        <RotateCcw size={12} /> Resetovat celý postup pro demonstraci
+      </button>
+    </div>
   </div>;
 }
 
-function IlluminationMosaic({ pieces, compact = false }: { pieces: number; compact?: boolean }) {
+function IlluminationMosaic({
+  pieces,
+  compact = false,
+  illumination,
+}: {
+  pieces: number;
+  compact?: boolean;
+  illumination?: IlluminationMosaicItem;
+}) {
+  const art = illumination || DEFAULT_ILLUMINATIONS[0];
   return (
-    <div className={`illumination-mosaic ${compact ? "compact" : ""}`} aria-label={`${pieces} z 16 fragmentů iluminace odhaleno`}>
-      <img src={ILLUMINATIONS[0].source} alt="Iluminace Učeného zajíce" loading="lazy" decoding="async" />
+    <div
+      className={`illumination-mosaic ${compact ? "compact" : ""}`}
+      aria-label={`${pieces} z 16 fragmentů iluminace odhaleno: ${art.title}`}
+    >
+      <img src={art.source} alt={art.title} loading="lazy" decoding="async" />
       <div className="mosaic-cover" aria-hidden="true">
         {Array.from({ length: 16 }).map((_, i) => (
           <span key={i} className={i < pieces ? "revealed" : "hidden"}>
