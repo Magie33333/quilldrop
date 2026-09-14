@@ -56,6 +56,7 @@ export default function RealLeafletMap({
           maxZoom: 13,
           zoomControl: false,
           attributionControl: false,
+          preferCanvas: true,
         });
 
         // 1. Podkladové dlaždice s opravenou URL ({y})
@@ -311,7 +312,7 @@ export default function RealLeafletMap({
       <div ref={mapContainerRef} className="real-map-element" />
 
       {/* Dekorační rám */}
-      <div className="map-decor-border" pointer-events="none" />
+      <div className="map-decor-border" />
 
       {/* Kartuše */}
       <div className="map-cartouche">

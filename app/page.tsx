@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
+import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, Zap, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
@@ -167,9 +167,15 @@ export default function Home() {
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [pendingPackLevel, setPendingPackLevel] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [perfMode, setPerfMode] = useState(false);
 
   useEffect(() => {
     setSoundOn(isSoundEnabled());
+    const savedPerf = typeof window !== "undefined" && localStorage.getItem("quilldrop-perf-mode") === "true";
+    setPerfMode(savedPerf);
+    if (savedPerf && typeof document !== "undefined") {
+      document.body.classList.add("smooth-performance-mode");
+    }
   }, []);
 
   const toggleSound = () => {
@@ -177,6 +183,23 @@ export default function Home() {
     setSoundOn(next);
     setSoundEnabled(next);
     if (next) playSoftClick();
+  };
+
+  const togglePerfMode = () => {
+    setPerfMode(prev => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("quilldrop-perf-mode", String(next));
+      }
+      if (typeof document !== "undefined") {
+        if (next) {
+          document.body.classList.add("smooth-performance-mode");
+        } else {
+          document.body.classList.remove("smooth-performance-mode");
+        }
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -491,6 +514,8 @@ export default function Home() {
           totalCards={cards.length}
           soundOn={soundOn}
           onToggleSound={toggleSound}
+          perfMode={perfMode}
+          onTogglePerfMode={togglePerfMode}
         />
 
         <div className="scroll-area">
@@ -511,7 +536,19 @@ export default function Home() {
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
           {tab === "trophies" && <TrophiesScreen state={state} cards={cards} />}
-          {tab === "profile" && <ProfileScreen state={state} uniqueOwned={uniqueOwned} duplicates={duplicates} isLive={isLive} onReset={resetDemo} onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")} onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }} />}
+          {tab === "profile" && (
+            <ProfileScreen
+              state={state}
+              uniqueOwned={uniqueOwned}
+              duplicates={duplicates}
+              isLive={isLive}
+              perfMode={perfMode}
+              onTogglePerfMode={togglePerfMode}
+              onReset={resetDemo}
+              onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")}
+              onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
+            />
+          )}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
@@ -555,6 +592,8 @@ function StatusBar({
   totalCards,
   soundOn,
   onToggleSound,
+  perfMode,
+  onTogglePerfMode,
 }: {
   state: GameState;
   isLive?: boolean;
@@ -564,6 +603,8 @@ function StatusBar({
   totalCards: number;
   soundOn?: boolean;
   onToggleSound?: () => void;
+  perfMode?: boolean;
+  onTogglePerfMode?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -612,6 +653,21 @@ function StatusBar({
             aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
           >
             {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
+        )}
+        {onTogglePerfMode && (
+          <button
+            type="button"
+            className={`perf-toggle-btn ${perfMode ? "active" : ""}`}
+            onClick={onTogglePerfMode}
+            title={
+              perfMode
+                ? "Plynulý režim je aktivní (efekty zjednodušeny pro 60 FPS na 1440p)"
+                : "Zapnout plynulý režim (vypne náročné aury a částice pro slabší CPU / 1440p)"
+            }
+            aria-label={perfMode ? "Vypnout plynulý režim" : "Zapnout plynulý režim"}
+          >
+            <Zap size={13} />
           </button>
         )}
       </div>
@@ -674,6 +730,8 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
         ref={imgRef}
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         onLoad={onImgLoad}
         onError={() => {
           if (card.remoteImageUrl && src !== card.remoteImageUrl) {
@@ -753,6 +811,8 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
         ref={imgRef}
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         onLoad={onImgLoad}
         style={imgStyle}
         onError={() => {
@@ -1438,7 +1498,27 @@ function TrophiesScreen({ state, cards }: { state: GameState; cards: Colophon[] 
   </div>;
 }
 
-function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend, onSetAvatar }: { state: GameState; uniqueOwned: number; duplicates: number; isLive?: boolean; onReset: () => void; onSend: () => void; onSetAvatar: (id: string) => void }) {
+function ProfileScreen({
+  state,
+  uniqueOwned,
+  duplicates,
+  isLive,
+  perfMode,
+  onTogglePerfMode,
+  onReset,
+  onSend,
+  onSetAvatar,
+}: {
+  state: GameState;
+  uniqueOwned: number;
+  duplicates: number;
+  isLive?: boolean;
+  perfMode?: boolean;
+  onTogglePerfMode?: () => void;
+  onReset: () => void;
+  onSend: () => void;
+  onSetAvatar: (id: string) => void;
+}) {
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
   const title = level >= 10 ? "Mistr iluminátor" : level >= 6 ? "Písařský tovaryš" : "Učedník ve skriptoriu";
@@ -1489,6 +1569,25 @@ function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend
       <article><div className="friend-avatar blue">T</div><div><strong>theo.history</strong><small>6 dní v řadě · 7 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
     </div>
 
+    {onTogglePerfMode && (
+      <>
+        <div className="section-title"><h2>Zobrazení a výkon</h2></div>
+        <div className="profile-setting-row">
+          <div className="profile-setting-info">
+            <h4><Zap size={15} /> Plynulý režim (Smooth Performance Mode)</h4>
+            <p>Vypíná náročné částicové efekty, rotující aury a těžké stíny karet pro hladkých 60 FPS na 1440p monitorech nebo slabších procesorech.</p>
+          </div>
+          <button
+            type="button"
+            className={`profile-switch-btn ${perfMode ? "active" : ""}`}
+            onClick={onTogglePerfMode}
+          >
+            {perfMode ? "Aktivní ⚡" : "Vypnuto"}
+          </button>
+        </div>
+      </>
+    )}
+
     <button className="settings-button" onClick={onReset}><RotateCcw size={12} /> Resetovat postup pro demonstraci</button>
   </div>;
 }
@@ -1496,7 +1595,7 @@ function ProfileScreen({ state, uniqueOwned, duplicates, isLive, onReset, onSend
 function IlluminationMosaic({ pieces, compact = false }: { pieces: number; compact?: boolean }) {
   return (
     <div className={`illumination-mosaic ${compact ? "compact" : ""}`} aria-label={`${pieces} z 16 fragmentů iluminace odhaleno`}>
-      <img src={ILLUMINATIONS[0].source} alt="Iluminace Učeného zajíce" />
+      <img src={ILLUMINATIONS[0].source} alt="Iluminace Učeného zajíce" loading="lazy" decoding="async" />
       <div className="mosaic-cover" aria-hidden="true">
         {Array.from({ length: 16 }).map((_, i) => (
           <span key={i} className={i < pieces ? "revealed" : "hidden"}>
@@ -1741,7 +1840,7 @@ function GameModal({
         {isTranscription ? (
           <div className="transcription-mode">
             <div className="spotlight-wrap">
-              <img src={imgSrc} alt="Rukopis k paleografickému přepisu" />
+              <img src={imgSrc} alt="Rukopis k paleografickému přepisu" loading="lazy" decoding="async" />
               {question.highlight_regions && question.highlight_regions.length > 0 && (
                 <svg className="spotlight-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
