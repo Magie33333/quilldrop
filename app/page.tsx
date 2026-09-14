@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Award, BookOpen, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
+import { AlertCircle, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
@@ -113,6 +113,22 @@ const formatPacksCount = (n: number): string => {
   return `${n} balíčků`;
 };
 
+type UserProfile = {
+  id: string;
+  username: string;
+  display_name: string;
+  role?: string;
+  avatar_id?: string | null;
+  xp?: number;
+  coins?: number;
+  streak?: number;
+  puzzle_progress?: number;
+  bonus_packs?: PackQuality[];
+  trophies?: string[];
+  last_played_date?: string | null;
+  created_at?: string;
+};
+
 function withXpReward(state: GameState, amount: number): GameState {
   const nextXp = state.xp + amount;
   const levelsEarned = Math.max(0, levelForXp(nextXp) - levelForXp(state.xp));
@@ -123,10 +139,14 @@ function withXpReward(state: GameState, amount: number): GameState {
   };
 }
 
-function loadState(): GameState {
+function loadState(userId?: string): GameState {
   if (typeof window === "undefined") return INITIAL_STATE;
   try {
-    const saved = JSON.parse(localStorage.getItem("quilldrop-state") || "null");
+    const key = userId ? `quilldrop-state-${userId}` : "quilldrop-state";
+    let saved = JSON.parse(localStorage.getItem(key) || "null");
+    if (!saved && userId) {
+      saved = JSON.parse(localStorage.getItem("quilldrop-state") || "null");
+    }
     const hydrated: GameState = { ...INITIAL_STATE, ...(saved || {}), bonusPacks: saved?.bonusPacks || [], gallery: saved?.gallery || [] };
     const hasCurrentCards = Object.keys(hydrated.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
     if (!hasCurrentCards) hydrated.collection = { ...INITIAL_STATE.collection };
@@ -170,6 +190,172 @@ export default function Home() {
   const [soundOn, setSoundOn] = useState(true);
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
   const [curioIndex, setCurioIndex] = useState(0);
+
+  // Uživatel a autentizace
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authDisplayName, setAuthDisplayName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authSuccessMsg, setAuthSuccessMsg] = useState("");
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  async function syncToSupabase(userId: string, st: GameState, currentCards: Colophon[]) {
+    try {
+      await supabase.from("profiles").upsert({
+        id: userId,
+        xp: st.xp,
+        coins: st.coins,
+        streak: st.streak,
+        puzzle_progress: st.puzzle,
+        bonus_packs: st.bonusPacks,
+        trophies: st.trophies,
+        avatar_id: st.avatarArt,
+        last_played_date: st.lastPlayed || today(),
+        updated_at: new Date().toISOString(),
+      });
+
+      const entries = Object.entries(st.collection);
+      const rows: { user_id: string; card_id: string; count: number }[] = [];
+      for (const [cardKey, count] of entries) {
+        const match = currentCards.find(c => String(c.id) === String(cardKey));
+        const uuid = match?.uuid || (typeof cardKey === "string" && cardKey.length === 36 ? cardKey : null);
+        if (uuid) {
+          rows.push({
+            user_id: userId,
+            card_id: uuid,
+            count: count,
+          });
+        }
+      }
+
+      if (rows.length > 0) {
+        await supabase.from("user_cards").upsert(rows, { onConflict: "user_id,card_id" });
+      }
+    } catch (e) {
+      console.warn("Supabase sync warning:", e);
+    }
+  }
+
+  async function loadUserData(user: any, currentCards: Colophon[]) {
+    try {
+      let { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        const defaultName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Písař";
+        const { data: newProfile } = await supabase
+          .from("profiles")
+          .upsert({
+            id: user.id,
+            username: defaultName,
+            display_name: defaultName,
+            role: "player",
+            xp: INITIAL_STATE.xp,
+            coins: INITIAL_STATE.coins,
+            streak: INITIAL_STATE.streak,
+            puzzle_progress: INITIAL_STATE.puzzle,
+            bonus_packs: INITIAL_STATE.bonusPacks,
+            trophies: INITIAL_STATE.trophies,
+            last_played_date: today(),
+          })
+          .select()
+          .maybeSingle();
+        profile = newProfile;
+      }
+
+      if (profile) {
+        setCurrentProfile(profile as UserProfile);
+      }
+
+      const { data: userCards } = await supabase
+        .from("user_cards")
+        .select("card_id, count")
+        .eq("user_id", user.id);
+
+      const local = loadState(user.id);
+      const mergedCollection: Record<string | number, number> = { ...local.collection };
+
+      if (userCards && userCards.length > 0) {
+        for (const uc of userCards) {
+          const cardMatch = (currentCards.length > 0 ? currentCards : COLOPHONS).find(
+            c => c.uuid === uc.card_id || String(c.id) === uc.card_id
+          );
+          const cardKey = cardMatch ? cardMatch.id : uc.card_id;
+          mergedCollection[cardKey] = Math.max(mergedCollection[cardKey] || 0, uc.count || 1);
+        }
+      }
+
+      const mergedState: GameState = {
+        ...local,
+        xp: profile?.xp !== undefined ? Math.max(local.xp, profile.xp) : local.xp,
+        coins: profile?.coins !== undefined ? Math.max(local.coins, profile.coins) : local.coins,
+        streak: profile?.streak !== undefined ? Math.max(local.streak, profile.streak) : local.streak,
+        puzzle: profile?.puzzle_progress !== undefined ? Math.max(local.puzzle, profile.puzzle_progress) : local.puzzle,
+        bonusPacks: Array.isArray(profile?.bonus_packs) && profile.bonus_packs.length > 0 ? (profile.bonus_packs as PackQuality[]) : local.bonusPacks,
+        trophies: Array.isArray(profile?.trophies) && profile.trophies.length > 0 ? Array.from(new Set([...local.trophies, ...profile.trophies])) : local.trophies,
+        avatarArt: profile?.avatar_id || local.avatarArt,
+        collection: mergedCollection,
+      };
+
+      setState(mergedState);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`quilldrop-state-${user.id}`, JSON.stringify(mergedState));
+      }
+    } catch (err) {
+      console.warn("Failed to load user data from Supabase:", err);
+    }
+  }
+
+  useEffect(() => {
+    let isMounted = true;
+    async function initAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session?.user) {
+          setCurrentUser(session.user);
+          await loadUserData(session.user, cards);
+        } else {
+          const isGuest = typeof window !== "undefined" ? sessionStorage.getItem("quilldrop-guest-mode") : null;
+          if (!isGuest) {
+            setShowAuthModal(true);
+          }
+        }
+      } catch (e) {
+        console.warn("Auth initialization error:", e);
+      } finally {
+        if (isMounted) setAuthChecking(false);
+      }
+    }
+
+    initAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+      if (session?.user) {
+        setCurrentUser(session.user);
+        await loadUserData(session.user, cards);
+        setShowAuthModal(false);
+      } else {
+        setCurrentUser(null);
+        setCurrentProfile(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     setSoundOn(isSoundEnabled());
@@ -303,6 +489,10 @@ export default function Home() {
           }));
           setCards(mapped);
           setIsLive(true);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await loadUserData(user, mapped);
+          }
         }
 
         // Fetch live educational questions for mini-games
@@ -368,8 +558,118 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (ready) localStorage.setItem("quilldrop-state", JSON.stringify({ ...state, lastPlayed: today() }));
-  }, [state, ready]);
+    if (!ready) return;
+    const key = currentUser ? `quilldrop-state-${currentUser.id}` : "quilldrop-state";
+    localStorage.setItem(key, JSON.stringify({ ...state, lastPlayed: today() }));
+
+    if (currentUser) {
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = setTimeout(() => {
+        syncToSupabase(currentUser.id, state, cards);
+      }, 1200);
+    }
+  }, [state, ready, currentUser, cards]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthSuccessMsg("");
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          setAuthError("E-mail ještě nebyl potvrzen. Zkontrolujte prosím svou doručenou poštu a klikněte na potvrzovací odkaz.");
+        } else if (error.message.includes("Invalid login credentials")) {
+          setAuthError("Neplatné přihlašovací údaje. Zkontrolujte e-mail a heslo.");
+        } else {
+          setAuthError(error.message);
+        }
+      } else if (data.user) {
+        setCurrentUser(data.user);
+        await loadUserData(data.user, cards);
+        setShowAuthModal(false);
+        setToast("Vítejte zpět ve skriptoriu!");
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "Přihlášení se nezdařilo.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    setAuthSuccessMsg("");
+    const name = authDisplayName.trim() || authEmail.split("@")[0] || "Písař";
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+        options: {
+          data: {
+            display_name: name,
+            username: name,
+          },
+        },
+      });
+      if (error) {
+        setAuthError(error.message);
+      } else if (data.user) {
+        if (data.session) {
+          setCurrentUser(data.user);
+          await loadUserData(data.user, cards);
+          setShowAuthModal(false);
+          setToast("Vítejte v řádu písařů Quilldrop!");
+        } else {
+          setAuthSuccessMsg("Registrace proběhla úspěšně! Na váš e-mail jsme zaslali potvrzovací odkaz. Po potvrzení se přihlaste.");
+          setAuthMode("login");
+        }
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "Registrace se nezdařila.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
+      });
+      if (error) setAuthError(error.message);
+    } catch (err: any) {
+      setAuthError(err.message || "Google přihlášení se nezdařilo.");
+      setAuthLoading(false);
+    }
+  };
+
+  const handleContinueAsGuest = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("quilldrop-guest-mode", "true");
+    }
+    setShowAuthModal(false);
+    setToast("Pokračujete v režimu hosta.");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setCurrentProfile(null);
+    setState(loadState());
+    setToast("Byli jste odhlášeni ze skriptoria.");
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -524,8 +824,13 @@ export default function Home() {
   };
 
   const resetDemo = () => {
-    setState(INITIAL_STATE);
-    setToast("Váš herní postup byl úspěšně resetován.");
+    if (confirm("Opravdu chcete resetovat svůj postup ve hře?")) {
+      setState(INITIAL_STATE);
+      if (currentUser) {
+        syncToSupabase(currentUser.id, INITIAL_STATE, cards);
+      }
+      setToast("Váš herní postup byl úspěšně resetován.");
+    }
   };
 
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
@@ -542,6 +847,9 @@ export default function Home() {
           totalCards={cards.length}
           soundOn={soundOn}
           onToggleSound={toggleSound}
+          currentUser={currentUser}
+          currentProfile={currentProfile}
+          onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
         />
 
         <div className="scroll-area">
@@ -570,6 +878,10 @@ export default function Home() {
               uniqueOwned={uniqueOwned}
               duplicates={duplicates}
               isLive={isLive}
+              currentUser={currentUser}
+              currentProfile={currentProfile}
+              onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
+              onLogout={handleLogout}
               onReset={resetDemo}
               onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
@@ -604,6 +916,26 @@ export default function Home() {
           />
         )}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        {showAuthModal && (
+          <AuthModal
+            mode={authMode}
+            setMode={(m) => { setAuthMode(m); setAuthError(""); setAuthSuccessMsg(""); }}
+            email={authEmail}
+            setEmail={setAuthEmail}
+            password={authPassword}
+            setPassword={setAuthPassword}
+            displayName={authDisplayName}
+            setDisplayName={setAuthDisplayName}
+            loading={authLoading}
+            error={authError}
+            successMsg={authSuccessMsg}
+            onLogin={handleLogin}
+            onRegister={handleRegister}
+            onGoogle={handleGoogleSignIn}
+            onGuest={handleContinueAsGuest}
+            onClose={() => setShowAuthModal(false)}
+          />
+        )}
         {toast && <div className="toast" role="status">{toast}</div>}
       </section>
     </main>
@@ -618,6 +950,9 @@ function StatusBar({
   totalCards,
   soundOn,
   onToggleSound,
+  currentUser,
+  currentProfile,
+  onOpenAuth,
 }: {
   state: GameState;
   isLive?: boolean;
@@ -627,6 +962,9 @@ function StatusBar({
   totalCards: number;
   soundOn?: boolean;
   onToggleSound?: () => void;
+  currentUser?: any;
+  currentProfile?: UserProfile | null;
+  onOpenAuth?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -675,6 +1013,27 @@ function StatusBar({
             aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
           >
             {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
+        )}
+        {currentUser ? (
+          <button
+            type="button"
+            className="user-status-btn"
+            onClick={() => setTab("profile")}
+            title={`Přihlášen jako ${currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email}`}
+          >
+            <User size={13} />
+            <span>{currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email?.split("@")[0]}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="login-trigger-btn"
+            onClick={onOpenAuth}
+            title="Přihlásit se do skriptoria"
+          >
+            <LogIn size={13} />
+            <span>Přihlásit</span>
           </button>
         )}
       </div>
@@ -959,24 +1318,6 @@ function HomeScreen({
               <blockquote className="home-curio-text">
                 „{curio.text}“
               </blockquote>
-              {curio.source && (
-                <cite className="home-curio-source">— {curio.source}</cite>
-              )}
-            </div>
-
-            {/* Páska složení balíčku */}
-            <div className="home-pack-features">
-              <div className="home-pack-feature-item">
-                <span>📜 5 pergamenů</span>
-              </div>
-              <div className="home-pack-feature-divider" />
-              <div className="home-pack-feature-item">
-                <span>✨ Vzácné pečetě</span>
-              </div>
-              <div className="home-pack-feature-divider" />
-              <div className="home-pack-feature-item">
-                <span>🏛️ Skutečné archivy</span>
-              </div>
             </div>
           </div>
           <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
@@ -1554,6 +1895,10 @@ function ProfileScreen({
   uniqueOwned,
   duplicates,
   isLive,
+  currentUser,
+  currentProfile,
+  onOpenAuth,
+  onLogout,
   onReset,
   onSend,
   onSetAvatar,
@@ -1562,6 +1907,10 @@ function ProfileScreen({
   uniqueOwned: number;
   duplicates: number;
   isLive?: boolean;
+  currentUser?: any;
+  currentProfile?: UserProfile | null;
+  onOpenAuth: () => void;
+  onLogout: () => void;
   onReset: () => void;
   onSend: () => void;
   onSetAvatar: (id: string) => void;
@@ -1569,14 +1918,77 @@ function ProfileScreen({
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
   const title = level >= 10 ? "Mistr iluminátor" : level >= 6 ? "Písařský tovaryš" : "Učedník ve skriptoriu";
+  const scribeName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || (currentUser ? currentUser.email?.split("@")[0] : "Mistr písař");
+
   return <div className="screen profile-screen">
     <PageTitle kicker="Vaše místo na okrajích kodexu">Profil písaře</PageTitle>
-    <section className="profile-card">
+
+    {/* Karta účtu a synchronizace */}
+    {currentUser ? (
+      <div className="profile-account-card">
+        <div className="profile-account-header">
+          <h3>
+            <User size={16} />
+            <span>{scribeName}</span>
+          </h3>
+          <span className="profile-account-role-badge">
+            {currentProfile?.role === "admin" ? "🛡️ Administrátor" : "📜 Člen skriptoria"}
+          </span>
+        </div>
+        <div className="profile-account-details">
+          <div>
+            <small>E-mailový účet</small>
+            <strong>{currentUser.email}</strong>
+          </div>
+          <div>
+            <small>Cloudová synchronizace</small>
+            <strong style={{ color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
+              <CheckCircle2 size={13} /> Aktivní (Supabase)
+            </strong>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          {currentProfile?.role === "admin" ? (
+            <a href="/admin" className="profile-admin-link">
+              <ExternalLink size={13} /> Vstoupit do Studia
+            </a>
+          ) : <span />}
+          <button type="button" className="profile-logout-btn" onClick={onLogout}>
+            <LogOut size={13} /> Odhlásit se
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="profile-account-card">
+        <div className="profile-account-header">
+          <h3>
+            <User size={16} />
+            <span>Režim hosta</span>
+          </h3>
+          <span className="profile-account-role-badge" style={{ background: "#e2e8f0", color: "#475569", borderColor: "#cbd5e1" }}>
+            👤 Lokální profil
+          </span>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--ink-faded)", margin: "0 0 12px", lineHeight: 1.45 }}>
+          Váš herní postup a karty jsou nyní uloženy pouze v paměti tohoto prohlížeče. Založte si bezplatný účet nebo se přihlaste pro trvalé ukládání sbírky do cloudu, získávání trofejí a budoucí obchodování s kolegy.
+        </p>
+        <button
+          type="button"
+          className="auth-submit-btn"
+          onClick={onOpenAuth}
+          style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 16px" }}
+        >
+          <LogIn size={14} /> Přihlásit se / Vytvořit účet
+        </button>
+      </div>
+    )}
+
+    <section className="profile-card" style={{ marginTop: 14 }}>
       <div className={`avatar ${state.avatarArt ? "art-avatar" : ""}`}>
         {state.avatarArt ? <img src={ILLUMINATIONS.find(a => a.id === state.avatarArt)?.source} alt="Vybraný portrét" /> : "Q"}
       </div>
       <div>
-        <h2>Mistr písař</h2>
+        <h2>{scribeName}</h2>
         <p>{title} · Úroveň {level}</p>
         <div className="level-progress" aria-label={`${levelXp} z ${XP_PER_LEVEL} XP do úrovně ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div>
         <small>{levelXp} / {XP_PER_LEVEL} XP · Zbývá {XP_PER_LEVEL - levelXp} XP do úrovně {level + 1}</small>
@@ -1645,6 +2057,178 @@ function LevelUpModal({ level, onClose }: { level: number; onClose: () => void }
     <small>Do vaší pokladnice byl vložen jeden Masterwork Pack s vysokou šancí na vzácné kolofony.</small>
     <button onClick={onClose}>Převzít odměnu</button>
   </section></div>;
+}
+
+function AuthModal({
+  mode,
+  setMode,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  displayName,
+  setDisplayName,
+  loading,
+  error,
+  successMsg,
+  onLogin,
+  onRegister,
+  onGoogle,
+  onGuest,
+  onClose,
+}: {
+  mode: "login" | "register";
+  setMode: (m: "login" | "register") => void;
+  email: string;
+  setEmail: (v: string) => void;
+  password: string;
+  setPassword: (v: string) => void;
+  displayName: string;
+  setDisplayName: (v: string) => void;
+  loading: boolean;
+  error: string;
+  successMsg: string;
+  onLogin: (e: React.FormEvent) => void;
+  onRegister: (e: React.FormEvent) => void;
+  onGoogle: () => void;
+  onGuest: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="auth-overlay" onClick={onClose}>
+      <section className="auth-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <button
+          className="close"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 14,
+            background: "none",
+            border: "none",
+            fontSize: 22,
+            cursor: "pointer",
+            color: "var(--brown)",
+          }}
+          aria-label="Zavřít"
+        >
+          ×
+        </button>
+
+        <div style={{ fontSize: 32, marginBottom: 6 }}>🪶</div>
+        <h2>Vstup do Skriptoria</h2>
+        <p>
+          Ukládejte svou sbírku rukopisů do cloudu, sbírejte pečetě a připravte se na budoucí obchodování s ostatními písaři.
+        </p>
+
+        <div className="auth-tabs">
+          <button
+            type="button"
+            className={`auth-tab-btn ${mode === "login" ? "active" : ""}`}
+            onClick={() => setMode("login")}
+          >
+            Přihlášení
+          </button>
+          <button
+            type="button"
+            className={`auth-tab-btn ${mode === "register" ? "active" : ""}`}
+            onClick={() => setMode("register")}
+          >
+            Nová registrace
+          </button>
+        </div>
+
+        {error && (
+          <div className="auth-error">
+            <AlertCircle size={15} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />
+            {error}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="auth-success">
+            <CheckCircle2 size={15} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />
+            {successMsg}
+          </div>
+        )}
+
+        <form className="auth-form" onSubmit={mode === "login" ? onLogin : onRegister}>
+          {mode === "register" && (
+            <div>
+              <label>Přezdívka / Jméno písaře</label>
+              <input
+                type="text"
+                className="auth-input"
+                placeholder="např. Bratr Václav"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <div>
+            <label>E-mailová adresa</label>
+            <input
+              type="email"
+              className="auth-input"
+              placeholder="pisar@skriptorium.cz"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label>Heslo</label>
+            <input
+              type="password"
+              className="auth-input"
+              placeholder="Alespoň 6 znaků"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              required
+            />
+          </div>
+
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Pečetění svitku..." : mode === "login" ? "Vstoupit do skriptoria" : "Vytvořit písařský účet"}
+          </button>
+        </form>
+
+        <div className="auth-divider">
+          <span>nebo</span>
+        </div>
+
+        <button type="button" className="google-oauth-btn" onClick={onGoogle} disabled={loading}>
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+            />
+          </svg>
+          Pokračovat přes Google
+        </button>
+
+        <button type="button" className="guest-link-btn" onClick={onGuest}>
+          Pokračovat jako host (vyzkoušet bez přihlášení)
+        </button>
+      </section>
+    </div>
+  );
 }
 
 function CardDetail({ card, count, onClose }: { card: Colophon; count: number; onClose: () => void }) {
