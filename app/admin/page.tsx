@@ -37,8 +37,10 @@ import {
   Sparkles,
   HelpCircle,
   Trash2,
+  BookOpen,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
+import { DEFAULT_CURIOS, type Curio } from "../data/curios";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -288,6 +290,140 @@ export default function AdminPage() {
     title: "",
     rarity: "Common" as Rarity,
   });
+
+  // Správa historických glos a mouder ze skriptoria
+  const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
+  const [showCuriosModal, setShowCuriosModal] = useState(false);
+  const [curioSearch, setCurioSearch] = useState("");
+  const [curioCategoryFilter, setCurioCategoryFilter] = useState("Vše");
+  const [editingCurio, setEditingCurio] = useState<Curio | null>(null);
+  const [curioSuccessMsg, setCurioSuccessMsg] = useState("");
+  const [curioForm, setCurioForm] = useState<{
+    id: string;
+    category: string;
+    title: string;
+    text: string;
+    source: string;
+  }>({
+    id: "",
+    category: "Písařské stížnosti",
+    title: "",
+    text: "",
+    source: "",
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("quilldrop-curios");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) setCurios(parsed);
+        }
+      } catch {}
+    }
+    async function loadCurios() {
+      try {
+        const { data, error } = await supabase
+          .from("scriptorium_curios")
+          .select("*")
+          .order("id", { ascending: true });
+        if (!error && data && data.length > 0) {
+          setCurios(data as Curio[]);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("quilldrop-curios", JSON.stringify(data));
+          }
+        }
+      } catch {}
+    }
+    loadCurios();
+  }, []);
+
+  const handleSelectCurioToEdit = (c: Curio) => {
+    setEditingCurio(c);
+    setCurioForm({
+      id: c.id,
+      category: c.category || "Písařské stížnosti",
+      title: c.title || "",
+      text: c.text || "",
+      source: c.source || "",
+    });
+    setCurioSuccessMsg("");
+  };
+
+  const handleNewCurioForm = () => {
+    setEditingCurio(null);
+    setCurioForm({
+      id: "",
+      category: "Písařské stížnosti",
+      title: "",
+      text: "",
+      source: "",
+    });
+    setCurioSuccessMsg("");
+  };
+
+  const handleSaveCurio = async () => {
+    if (!curioForm.title.trim() || !curioForm.text.trim()) return;
+    const isNew = !curioForm.id;
+    const curioId = curioForm.id || `curio-${Date.now()}`;
+    const newCurio: Curio = {
+      id: curioId,
+      category: curioForm.category.trim() || "Zajímavost",
+      title: curioForm.title.trim(),
+      text: curioForm.text.trim(),
+      source: curioForm.source.trim() || undefined,
+    };
+
+    const nextList = isNew
+      ? [newCurio, ...curios]
+      : curios.map((c) => (c.id === curioId ? newCurio : c));
+
+    setCurios(nextList);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quilldrop-curios", JSON.stringify(nextList));
+    }
+    setEditingCurio(newCurio);
+    setCurioForm({
+      id: newCurio.id,
+      category: newCurio.category,
+      title: newCurio.title,
+      text: newCurio.text,
+      source: newCurio.source || "",
+    });
+    setCurioSuccessMsg(isNew ? "Nová glosa byla úspěšně vytvořena!" : "Změny v glose byly uloženy!");
+    setTimeout(() => setCurioSuccessMsg(""), 3000);
+
+    // Supabase sync (pokud tabulka existuje)
+    try {
+      await supabase.from("scriptorium_curios").upsert(newCurio);
+    } catch {}
+  };
+
+  const handleDeleteCurio = async (id: string) => {
+    if (!confirm("Opravdu chcete tuto glosu odstranit?")) return;
+    const nextList = curios.filter((c) => c.id !== id);
+    setCurios(nextList);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quilldrop-curios", JSON.stringify(nextList));
+    }
+    if (editingCurio?.id === id) {
+      handleNewCurioForm();
+    }
+    try {
+      await supabase.from("scriptorium_curios").delete().eq("id", id);
+    } catch {}
+  };
+
+  const handleResetCuriosToDefault = () => {
+    if (confirm("Opravdu chcete obnovit všechny glosy na výchozí historický katalog?")) {
+      setCurios(DEFAULT_CURIOS);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("quilldrop-curios", JSON.stringify(DEFAULT_CURIOS));
+      }
+      handleNewCurioForm();
+    }
+  };
 
   // Kontrola přihlášení při načtení
   useEffect(() => {
@@ -1170,6 +1306,17 @@ export default function AdminPage() {
               <Users size={13} /> Tým ({teamProfiles.length || "..."})
             </button>
           )}
+
+          <button
+            onClick={() => {
+              setShowCuriosModal(true);
+              setEditingCurio(null);
+            }}
+            className="flex items-center gap-1.5 text-xs bg-[#241e19] hover:bg-[#332b24] text-[#c9a96e] px-2.5 py-1.5 rounded border border-[#42372d] cursor-pointer transition"
+            title="Správa historických glos, mouder a zajímavostí z knižní kultury"
+          >
+            <BookOpen size={13} /> Glosy & moudra ({curios.length})
+          </button>
 
           {noChangesNotice && (
             <span className="text-xs text-[#c9a96e] flex items-center gap-1 bg-[#29221b] px-2.5 py-1 rounded border border-[#52422b]">
@@ -2927,6 +3074,275 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: SPRÁVA HISTORICKÝCH GLOS A MOUDER */}
+      {showCuriosModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#16120e] border border-[#3d3226] rounded-xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+            {/* Záhlaví modalu */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2721] bg-[#1d1712]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <BookOpen size={18} className="text-[#ffd580]" />
+                  <h3 className="font-serif font-bold text-base text-[#ffd580] tracking-wide">
+                    Glosy, moudra a zajímavosti ze skriptoria
+                  </h3>
+                  <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
+                    {curios.length} záznamů v katalogu
+                  </span>
+                </div>
+                <p className="text-xs text-[#8c7b6d] mt-1">
+                  Tyto historické poznatky a citace z kodexů vyplňují denní kartu balíčků na hlavní stránce a vzdělávají hráče.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCuriosModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] transition cursor-pointer"
+                title="Zavřít okno"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Tělo modalu: Split layout */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-0 overflow-hidden">
+              {/* LEVÝ PANEL: Seznam glos a filtry */}
+              <div className="md:col-span-5 border-r border-[#2e2721] flex flex-col min-h-0 bg-[#120f0c]">
+                <div className="p-3 border-b border-[#2e2721] space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleNewCurioForm}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs py-1.5 px-3 rounded shadow transition cursor-pointer"
+                    >
+                      <PlusCircle size={14} /> Přidat novou glosu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetCuriosToDefault}
+                      className="text-[11px] text-[#8c7b6d] hover:text-[#d4af37] p-1.5 rounded hover:bg-[#1e1914] transition border border-[#2e2721]"
+                      title="Obnovit původní sadu 12 historických glos"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Filtrovat glosy, témata..."
+                    value={curioSearch}
+                    onChange={(e) => setCurioSearch(e.target.value)}
+                    className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
+                  />
+
+                  {/* Rychlé kategorie */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10.5px]">
+                    {["Vše", "Písařské stížnosti", "Pergamen a inkoust", "Iluminace a zlato", "Tajemství kolofonů", "Středověká knihovna"].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCurioCategoryFilter(cat)}
+                        className={`whitespace-nowrap px-2 py-0.5 rounded transition cursor-pointer border ${
+                          curioCategoryFilter === cat
+                            ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                            : "bg-[#18130f] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rolovatelný seznam glos */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {curios
+                    .filter((c) => {
+                      const matchesSearch =
+                        !curioSearch ||
+                        c.title.toLowerCase().includes(curioSearch.toLowerCase()) ||
+                        c.text.toLowerCase().includes(curioSearch.toLowerCase()) ||
+                        c.category.toLowerCase().includes(curioSearch.toLowerCase());
+                      const matchesCat =
+                        curioCategoryFilter === "Vše" || c.category.toLowerCase() === curioCategoryFilter.toLowerCase();
+                      return matchesSearch && matchesCat;
+                    })
+                    .map((c) => {
+                      const isSelected = editingCurio?.id === c.id;
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => handleSelectCurioToEdit(c)}
+                          className={`p-2.5 rounded-lg border text-left cursor-pointer transition ${
+                            isSelected
+                              ? "bg-[#282017] border-[#d4af37] shadow-sm"
+                              : "bg-[#16120e] border-[#2e2721] hover:border-[#4a3928] hover:bg-[#1e1813]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-[#33271c] text-[#ffd580]">
+                              {c.category}
+                            </span>
+                            <span className="text-[10px] text-[#786655] truncate max-w-[120px]">
+                              {c.source || "—"}
+                            </span>
+                          </div>
+                          <h4 className="font-serif font-bold text-xs text-[#e8ded1] mb-1 line-clamp-1">
+                            {c.title}
+                          </h4>
+                          <p className="text-[11px] text-[#9c8976] line-clamp-2 italic">
+                            „{c.text}“
+                          </p>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* PRAVÝ PANEL: Editor a živý náhled */}
+              <div className="md:col-span-7 flex flex-col min-h-0 bg-[#16120e] p-6 overflow-y-auto">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#2e2721]">
+                  <h4 className="font-serif font-bold text-sm text-[#ffd580]">
+                    {editingCurio ? `Upravit glosu: ${editingCurio.title}` : "Vytvořit novou glosu"}
+                  </h4>
+                  {curioSuccessMsg && (
+                    <span className="text-xs text-[#73d13d] bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800/80 flex items-center gap-1">
+                      <CheckCircle2 size={13} /> {curioSuccessMsg}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Kategorie glosy</label>
+                    <input
+                      type="text"
+                      value={curioForm.category}
+                      onChange={(e) => setCurioForm({ ...curioForm, category: e.target.value })}
+                      placeholder="např. Písařské stížnosti, Pergamen a inkoust..."
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                    <div className="flex flex-wrap gap-1 mt-1.5 text-[10px]">
+                      {["Písařské stížnosti", "Tajemství kolofonů", "Pergamen a inkoust", "Iluminace a zlato", "Démoni a legendy", "Středověká knihovna", "Kletby na zloděje"].map((sugg) => (
+                        <button
+                          key={sugg}
+                          type="button"
+                          onClick={() => setCurioForm({ ...curioForm, category: sugg })}
+                          className="bg-[#211a14] hover:bg-[#2e241c] text-[#a89278] hover:text-[#ffd580] px-1.5 py-0.5 rounded border border-[#362b20] cursor-pointer"
+                        >
+                          + {sugg}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Titulek / Název moudra</label>
+                    <input
+                      type="text"
+                      value={curioForm.title}
+                      onChange={(e) => setCurioForm({ ...curioForm, title: e.target.value })}
+                      placeholder="např. Tři prsty píší, ale celé tělo trpí"
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Text glosy či historické zajímavosti</label>
+                    <textarea
+                      rows={4}
+                      value={curioForm.text}
+                      onChange={(e) => setCurioForm({ ...curioForm, text: e.target.value })}
+                      placeholder="Popište zajímavost, citaci nebo moudro o středověkých rukopisech a písařích..."
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-3 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Pramen, rukopis nebo datace (volitelné)</label>
+                    <input
+                      type="text"
+                      value={curioForm.source}
+                      onChange={(e) => setCurioForm({ ...curioForm, source: e.target.value })}
+                      placeholder="např. Metropolitní kapitula Praha, rkp. 1387"
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  {/* Živý náhled přesně tak, jak bude vypadat v denní kartě */}
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-[#8c7b6d] uppercase tracking-wider mb-2">
+                      Živý náhled v kartě hry
+                    </label>
+                    <div
+                      style={{
+                        background: "rgba(255, 248, 230, 0.85)",
+                        border: "1px solid #b88d57",
+                        borderRadius: "8px",
+                        padding: "12px 14px",
+                        boxShadow: "0 2px 6px rgba(90, 50, 15, 0.08)",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <BookOpen size={13} style={{ color: "#a16207" }} />
+                          <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.8px", color: "#78350f" }}>
+                            Glosa ze skriptoria
+                          </span>
+                          <span style={{ fontSize: "10px", fontWeight: 700, background: "#fde68a", color: "#854d0e", padding: "1px 7px", borderRadius: "10px", border: "1px solid #d9770640" }}>
+                            {curioForm.category || "Zajímavost"}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "10.5px", background: "#ecd2a1", color: "#452207", padding: "2px 6px", borderRadius: "4px", fontWeight: 700 }}>
+                          Další ↻
+                        </span>
+                      </div>
+                      <blockquote style={{ margin: "0 0 5px 0", fontFamily: "Cinzel, serif", fontSize: "12.5px", lineHeight: 1.45, color: "#452207", fontStyle: "italic" }}>
+                        „{curioForm.text || "Zde se zobrazí text glosy zadaný výše..."}“
+                      </blockquote>
+                      <cite style={{ display: "block", fontSize: "11px", color: "#854d0e", fontStyle: "normal", textAlign: "right", fontWeight: 600 }}>
+                        — {curioForm.source || "Pramen nebo datace"}
+                      </cite>
+                    </div>
+                  </div>
+
+                  {/* Tlačítka akcí */}
+                  <div className="pt-3 flex items-center justify-between border-t border-[#2e2721]">
+                    {editingCurio ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCurio(editingCurio.id)}
+                        className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 px-3 py-1.5 rounded transition cursor-pointer border border-red-900/40"
+                      >
+                        <Trash2 size={13} /> Smazat glosu
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleNewCurioForm}
+                        className="px-3 py-1.5 rounded text-xs text-[#9c8976] hover:bg-[#231d18] transition cursor-pointer"
+                      >
+                        Vyčistit formulář
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveCurio}
+                        disabled={!curioForm.title.trim() || !curioForm.text.trim()}
+                        className="bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs px-5 py-1.5 rounded shadow transition disabled:opacity-40 cursor-pointer"
+                      >
+                        {editingCurio ? "Uložit změny v glose" : "Vytvořit a zařadit glosu"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

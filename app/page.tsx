@@ -2,10 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, Zap, type LucideIcon } from "lucide-react";
+import { Award, BookOpen, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
+import { DEFAULT_CURIOS, type Curio } from "./data/curios";
 import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
 import RealLeafletMap from "./components/RealLeafletMap";
 import {
@@ -167,15 +168,54 @@ export default function Home() {
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [pendingPackLevel, setPendingPackLevel] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
-  const [perfMode, setPerfMode] = useState(false);
+  const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
+  const [curioIndex, setCurioIndex] = useState(0);
 
   useEffect(() => {
     setSoundOn(isSoundEnabled());
-    const savedPerf = typeof window !== "undefined" && localStorage.getItem("quilldrop-perf-mode") === "true";
-    setPerfMode(savedPerf);
-    if (savedPerf && typeof document !== "undefined") {
-      document.body.classList.add("smooth-performance-mode");
+
+    // Denní rotace glosy podle dne v roce
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const diff = now.getTime() - startOfYear.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    setCurioIndex(dayOfYear % DEFAULT_CURIOS.length);
+
+    // Načtení případných upravených glos ze Studia (localStorage / Supabase)
+    if (typeof window !== "undefined") {
+      try {
+        const savedCurios = localStorage.getItem("quilldrop-curios");
+        if (savedCurios) {
+          const parsed = JSON.parse(savedCurios);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCurios(parsed);
+            setCurioIndex(dayOfYear % parsed.length);
+          }
+        }
+      } catch {
+        // fallback to DEFAULT_CURIOS
+      }
     }
+
+    async function fetchLiveCurios() {
+      try {
+        const { data, error } = await supabase
+          .from("scriptorium_curios")
+          .select("*")
+          .order("id", { ascending: true });
+        if (!error && data && data.length > 0) {
+          setCurios(data as Curio[]);
+          setCurioIndex(dayOfYear % data.length);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("quilldrop-curios", JSON.stringify(data));
+          }
+        }
+      } catch {
+        // Supabase tabulka nemusí existovat, ignorujeme
+      }
+    }
+    fetchLiveCurios();
   }, []);
 
   const toggleSound = () => {
@@ -185,21 +225,9 @@ export default function Home() {
     if (next) playSoftClick();
   };
 
-  const togglePerfMode = () => {
-    setPerfMode(prev => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("quilldrop-perf-mode", String(next));
-      }
-      if (typeof document !== "undefined") {
-        if (next) {
-          document.body.classList.add("smooth-performance-mode");
-        } else {
-          document.body.classList.remove("smooth-performance-mode");
-        }
-      }
-      return next;
-    });
+  const nextCurio = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCurioIndex(prev => (prev + 1) % curios.length);
   };
 
   useEffect(() => {
@@ -514,8 +542,6 @@ export default function Home() {
           totalCards={cards.length}
           soundOn={soundOn}
           onToggleSound={toggleSound}
-          perfMode={perfMode}
-          onTogglePerfMode={togglePerfMode}
         />
 
         <div className="scroll-area">
@@ -525,6 +551,8 @@ export default function Home() {
               cards={cards}
               uniqueOwned={uniqueOwned}
               totalCards={cards.length}
+              curio={curios[curioIndex] || DEFAULT_CURIOS[0]}
+              onNextCurio={nextCurio}
               onPacks={() => setTab("packs")}
               onCollection={() => setTab("collection")}
               onMap={() => setShowMap(true)}
@@ -542,8 +570,6 @@ export default function Home() {
               uniqueOwned={uniqueOwned}
               duplicates={duplicates}
               isLive={isLive}
-              perfMode={perfMode}
-              onTogglePerfMode={togglePerfMode}
               onReset={resetDemo}
               onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
@@ -592,8 +618,6 @@ function StatusBar({
   totalCards,
   soundOn,
   onToggleSound,
-  perfMode,
-  onTogglePerfMode,
 }: {
   state: GameState;
   isLive?: boolean;
@@ -603,8 +627,6 @@ function StatusBar({
   totalCards: number;
   soundOn?: boolean;
   onToggleSound?: () => void;
-  perfMode?: boolean;
-  onTogglePerfMode?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -653,21 +675,6 @@ function StatusBar({
             aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
           >
             {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
-          </button>
-        )}
-        {onTogglePerfMode && (
-          <button
-            type="button"
-            className={`perf-toggle-btn ${perfMode ? "active" : ""}`}
-            onClick={onTogglePerfMode}
-            title={
-              perfMode
-                ? "Plynulý režim je aktivní (efekty zjednodušeny pro 60 FPS na 1440p)"
-                : "Zapnout plynulý režim (vypne náročné aury a částice pro slabší CPU / 1440p)"
-            }
-            aria-label={perfMode ? "Vypnout plynulý režim" : "Zapnout plynulý režim"}
-          >
-            <Zap size={13} />
           </button>
         )}
       </div>
@@ -830,6 +837,8 @@ function HomeScreen({
   cards,
   uniqueOwned,
   totalCards,
+  curio,
+  onNextCurio,
   onPacks,
   onCollection,
   onMap,
@@ -841,6 +850,8 @@ function HomeScreen({
   cards: Colophon[];
   uniqueOwned: number;
   totalCards: number;
+  curio: Curio;
+  onNextCurio: (e?: React.MouseEvent) => void;
   onPacks: () => void;
   onCollection: () => void;
   onMap: () => void;
@@ -925,6 +936,46 @@ function HomeScreen({
                     ? "Splňte písařskou výzvu vedle a získejte další balíček!"
                     : "Vraťte se zítra za rozbřesku, až zapálíme nové svíce."}
                 </p>
+              </div>
+            </div>
+
+            {/* Denní glosa ze skriptoria / Moudro a zajímavost */}
+            <div className="home-curio-box">
+              <div className="home-curio-top">
+                <div className="home-curio-label">
+                  <BookOpen size={13} style={{ color: "#a16207" }} />
+                  <span>Glosa ze skriptoria</span>
+                  <span className="home-curio-category">{curio.category}</span>
+                </div>
+                <button
+                  type="button"
+                  className="home-curio-next-btn"
+                  onClick={onNextCurio}
+                  title="Zobrazit další zajímavost ze skriptoria"
+                >
+                  Další ↻
+                </button>
+              </div>
+              <blockquote className="home-curio-text">
+                „{curio.text}“
+              </blockquote>
+              {curio.source && (
+                <cite className="home-curio-source">— {curio.source}</cite>
+              )}
+            </div>
+
+            {/* Páska složení balíčku */}
+            <div className="home-pack-features">
+              <div className="home-pack-feature-item">
+                <span>📜 5 pergamenů</span>
+              </div>
+              <div className="home-pack-feature-divider" />
+              <div className="home-pack-feature-item">
+                <span>✨ Vzácné pečetě</span>
+              </div>
+              <div className="home-pack-feature-divider" />
+              <div className="home-pack-feature-item">
+                <span>🏛️ Skutečné archivy</span>
               </div>
             </div>
           </div>
@@ -1503,8 +1554,6 @@ function ProfileScreen({
   uniqueOwned,
   duplicates,
   isLive,
-  perfMode,
-  onTogglePerfMode,
   onReset,
   onSend,
   onSetAvatar,
@@ -1513,8 +1562,6 @@ function ProfileScreen({
   uniqueOwned: number;
   duplicates: number;
   isLive?: boolean;
-  perfMode?: boolean;
-  onTogglePerfMode?: () => void;
   onReset: () => void;
   onSend: () => void;
   onSetAvatar: (id: string) => void;
@@ -1568,25 +1615,6 @@ function ProfileScreen({
       <article><div className="friend-avatar">B</div><div><strong>BeatriceWrites</strong><small>14 dní v řadě · 9 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
       <article><div className="friend-avatar blue">T</div><div><strong>theo.history</strong><small>6 dní v řadě · 7 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
     </div>
-
-    {onTogglePerfMode && (
-      <>
-        <div className="section-title"><h2>Zobrazení a výkon</h2></div>
-        <div className="profile-setting-row">
-          <div className="profile-setting-info">
-            <h4><Zap size={15} /> Plynulý režim (Smooth Performance Mode)</h4>
-            <p>Vypíná náročné částicové efekty, rotující aury a těžké stíny karet pro hladkých 60 FPS na 1440p monitorech nebo slabších procesorech.</p>
-          </div>
-          <button
-            type="button"
-            className={`profile-switch-btn ${perfMode ? "active" : ""}`}
-            onClick={onTogglePerfMode}
-          >
-            {perfMode ? "Aktivní ⚡" : "Vypnuto"}
-          </button>
-        </div>
-      </>
-    )}
 
     <button className="settings-button" onClick={onReset}><RotateCcw size={12} /> Resetovat postup pro demonstraci</button>
   </div>;
