@@ -5,6 +5,8 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { Award, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, UserPlus, UserRound, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
+import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
@@ -145,6 +147,8 @@ export default function Home() {
   const [cardShown, setCardShown] = useState(false);
   const [packQuality, setPackQuality] = useState<PackQuality>("standard");
   const [toast, setToast] = useState("");
+  const [questions, setQuestions] = useState<QuestionData[]>(DEFAULT_QUESTIONS);
+  const [activeQuestion, setActiveQuestion] = useState<QuestionData | null>(null);
   const [game, setGame] = useState<GameKind | null>(null);
   const [gameStep, setGameStep] = useState(0);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -227,6 +231,30 @@ export default function Home() {
           setCards(mapped);
           setIsLive(true);
         }
+
+        // Fetch live educational questions for mini-games
+        const { data: qData, error: qError } = await supabase
+          .from("game_questions")
+          .select("*")
+          .eq("is_active", true);
+
+        if (!qError && qData && qData.length > 0) {
+          const loadedQuestions: QuestionData[] = qData.map((q: any) => ({
+            id: q.id,
+            card_id: q.card_id,
+            game_kind: q.game_kind,
+            title: q.title,
+            intro: q.intro,
+            quote: q.quote,
+            options: Array.isArray(q.options) ? q.options : [],
+            correct_index: Number(q.correct_index) || 0,
+            explanation: q.explanation || undefined,
+            hint: q.hint || undefined,
+            difficulty: q.difficulty || "medium",
+            is_active: q.is_active,
+          }));
+          setQuestions(loadedQuestions);
+        }
       } catch (e) {
         console.warn("Supabase fetch failed, continuing with static data:", e);
       }
@@ -293,8 +321,18 @@ export default function Home() {
   };
 
   const startGame = (kind: GameKind) => {
-    if (state.gamesPlayed >= 10) { setToast("Dnešních 10 výzev jste již dokončili. Vraťte se zítra za svítání."); return; }
+    if (state.gamesPlayed >= 10) {
+      setToast("Dnešních 10 výzev jste již dokončili. Vraťte se zítra za svítání.");
+      return;
+    }
+    const pool = questions.filter(q => q.game_kind === kind);
+    const chosen = pool.length > 0
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : DEFAULT_QUESTIONS.find(q => q.game_kind === kind) || DEFAULT_QUESTIONS[0];
+    setActiveQuestion(chosen);
     setGame(kind);
+    setGameStep(0);
+    setAnswer(null);
   };
 
   const finishGame = (correct: boolean) => {
@@ -304,13 +342,22 @@ export default function Home() {
       const earnedXp = quality === "masterwork" ? 90 : quality === "refined" ? 60 : 35;
       const nextLevel = levelForXp(state.xp + earnedXp);
       setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 20 }, earnedXp));
-      if (nextLevel > levelForXp(state.xp)) window.setTimeout(() => setLevelUp(nextLevel), 1300);
-      else setToast(`Správně! ${qualityLabel(quality)} balíček čeká ve vaší pokladnici.`);
+      if (nextLevel > levelForXp(state.xp)) {
+        window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
+      } else {
+        setToast(`Správně! ${qualityLabel(quality)} balíček čeká ve vaší pokladnici.`);
+      }
     } else {
       setState(s => ({ ...s, gamesPlayed: s.gamesPlayed + 1 }));
       setToast(`Pokus využit — dnes zbývá ${Math.max(0, 9 - state.gamesPlayed)} výzev.`);
     }
-    setTimeout(() => { setGame(null); setAnswer(null); setGameStep(0); }, 1200);
+    const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
+    setTimeout(() => {
+      setGame(null);
+      setActiveQuestion(null);
+      setAnswer(null);
+      setGameStep(0);
+    }, delay);
   };
 
   const resetDemo = () => {
@@ -359,8 +406,26 @@ export default function Home() {
 
         {detail && <CardDetail card={detail} count={state.collection[detail.id] || 0} onClose={() => setDetail(null)} />}
         {opened && <PackReveal key={`${reveal}-${cardShown}`} card={opened[reveal]} position={reveal + 1} total={opened.length} quality={packQuality} shown={cardShown} onReveal={() => setCardShown(true)} onNext={finishReveal} />}
-        {game && <GameModal kind={game} cards={cards} answer={answer} step={gameStep} setStep={setGameStep} onClose={() => setGame(null)} onAnswer={finishGame} />}
-        {showMap && <MapModal state={state} cards={cards} onClose={() => setShowMap(false)} />}
+        {game && activeQuestion && (
+          <GameModal
+            kind={game}
+            question={activeQuestion}
+            cards={cards}
+            answer={answer}
+            step={gameStep}
+            setStep={setGameStep}
+            onClose={() => { setGame(null); setActiveQuestion(null); setAnswer(null); setGameStep(0); }}
+            onAnswer={finishGame}
+          />
+        )}
+        {showMap && (
+          <MapModal
+            state={state}
+            cards={cards}
+            onClose={() => setShowMap(false)}
+            onDetail={(card) => { setShowMap(false); setDetail(card); }}
+          />
+        )}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
         {toast && <div className="toast" role="status">{toast}</div>}
       </section>
@@ -1090,18 +1155,287 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
   </div>;
 }
 
-function GameModal({ kind, cards, answer, step, setStep, onClose, onAnswer }: { kind: GameKind; cards: Colophon[]; answer: string | null; step: number; setStep: (n: number) => void; onClose: () => void; onAnswer: (correct: boolean) => void }) {
-  const challengeCard = cards[kind === "paleo" ? 0 : kind === "cipher" ? 1 : 2] || cards[0] || COLOPHONS[0];
-  const data = {
-    mood: { title: "Nálada písaře", intro: "Jak se cítil písař, když dopsal tato slova?", quote: "Kniha je konečně hotova. Záda bolí, zrak slábne a teď si žádám víno.", options: [["😌", "Klidný a spokojený"], ["😩", "Zcela vyčerpaný"], ["😡", "Rozzuřený na předlohu"]], right: 1 },
-    cipher: { title: "Rozlušti kolofon", intro: "Samohlásky zmizely. Doplňte původní latinskou frázi.", quote: "M_N_S  M_ _  D_L_T", options: [["Manus mea dolet", "Ruka mě bolí"], ["Monas mea delet", "Mnich mě maže"], ["Minus mio dalet", "Falešná stopa"]], right: 0 },
-    paleo: { title: "Paleografický mistr", intro: "Kterým písmem je psán následující text?", quote: "𝔔𝔲𝔦 𝔰𝔠𝔯𝔦𝔭𝔰𝔦𝔱 𝔰𝔠𝔯𝔦𝔟𝔞𝔱", options: [["Karolínská minuskula", "cca 800–1100"], ["Gotická textura (Textualis)", "cca 1200–1500"], ["Humanistická antikva", "cca 1400–1600"]], right: 1 },
-  }[kind];
-  const reward = kind === "paleo" ? "Mistrovský balíček · Epic a lepší" : kind === "cipher" ? "Vytříbený balíček · Zvýšená šance na Rare" : "Standardní bonusový balíček";
-  return <div className="modal-backdrop" onClick={onClose}><section className={`modal game-modal game-${kind}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"><button className="close" onClick={onClose}>×</button><p className="eyebrow">Výzva o bonusový balíček</p><h2>{data.title}</h2><div className="reward-banner"><span>Odměna</span><strong>{reward}</strong></div><div className="game-rule">{data.intro}</div><div className="challenge-manuscript"><ColophonImage card={challengeCard} alt="Detail rukopisu k výzvě" /><small>{challengeCard.manuscript} · {challengeCard.locus}</small></div><blockquote className={kind === "paleo" ? "paleo-text" : ""}>{data.quote}</blockquote><div className="game-options">{data.options.map((o, i) => <button key={i} disabled={!!answer} className={answer ? (i === data.right ? "correct" : "dim") : ""} onClick={() => onAnswer(i === data.right)}><span>{o[0]}</span><small>{o[1]}</small></button>)}</div>{answer === "wrong" && <p className="wrong-answer">Bohužel vedle – hledejte nápovědu ve slovech písaře.</p>}{step === 0 && <button className="hint" onClick={() => setStep(1)}>Potřebujete nápovědu?</button>}{step === 1 && <p className="hint-copy">Zaměřte se na fyzický pocit při dlouhém psaní brkem na pergamen.</p>}</section></div>;
+function GameModal({
+  kind,
+  question,
+  cards,
+  answer,
+  step,
+  setStep,
+  onClose,
+  onAnswer,
+}: {
+  kind: GameKind;
+  question: QuestionData;
+  cards: Colophon[];
+  answer: string | null;
+  step: number;
+  setStep: (n: number) => void;
+  onClose: () => void;
+  onAnswer: (correct: boolean) => void;
+}) {
+  const challengeCard =
+    (question.card_id
+      ? cards.find((c) => c.uuid === question.card_id || String(c.id) === String(question.card_id))
+      : null) ||
+    cards.find((c) => c.quote && question.quote && c.quote.toLowerCase().includes(question.quote.slice(0, 15).toLowerCase())) ||
+    cards[0] ||
+    COLOPHONS[0];
+
+  const reward =
+    kind === "paleo"
+      ? "Mistrovský balíček · Epic a lepší"
+      : kind === "cipher"
+      ? "Vytříbený balíček · Zvýšená šance na Rare"
+      : "Standardní bonusový balíček";
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section
+        className={`modal game-modal game-${kind}`}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={question.title}
+      >
+        <button className="close" onClick={onClose}>
+          ×
+        </button>
+        <p className="eyebrow">Výzva o bonusový balíček</p>
+        <h2>{question.title}</h2>
+        <div className="reward-banner">
+          <span>Odměna</span>
+          <strong>{reward}</strong>
+        </div>
+        <div className="game-rule">{question.intro}</div>
+        <div className="challenge-manuscript">
+          <ColophonImage card={challengeCard} alt="Detail rukopisu k výzvě" />
+          <small>
+            {challengeCard.manuscript} · {challengeCard.locus}
+          </small>
+        </div>
+        <blockquote className={kind === "paleo" ? "paleo-text" : ""}>
+          {question.quote}
+        </blockquote>
+        <div className="game-options">
+          {question.options.map((o, i) => (
+            <button
+              key={i}
+              disabled={!!answer}
+              className={answer ? (i === question.correct_index ? "correct" : "dim") : ""}
+              onClick={() => onAnswer(i === question.correct_index)}
+            >
+              <span>{o[0]}</span>
+              <small>{o[1]}</small>
+            </button>
+          ))}
+        </div>
+        {answer === "correct" && question.explanation && (
+          <div className="game-explanation">
+            <strong>Písařský vhled:</strong>
+            {question.explanation}
+          </div>
+        )}
+        {answer === "wrong" && (
+          <p className="wrong-answer">Bohužel vedle – hledejte nápovědu ve slovech písaře.</p>
+        )}
+        {step === 0 && !answer && question.hint && (
+          <button className="hint" onClick={() => setStep(1)}>
+            Potřebujete nápovědu?
+          </button>
+        )}
+        {step === 1 && question.hint && <p className="hint-copy">{question.hint}</p>}
+      </section>
+    </div>
+  );
 }
 
-function MapModal({ state, cards, onClose }: { state: GameState; cards: Colophon[]; onClose: () => void }) {
-  const owned = cards.filter(c => state.collection[c.id]);
-  return <div className="modal-backdrop" onClick={onClose}><section className="modal map-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"><button className="close" onClick={onClose}>×</button><p className="eyebrow">Písařská centra středověké Evropy</p><h2>Mapa dochovaných kolofonů</h2><div className="old-map"><span className="land land-1" /><span className="land land-2" /><span className="land land-3" />{owned.slice(0, 6).map((c, i) => <button key={c.id} style={{ left: `${22 + (i * 13) % 58}%`, top: `${25 + (i * 19) % 47}%` }} title={`${c.title}, ${c.place}`}>✦</button>)}</div><div className="map-list">{owned.slice(0, 4).map(c => <span key={c.id}><b>{c.place.split(",")[0]}</b><small>{c.year}</small></span>)}</div></section></div>;
+function MapModal({
+  state,
+  cards,
+  onClose,
+  onDetail,
+}: {
+  state: GameState;
+  cards: Colophon[];
+  onClose: () => void;
+  onDetail: (card: Colophon) => void;
+}) {
+  const scriptoriaWithCards = useMemo(() => {
+    return SCRIPTORIA_PLACES.map((place) => {
+      const placeCards = cards.filter((c) => getScriptoriumForCard(c).id === place.id);
+      const owned = placeCards.filter((c) => Boolean(state.collection[c.id]));
+      return {
+        place,
+        cards: placeCards,
+        owned,
+      };
+    });
+  }, [cards, state.collection]);
+
+  const [selectedPlace, setSelectedPlace] = useState<ScriptoriumPlace>(() => {
+    const withOwned = scriptoriaWithCards.find((s) => s.owned.length > 0);
+    return withOwned ? withOwned.place : SCRIPTORIA_PLACES[0];
+  });
+
+  const currentSelection =
+    scriptoriaWithCards.find((s) => s.place.id === selectedPlace.id) || scriptoriaWithCards[0];
+
+  const totalMapOwned = scriptoriaWithCards.reduce((acc, s) => acc + s.owned.length, 0);
+  const totalMapCards = scriptoriaWithCards.reduce((acc, s) => acc + s.cards.length, 0);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section
+        className="modal map-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Historická mapa skriptorií"
+      >
+        <button className="close" onClick={onClose}>
+          ×
+        </button>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            flexWrap: "wrap",
+            gap: "10px",
+          }}
+        >
+          <div>
+            <p className="eyebrow">Písařská a univerzitní centra středověké Evropy</p>
+            <h2>Historická mapa skriptorií</h2>
+          </div>
+          <div
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "var(--brown)",
+              background: "#eedcac",
+              padding: "4px 10px",
+              borderRadius: "4px",
+              border: "1px solid #ba8e55",
+            }}
+          >
+            Objeveno celkem: <b>{totalMapOwned} / {totalMapCards}</b>
+          </div>
+        </div>
+
+        <div className="map-layout">
+          {/* Levá část: interaktivní mapa */}
+          <div className="medieval-map-container" aria-label="Mapa Evropy s piny skriptorií">
+            <div className="map-decor-border" />
+            <div className="map-cartouche">ORBIS SCRIPTORIORUM</div>
+            <span className="map-sea-label sea-baltic">MARE BALTICUM</span>
+            <span className="map-sea-label sea-adriatic">MARE ADRIATICUM</span>
+
+            {scriptoriaWithCards.map(({ place, owned, cards: pCards }) => {
+              const hasOwned = owned.length > 0;
+              const isSelected = selectedPlace.id === place.id;
+              return (
+                <button
+                  key={place.id}
+                  className={`map-pin ${hasOwned ? "has-owned" : ""} ${isSelected ? "active" : ""}`}
+                  style={{ left: `${place.x}%`, top: `${place.y}%` }}
+                  onClick={() => setSelectedPlace(place)}
+                  title={`${place.name} (${owned.length}/${pCards.length} objeveno)`}
+                >
+                  <span className="pin-seal">{place.icon}</span>
+                  <span className="pin-tag">
+                    {place.name} <b>{owned.length}/{pCards.length}</b>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pravá část: detail vybraného skriptoria */}
+          <div className="map-panel">
+            <div className="map-panel-header">
+              <h3>
+                <span>{currentSelection.place.icon}</span> {currentSelection.place.name}
+              </h3>
+              <p>
+                {currentSelection.place.region} · {currentSelection.place.country}
+              </p>
+            </div>
+            <p className="map-panel-desc">{currentSelection.place.description}</p>
+
+            <div className="map-panel-stats">
+              <span>Dochované kodexy v archivu</span>
+              <span>
+                {currentSelection.owned.length} z {currentSelection.cards.length} objeveno
+              </span>
+            </div>
+            <div className="map-panel-bar">
+              <i
+                style={{
+                  width: `${
+                    currentSelection.cards.length > 0
+                      ? (currentSelection.owned.length / currentSelection.cards.length) * 100
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+
+            <div className="map-cards-scroll">
+              {currentSelection.cards.length === 0 ? (
+                <p className="map-empty-state">V této lokalitě zatím nemáte katalogizovány žádné kodexy.</p>
+              ) : (
+                currentSelection.cards.map((card) => {
+                  const count = state.collection[card.id] || 0;
+                  const isOwned = count > 0;
+                  return (
+                    <div key={card.id} className={`map-card-item ${isOwned ? "" : "locked"}`}>
+                      <div className="map-card-thumb">
+                        {isOwned ? (
+                          <ColophonImage card={card} />
+                        ) : (
+                          <span
+                            style={{
+                              display: "grid",
+                              placeItems: "center",
+                              width: "100%",
+                              height: "100%",
+                              color: "#835928",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ?
+                          </span>
+                        )}
+                      </div>
+                      <div className="map-card-info">
+                        <strong>{isOwned ? card.title : "Tajemný kodex"}</strong>
+                        <small>
+                          {isOwned ? `${card.scribe} (${card.year})` : "Získejte v balíčcích"}
+                        </small>
+                      </div>
+                      {isOwned ? (
+                        <button
+                          className="map-card-action"
+                          onClick={() => onDetail(card)}
+                          title="Prohlédnout detail kolofonu"
+                        >
+                          Detail →
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "10px", color: "#8a6534", padding: "4px" }}>
+                          Zamčeno
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

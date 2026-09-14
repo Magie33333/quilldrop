@@ -188,8 +188,45 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .challenge-manuscript img { width: 100%; height: 100%; object-fit: cover; }
 .challenge-manuscript small { position: absolute; right: 6px; bottom: 6px; left: 6px; padding: 5px 7px; overflow: hidden; color: #fff7dd; background: #40250cd9; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .reveal-bg { display: flex; flex-direction: column; justify-content: center; }.sparkles { color: #fbd66a; font-size: 26px; margin-bottom: 8px; animation: shimmer 1.5s infinite alternate; }@keyframes shimmer { to { transform: scale(1.08); filter: brightness(1.3); } }.reveal-card { width: min(100%, 330px); padding: 12px; border: 4px double var(--brown); background: var(--light); text-align: center; box-shadow: 0 14px 34px #0008; animation: reveal .45s cubic-bezier(.2,.9,.3,1.2); }@keyframes reveal { from { transform: rotateY(90deg) scale(.8); } }.reveal-card h2 { margin: 9px 0 5px; color: var(--brown); }.reveal-card p { font-size: 12px; font-style: italic; }.reveal-card small { font-size: 9px; }.reveal-actions { width: min(100%, 330px); margin-top: 10px; display: flex; justify-content: space-between; align-items: center; color: white; }.reveal-actions button { border: 1px solid #e5bd62; background: var(--brown); color: #fff1cf; padding: 9px 13px; cursor: pointer; }
-.game-rule { padding: 8px; border-block: 1px solid #b99158; text-align: center; font-size: 11px; }.game-modal blockquote { margin: 13px 0; border: 1px solid #9e6a31; border-left-width: 5px; font-size: 15px; }.game-modal blockquote.paleo-text { font-size: 23px; letter-spacing: 1px; text-align: center; }.game-options { display: grid; gap: 7px; }.game-options button { text-align: left; padding: 10px 12px; border: 1px solid #a4763b; background: #f0d9ad; cursor: pointer; }.game-options button span, .game-options button small { display: block; }.game-options button span { font-weight: 700; }.game-options button small { margin-top: 2px; font-size: 9px; }.game-options button.correct { background: #bcd3b4; border-color: var(--green); }.game-options button.dim { opacity: .45; }.wrong-answer { color: var(--red); font-weight: 700; font-size: 11px; }.hint { display: block; margin: 12px auto 0; border: 0; background: none; color: var(--blue); text-decoration: underline; font-size: 10px; cursor: pointer; }.hint-copy { text-align: center; font-size: 10px; color: var(--brown); }
-.old-map { height: 290px; margin-top: 12px; position: relative; overflow: hidden; border: 2px solid var(--brown); background: #d7bd80; }.old-map::before { content: "MARE OCEANVM"; position: absolute; left: 10px; bottom: 13px; color: #8a6d3e; font-size: 10px; letter-spacing: 2px; transform: rotate(-18deg); }.land { position: absolute; background: #708b69; border: 2px solid #516249; filter: sepia(.25); }.land-1 { width: 150px; height: 190px; top: 20px; left: 120px; border-radius: 60% 30% 50% 40%; transform: rotate(13deg); }.land-2 { width: 86px; height: 80px; top: 25px; left: 38px; border-radius: 55% 35% 40% 60%; transform: rotate(-12deg); }.land-3 { width: 67px; height: 115px; bottom: 10px; right: 45px; border-radius: 70% 20% 80% 30%; transform: rotate(24deg); }.old-map button { position: absolute; z-index: 2; width: 25px; height: 25px; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 2px solid #fff0ac; background: var(--red); color: #ffe87a; cursor: pointer; box-shadow: 0 2px 4px #0005; }.map-list { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }.map-list span { display: flex; justify-content: space-between; padding: 6px; border: 1px solid #b18750; font-size: 10px; }.map-list small { color: var(--brown); }
+.game-explanation { margin-top: 12px; padding: 11px 14px; background: #e8d09f; border-left: 4px solid var(--green); border-radius: 0 6px 6px 0; color: #3b2812; font-size: 11.5px; line-height: 1.45; animation: fadeIn .25s ease; }
+.game-explanation strong { display: block; margin-bottom: 3px; color: #235c2b; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+
+/* Nová interaktivní mapa skriptorií */
+.map-modal { width: min(96vw, 1100px); max-height: 90vh; padding: 24px; }
+.map-layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; align-items: stretch; margin-top: 14px; }
+@media (max-width: 860px) { .map-layout { grid-template-columns: 1fr; } }
+.medieval-map-container { position: relative; width: 100%; aspect-ratio: 16 / 11; min-height: 330px; border: 2px solid var(--brown); border-radius: 10px; background: radial-gradient(circle at 48% 44%, #f7eccf 20%, #e2be7e 85%, #b58647 100%); overflow: hidden; box-shadow: inset 0 0 35px #603b1238, 0 8px 24px #42250926; }
+.map-decor-border { position: absolute; inset: 6px; border: 1px dashed #a7773b88; pointer-events: none; z-index: 1; }
+.map-cartouche { position: absolute; top: 10px; left: 12px; z-index: 2; background: #fbf1d8ee; border: 1px solid var(--brown); padding: 4px 10px; border-radius: 4px; font-family: var(--font-display, Georgia, serif); font-size: 11px; font-weight: 800; color: var(--brown); letter-spacing: 1.2px; box-shadow: 0 2px 6px #0002; pointer-events: none; }
+.map-sea-label { position: absolute; font-family: Georgia, serif; font-style: italic; font-size: 10px; color: #8c6a38; letter-spacing: 2px; pointer-events: none; opacity: .8; z-index: 1; }
+.sea-baltic { top: 12px; right: 18px; }
+.sea-adriatic { bottom: 12px; left: 16px; }
+
+.map-pin { position: absolute; transform: translate(-50%, -50%); border: 0; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; z-index: 5; transition: transform .2s cubic-bezier(.2,.8,.2,1); padding: 0; }
+.map-pin:hover, .map-pin.active { z-index: 15; transform: translate(-50%, -55%) scale(1.12); }
+.pin-seal { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; background: radial-gradient(circle at 35% 30%, #e6a751, #9a6015); border: 2px solid #5a3407; color: #fff2d1; box-shadow: 0 4px 10px #3f220555; transition: all .2s ease; }
+.map-pin.has-owned .pin-seal { background: radial-gradient(circle at 35% 30%, #ffd86b, #c48c18 60%, #7d4d0a); border-color: #ffe596; box-shadow: 0 0 0 2px #986518, 0 4px 12px #d4981d66; }
+.map-pin.active .pin-seal { box-shadow: 0 0 0 3px #fff1cf, 0 0 0 5px var(--blue), 0 6px 18px #0006; transform: scale(1.15); }
+.pin-tag { margin-top: 3px; padding: 2px 6px; border-radius: 4px; background: #fff5dcfa; border: 1px solid #9c6c2e; font-size: 9px; font-weight: 700; color: var(--brown); white-space: nowrap; box-shadow: 0 2px 6px #0003; display: flex; align-items: center; gap: 4px; }
+.pin-tag b { color: var(--blue); font-size: 8px; }
+
+.map-panel { background: #f7e6c5; border: 2px solid var(--brown); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; max-height: 480px; overflow: hidden; box-shadow: 0 4px 16px #49280b1a; }
+.map-panel-header { border-bottom: 1px solid #c9a46b; padding-bottom: 10px; margin-bottom: 10px; }
+.map-panel-header h3 { margin: 0 0 3px; font-size: 20px; color: var(--brown); display: flex; align-items: center; gap: 6px; }
+.map-panel-header p { margin: 0; font-size: 11px; color: #724d22; font-weight: 600; }
+.map-panel-desc { font-size: 11px; line-height: 1.4; color: #583917; margin: 0 0 12px; font-style: italic; }
+.map-panel-stats { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--brown); margin-bottom: 4px; }
+.map-panel-bar { height: 8px; background: #deb87b; border: 1px solid #94652c; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.map-panel-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), #4578e8); border-radius: 3px; transition: width .3s ease; }
+.map-cards-scroll { flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: var(--brown) transparent; }
+.map-card-item { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: center; padding: 8px; background: #f0dbb0; border: 1px solid #ab7a3d; border-radius: 6px; text-align: left; }
+.map-card-item.locked { opacity: .65; background: #e3cca0; filter: grayscale(.4); }
+.map-card-thumb { width: 60px; height: 45px; border-radius: 4px; overflow: hidden; background: #d4ba8a; border: 1px solid #9c6c2e; position: relative; }
+.map-card-info strong { display: block; font-size: 12px; color: var(--brown); line-height: 1.2; }
+.map-card-info small { display: block; font-size: 10px; color: #6a471f; margin-top: 2px; }
+.map-card-action { padding: 5px 8px; font-size: 10px; font-weight: 700; background: var(--brown); color: #fff2d1; border: 1px solid #5a3407; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.map-card-action:hover { background: #764506; }
+.map-empty-state { text-align: center; padding: 24px 10px; color: #765028; font-style: italic; font-size: 12px; }
 .toast { position: absolute; left: 50%; bottom: 78px; z-index: 80; width: calc(100% - 30px); transform: translateX(-50%); padding: 11px 13px; border: 1px solid #e1b95a; background: #3f260d; color: #fff1ce; text-align: center; font-size: 11px; box-shadow: 0 5px 16px #0006; animation: toast-in .25s ease; }@keyframes toast-in { from { transform: translate(-50%, 10px); opacity: 0; } }
 
 @media (max-width: 365px) {
