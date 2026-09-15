@@ -334,13 +334,30 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
     16. *Mistr iluminátor (Z)* – složení celého 16dílného cyklu mozaiky.
   * Dynamické vyhodnocování stavu v reálném čase a ukazatel pokroku (např. *8/16 splněno*).
 
+### [2026-09-15] Fáze 2.3, 3.4 & 4.1: Dynamické minihry, PWA mobilní instalace & zálohovací systém
+* **Dynamické napojení miniher ze Supabase (`game_questions`):**
+  * Otázky zadané editory ve Studiu se v reálném čase načítají ze Supabase a mají nejvyšší prioritu při losování výzev dne.
+  * Otázky jsou deduplikovány a bezpečně kombinovány s `DEFAULT_QUESTIONS`, takže žádná herní kategorie nikdy nezůstane prázdná ani při offline provozu.
+  * Validace vazby na karty: minihry vyžadující konkrétní rukopis jsou nabízeny pouze tehdy, pokud je karta ve stavu `published`.
+  * **Systém prevence opakování (Anti-Repetition):** Do stavu hráče přibyla evidence `completedQuestionsToday`. Denní výzvy upřednostňují dosud neřešené otázky, čímž se eliminuje opakování stejné otázky v tentýž den.
+  * **Ocenění Písařský mistr:** Po splnění 5 výzev se hráči automaticky odemkne a trvale uloží trofej `paleographer`.
+* **PWA – Mobilní instalace na plochu telefonu (iOS & Android):**
+  * Vytvořen standardizovaný soubor `public/manifest.json` i `public/manifest.webmanifest`.
+  * Nastaveny ikony (vektorové SVG i 512x512 PNG), tématická středověká barva pergamenu a zlata (`#d4af37`), temné pozadí (`#161310`) a režim `standalone`.
+  * Studenti na mobilních zařízeních (Safari na iOS i Chrome na Androidu) mohou hru přidat na domovskou obrazovku jedním kliknutím jako plnohodnotnou aplikaci.
+* **Automatizovaný zálohovací skript databáze (`backup-db.mjs`):**
+  * Vytvořen spolehlivý zálohovací skript `scripts/backup-db.mjs` napojený na npm skript `npm run backup`.
+  * Skript provede kompletní export všech databázových tabulek (`cards`, `colophons`, `game_questions`, `profiles`, `user_cards`, `card_gifts`) do přehledného strukturovaného JSON snapshotu do složky `backups/quilldrop-backup-[timestamp].json` a udržuje aktuální ukazatel `backups/latest.json`.
+  * Ochrana dat: historické zálohy jsou přidány do `.gitignore`, aby nezatěžovaly repozitář, zatímco lokální archiv je kdykoliv k dispozici pro obnovu v případě omylu editorů.
+
 ---
 
 ### Následující kroky:
-* [ ] **2.3. Dynamické napojení miniher ze Supabase do hry (`game_questions`):**
-  * Propojit denní herní výzvy v `app/page.tsx` s reálnými otázkami zadanými editory ve Studiu.
-* [ ] **FÁZE 3: Autentizace bez limitů & PWA mobilní instalace:**
-  * Příprava `manifest.json` pro PWA instalaci na plochu telefonu (iOS & Android).
+* [ ] **FÁZE 3.2 & 3.3: Autentizace bez limitů & produkční spuštění:**
+  * Potvrzení vypnutí „Confirm email“ v Supabase Dashboardu pro okamžitý start studentů.
+  * Kontrola Google OAuth konfigurace pro školní účty.
+* [ ] **FÁZE 4.2 & 4.3: Předání prof. Doležalové & instruktáž editorů:**
+  * Otestování chování na mobilních zařízeních a předání odkazů na Studio `/admin`.
 
 
 

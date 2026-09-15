@@ -1,0 +1,25 @@
+﻿{
+  "name": "Quilldrop | Skriptorium středověkých kolofonů",
+  "short_name": "Quilldrop",
+  "description": "Sběratelská hra s autentickými středověkými kolofony, iluminacemi a hlasy písařů ze starých kodexů.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#161310",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/quilldrop-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "education"]
+}

@@ -15,7 +15,8 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "import:heurist": "node scripts/import-heurist.mjs",
-    "import:supabase": "node scripts/import-to-supabase.mjs"
+    "import:supabase": "node scripts/import-to-supabase.mjs",
+    "backup": "node scripts/backup-db.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

@@ -69,6 +69,7 @@ type GameState = {
   trophies: string[];
   lastPlayed: string;
   gamesPlayed: number;
+  completedQuestionsToday?: string[];
   bonusPacks: PackQuality[];
   lastLoginDate: string;
   gallery: string[];
@@ -89,6 +90,7 @@ const INITIAL_STATE: GameState = {
   trophies: ["first-spark"],
   lastPlayed: "",
   gamesPlayed: 0,
+  completedQuestionsToday: [],
   bonusPacks: [],
   lastLoginDate: "",
   gallery: [],
@@ -157,6 +159,7 @@ function loadState(userId?: string): GameState {
       ...(saved || {}),
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
+      completedQuestionsToday: saved?.completedQuestionsToday || [],
     };
     const hasCurrentCards = Object.keys(base.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
     if (!hasCurrentCards) base.collection = { ...INITIAL_STATE.collection };
@@ -164,7 +167,7 @@ function loadState(userId?: string): GameState {
     const todayStr = today();
     const isNewDay = base.lastPlayed !== todayStr;
     const dailyReset: GameState = isNewDay
-      ? { ...base, packsOpened: 0, gamesPlayed: 0, bonusPacks: [], lastPlayed: todayStr }
+      ? { ...base, packsOpened: 0, gamesPlayed: 0, completedQuestionsToday: [], bonusPacks: [], lastPlayed: todayStr }
       : base;
 
     // Pokud se uživatel již dnes přihlásil, streak byl pro dnešek započten
@@ -630,7 +633,12 @@ export default function Home() {
               accepted_variants: acceptedVariants,
             };
           });
-          setQuestions(loadedQuestions);
+          const existingKeys = new Set(loadedQuestions.map(q => q.id || q.title));
+          const combined = [
+            ...loadedQuestions,
+            ...DEFAULT_QUESTIONS.filter(q => !existingKeys.has(q.id || q.title)),
+          ];
+          setQuestions(combined);
         }
       } catch (e) {
         console.warn("Supabase fetch failed, continuing with static data:", e);
@@ -862,8 +870,30 @@ export default function Home() {
       pool = questions.filter(q => q.game_kind === "paleo" && (q.mode === "transcription" || q.target_transcription || q.highlight_regions));
     }
 
-    const chosen = pool.length > 0
-      ? pool[Math.floor(Math.random() * pool.length)]
+    // Filtrovat otázky, které vyžadují konkrétní kartu, zda je tato karta v publikované sadě
+    const validPool = pool.filter(q => {
+      if (!q.card_id) return true;
+      return cards.some(c => c.uuid === q.card_id || String(c.id) === String(q.card_id));
+    });
+
+    const poolToUse = validPool.length > 0 ? validPool : pool;
+    const completed = state.completedQuestionsToday || [];
+
+    // Zamezit opakování: vyfiltrovat otázky již dnes vyřešené
+    const unplayed = poolToUse.filter(q => {
+      const qKey = q.id || q.title || q.quote;
+      return !completed.includes(qKey);
+    });
+
+    // Výběr kandidátů: přednost mají dosud neodehrané otázky
+    const candidates = unplayed.length > 0 ? unplayed : poolToUse;
+
+    // Upřednostnit autorské otázky editorů ze Supabase
+    const customCandidates = candidates.filter(q => q.id && !q.id.startsWith("mood-") && !q.id.startsWith("cipher-") && !q.id.startsWith("paleo-") && !q.id.startsWith("script-"));
+    const finalPool = customCandidates.length > 0 ? customCandidates : candidates;
+
+    const chosen = finalPool.length > 0
+      ? finalPool[Math.floor(Math.random() * finalPool.length)]
       : DEFAULT_QUESTIONS.find(q => q.mode === questType || q.game_kind === (questType === "script" ? "paleo" : questType)) || DEFAULT_QUESTIONS[0];
 
     setActiveQuestion(chosen);
@@ -876,11 +906,29 @@ export default function Home() {
     setAnswer(correct ? "correct" : "wrong");
     const isTranscription = activeQuestion?.mode === "transcription" || Boolean(activeQuestion?.target_transcription);
     const quality: PackQuality = isTranscription ? "masterwork" : (game === "paleo" || game === "cipher") ? "refined" : "standard";
+
+    const qKey = activeQuestion?.id || activeQuestion?.title || activeQuestion?.quote || "";
+    const nextCompleted = qKey && !state.completedQuestionsToday?.includes(qKey)
+      ? [...(state.completedQuestionsToday || []), qKey]
+      : (state.completedQuestionsToday || []);
+
+    const nextTrophies = [...state.trophies];
+    if (state.gamesPlayed + 1 >= 5 && !nextTrophies.includes("paleographer")) {
+      nextTrophies.push("paleographer");
+    }
+
     if (correct) {
       playTriumphFanfare(isTranscription ? "legendary" : "rare");
       const earnedXp = isTranscription ? 120 : game === "paleo" ? 75 : game === "cipher" ? 60 : 35;
       const nextLevel = levelForXp(state.xp + earnedXp);
-      setState(s => withXpReward({ ...s, gamesPlayed: s.gamesPlayed + 1, bonusPacks: [...s.bonusPacks, quality], coins: s.coins + 25 }, earnedXp));
+      setState(s => withXpReward({
+        ...s,
+        gamesPlayed: s.gamesPlayed + 1,
+        completedQuestionsToday: nextCompleted,
+        bonusPacks: [...s.bonusPacks, quality],
+        coins: s.coins + 25,
+        trophies: nextTrophies,
+      }, earnedXp));
       if (nextLevel > levelForXp(state.xp)) {
         window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
       } else {
@@ -888,7 +936,12 @@ export default function Home() {
       }
     } else {
       playParchmentFlip(0.2);
-      setState(s => ({ ...s, gamesPlayed: s.gamesPlayed + 1 }));
+      setState(s => ({
+        ...s,
+        gamesPlayed: s.gamesPlayed + 1,
+        completedQuestionsToday: nextCompleted,
+        trophies: nextTrophies,
+      }));
       setToast(`Pokus využit — dnes zbývá ${Math.max(0, 9 - state.gamesPlayed)} výzev.`);
     }
     const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
