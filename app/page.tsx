@@ -248,6 +248,18 @@ export default function Home() {
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
   const [curioIndex, setCurioIndex] = useState(0);
 
+  // Kolegové ve skriptoriu a P2P darování karet (Social Trading)
+  const [colleagues, setColleagues] = useState<any[]>([
+    { id: "demo-1", display_name: "Lucie z Klementina", username: "lucie.d", streak: 14, xp: 850, avatar_id: "urban-v" },
+    { id: "demo-2", display_name: "Bratr Jan (Vyšší Brod)", username: "frater.iohannes", streak: 9, xp: 620, avatar_id: "codex-gigas" },
+    { id: "demo-3", display_name: "Matouš ze Skriptoria", username: "matheus.scribe", streak: 5, xp: 340, avatar_id: "rabbit-scribe" },
+  ]);
+  const [pendingGifts, setPendingGifts] = useState<any[]>([]);
+  const [giftModalTarget, setGiftModalTarget] = useState<any | null>(null);
+  const [selectedGiftCardId, setSelectedGiftCardId] = useState<string>("");
+  const [giftMessage, setGiftMessage] = useState<string>("");
+  const [isSendingGift, setIsSendingGift] = useState(false);
+
   // 16dílné iluminace a denní streak (Cesta písaře)
   const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
 
@@ -542,7 +554,30 @@ export default function Home() {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await loadUserData(user, mapped);
+            // Načíst příchozí nevyřízené dary pro tohoto hráče
+            try {
+              const { data: gifts } = await supabase
+                .from("card_gifts")
+                .select("*")
+                .eq("recipient_id", user.id)
+                .eq("status", "pending");
+              if (gifts && gifts.length > 0) {
+                setPendingGifts(gifts);
+              }
+            } catch {}
           }
+          // Načíst reálné kolegy z tabulky profiles
+          try {
+            const { data: profs } = await supabase
+              .from("profiles")
+              .select("id, username, display_name, streak, xp, avatar_id")
+              .order("streak", { ascending: false })
+              .limit(15);
+            if (profs && profs.length > 0) {
+              const filtered = user ? profs.filter((p: any) => p.id !== user.id) : profs;
+              if (filtered.length > 0) setColleagues(filtered);
+            }
+          } catch {}
         }
 
         // Fetch live educational questions for mini-games
@@ -921,6 +956,97 @@ export default function Home() {
     }
   };
 
+  const handleOpenGiftModal = (target?: any) => {
+    const dups = cards.filter((c) => (state.collection[c.id] || 0) > 1);
+    if (dups.length === 0) {
+      setToast("Nejprve musíte vlastnit alespoň jeden duplikát (2 ks stejného kolofonu).");
+      return;
+    }
+    setGiftModalTarget(target || colleagues[0] || null);
+    setSelectedGiftCardId(String(dups[0]?.id || ""));
+    setGiftMessage("Ať ti toto folio dobře poslouží při nočním bádání!");
+  };
+
+  const handleSendGift = async () => {
+    if (!giftModalTarget || !selectedGiftCardId) return;
+    const card = cards.find((c) => String(c.id) === String(selectedGiftCardId));
+    if (!card) return;
+    if ((state.collection[card.id] || 0) <= 1) {
+      setToast("Tuto kartu již nemáte v duplikátu.");
+      return;
+    }
+
+    setIsSendingGift(true);
+    playParchmentFlip(0.28);
+
+    // Odečíst 1 kus ze sbírky
+    const nextCollection = { ...state.collection };
+    nextCollection[card.id] = (nextCollection[card.id] || 1) - 1;
+    if (nextCollection[card.id] <= 0) delete nextCollection[card.id];
+
+    // Odemknout trofej Štědrý tovaryš a připsat +30 XP
+    const nextTrophies = state.trophies.includes("philanthropist")
+      ? state.trophies
+      : [...state.trophies, "philanthropist"];
+
+    setState((s) => ({
+      ...s,
+      collection: nextCollection,
+      trophies: nextTrophies,
+      xp: s.xp + 30,
+    }));
+
+    const senderName =
+      currentProfile?.display_name ||
+      currentUser?.user_metadata?.display_name ||
+      currentUser?.email?.split("@")[0] ||
+      "Písařský tovaryš";
+
+    // Zapsat do Supabase pokud existuje tabulka card_gifts
+    try {
+      if (currentUser && !giftModalTarget.id?.startsWith("demo-")) {
+        await supabase.from("card_gifts").insert({
+          sender_id: currentUser.id,
+          sender_name: senderName,
+          recipient_id: giftModalTarget.id,
+          recipient_name: giftModalTarget.display_name || giftModalTarget.username || "Kolega",
+          card_id: card.id,
+          card_title: card.title,
+          card_rarity: card.rarity,
+          message: giftMessage.trim() || "Ať ti toto folio přinese požehnání při studiu!",
+          status: "pending",
+        });
+      }
+    } catch {}
+
+    setIsSendingGift(false);
+    setGiftModalTarget(null);
+    setToast(`Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (+30 XP za štědrost)`);
+  };
+
+  const handleAcceptGift = async (gift: any) => {
+    playTriumphFanfare((gift.card_rarity as any) || "Rare");
+    const cardId = gift.card_id;
+
+    setState((s) => ({
+      ...s,
+      collection: {
+        ...s.collection,
+        [cardId]: (s.collection[cardId] || 0) + 1,
+      },
+      xp: s.xp + 50,
+    }));
+
+    setPendingGifts((prev) => prev.filter((g) => g.id !== gift.id));
+    setToast(`Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (+50 XP)`);
+
+    try {
+      if (currentUser) {
+        await supabase.from("card_gifts").update({ status: "accepted" }).eq("id", gift.id);
+      }
+    } catch {}
+  };
+
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
@@ -971,12 +1097,15 @@ export default function Home() {
               currentProfile={currentProfile}
               activeIllumination={activeIllumination}
               illuminations={illuminations}
+              colleagues={colleagues}
+              pendingGifts={pendingGifts}
               onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
               onLogout={handleLogout}
               onReset={resetDemo}
               onAdvanceDay={handleAdvanceDay}
               onBreakStreak={handleBreakStreak}
-              onSend={() => setToast(duplicates ? "Duplikát byl odeslán kolegovi do skriptoria!" : "Nejprve musíte vlastnit duplicitní kartu.")}
+              onSend={handleOpenGiftModal}
+              onAcceptGift={handleAcceptGift}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
             />
           )}
@@ -1009,6 +1138,132 @@ export default function Home() {
           />
         )}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        {giftModalTarget && (
+          <div className="modal-backdrop" role="dialog" aria-label="Darování pergamenu kolegovi">
+            <div className="modal" style={{ maxWidth: 440, borderRadius: 12, padding: "20px 22px" }}>
+              <button className="close" onClick={() => setGiftModalTarget(null)} title="Zavřít">×</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Send size={18} className="text-[#8b5a19]" />
+                <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
+                  Darování pergamenu kolegovi
+                </h3>
+              </div>
+
+              <div style={{ padding: "8px 12px", background: "#f8ecd4", border: "1px solid #d8b884", borderRadius: 8, marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#4a2d0b", color: "#ffd580", display: "grid", placeItems: "center", fontWeight: "bold", fontSize: 13, flexShrink: 0 }}>
+                  {giftModalTarget.display_name ? giftModalTarget.display_name.substring(0, 1).toUpperCase() : "K"}
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#3d2206" }}>
+                    {giftModalTarget.display_name || giftModalTarget.username || "Kolega"}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#7a5323" }}>
+                    {giftModalTarget.streak || 1} dní v řadě · {giftModalTarget.xp ? `${giftModalTarget.xp} XP` : "Tovaryš skriptoria"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Seznam duplicit k výběru */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 6 }}>
+                  Zvolte duplicitní kolofon k darování:
+                </label>
+                <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
+                  {cards
+                    .filter((c) => (state.collection[c.id] || 0) > 1)
+                    .map((c) => {
+                      const count = state.collection[c.id] || 0;
+                      const isSelected = selectedGiftCardId === String(c.id);
+                      return (
+                        <div
+                          key={c.id}
+                          onClick={() => setSelectedGiftCardId(String(c.id))}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            padding: "7px 10px",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            border: isSelected ? "2px solid #b8860b" : "1px solid #d4c09b",
+                            background: isSelected ? "#fff4d4" : "#fdf8ee",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <strong style={{ fontSize: "12px", color: "#40260b", display: "block" }} className="truncate">
+                              {c.title}
+                            </strong>
+                            <small style={{ fontSize: "10px", color: "#785324" }}>
+                              {c.place} · <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>{c.rarity}</span>
+                            </small>
+                          </div>
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#8a5814", whiteSpace: "nowrap" }}>
+                            Máte: {count} ks
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Dobové věnování */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 4 }}>
+                  Dobové věnování (volitelné):
+                </label>
+                <input
+                  type="text"
+                  value={giftMessage}
+                  onChange={(e) => setGiftMessage(e.target.value)}
+                  placeholder="Ať ti toto folio dobře poslouží při nočním bádání..."
+                  style={{
+                    width: "100%",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #c9b084",
+                    background: "#fffcf4",
+                    fontSize: "12px",
+                    color: "var(--ink)",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setGiftModalTarget(null)}
+                  style={{ padding: "7px 14px", background: "none", border: "1px solid #ba9f73", borderRadius: 6, fontSize: "12px", color: "var(--brown)", cursor: "pointer" }}
+                >
+                  Zrušit
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendGift}
+                  disabled={!selectedGiftCardId || isSendingGift}
+                  style={{
+                    padding: "7px 18px",
+                    background: "linear-gradient(180deg, #9a6712, #684107)",
+                    color: "#fff3cf",
+                    border: "1px solid #4a2d04",
+                    borderRadius: 6,
+                    fontWeight: 700,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    opacity: !selectedGiftCardId || isSendingGift ? 0.6 : 1,
+                  }}
+                >
+                  <Send size={13} /> {isSendingGift ? "Zpečeťuji..." : "Zpečetit a darovat (-1 ks)"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showAuthModal && (
           <AuthModal
             mode={authMode}
@@ -1974,13 +2229,191 @@ function TrophiesScreen({
   cards: Colophon[];
   activeIllumination: IlluminationMosaicItem;
 }) {
-  const trophies = [
-    ["first-spark", "První jiskra", "Otevřete svůj první denní balíček", "100 XP", "Q"],
-    ["first-pack", "Lamač pečetí", "Objevte pět různých kolofonů", "150 XP", "S"],
-    ["collector", "Napříč staletími", "Získejte 8 různých kodexů do sbírky", "250 XP", "A"],
-    ["streak", "Vytrvalý iluminátor", "Udržte 16 dní nepřetržité návštěvy", "300 XP", "I"],
-    ["unique", "Zlacené tajemství", "Najděte Unikátní kolofon", "500 XP", "G"],
+  const trophies: {
+    id: string;
+    title: string;
+    text: string;
+    xp: string;
+    initial: string;
+    check: () => boolean;
+  }[] = [
+    {
+      id: "first-spark",
+      title: "První jiskra",
+      text: "Vstupte do skriptoria a otevřete svůj první balíček",
+      xp: "100 XP",
+      initial: "Q",
+      check: () => state.packsOpened >= 1 || state.trophies.includes("first-spark"),
+    },
+    {
+      id: "first-pack",
+      title: "Lamač pečetí",
+      text: "Získejte alespoň 5 různých kolofonů do své sbírky",
+      xp: "150 XP",
+      initial: "S",
+      check: () => Object.keys(state.collection).length >= 5 || state.trophies.includes("first-pack"),
+    },
+    {
+      id: "collector",
+      title: "Zkušený tovaryš",
+      text: "Shromážděte alespoň 10 různých středověkých kodexů",
+      xp: "250 XP",
+      initial: "A",
+      check: () => Object.keys(state.collection).length >= 10 || state.trophies.includes("collector"),
+    },
+    {
+      id: "bibliophile",
+      title: "Knihovník Klementina",
+      text: "Vlastněte alespoň 20 různých kodexů a pergamenů",
+      xp: "500 XP",
+      initial: "K",
+      check: () => Object.keys(state.collection).length >= 20 || state.trophies.includes("bibliophile"),
+    },
+    {
+      id: "streak-7",
+      title: "Týden ve skriptoriu",
+      text: "Udržte 7 dní nepřetržitého každodenního bádání",
+      xp: "200 XP",
+      initial: "T",
+      check: () => state.streak >= 7 || state.trophies.includes("streak-7"),
+    },
+    {
+      id: "streak",
+      title: "Vytrvalý iluminátor",
+      text: "Udržte 16 dní nepřetržité návštěvy a složte mozaiku",
+      xp: "400 XP",
+      initial: "I",
+      check: () => state.streak >= 16 || state.puzzle >= 16 || state.trophies.includes("streak"),
+    },
+    {
+      id: "prague-scholar",
+      title: "Pražský magistr",
+      text: "Získejte alespoň 3 kodexy z pražských skriptorií",
+      xp: "250 XP",
+      initial: "P",
+      check: () =>
+        state.trophies.includes("prague-scholar") ||
+        cards.filter(
+          (c) =>
+            state.collection[c.id] &&
+            (c.place?.toLowerCase().includes("praha") ||
+              c.manuscript?.toLowerCase().includes("praha") ||
+              c.manuscript?.toLowerCase().includes("nkp"))
+        ).length >= 3,
+    },
+    {
+      id: "vyssi-brod",
+      title: "Vyšebrodský mnich",
+      text: "Vlastněte kodex z cisterciáckého kláštera Vyšší Brod",
+      xp: "300 XP",
+      initial: "V",
+      check: () =>
+        state.trophies.includes("vyssi-brod") ||
+        cards.some(
+          (c) =>
+            state.collection[c.id] &&
+            (c.place?.toLowerCase().includes("brod") ||
+              c.manuscript?.toLowerCase().includes("vb") ||
+              c.manuscript?.toLowerCase().includes("brod"))
+        ),
+    },
+    {
+      id: "cipher-breaker",
+      title: "Lamač šifer",
+      text: "Najděte a vlastněte kolofon se šifrou či kryptogramem",
+      xp: "350 XP",
+      initial: "X",
+      check: () =>
+        state.trophies.includes("cipher-breaker") ||
+        cards.some(
+          (c) =>
+            state.collection[c.id] &&
+            ((c as any).features?.includes("Šifra") ||
+              (c as any).colophons?.features?.includes("Šifra") ||
+              c.rarity === "Rare" ||
+              c.rarity === "Epic")
+        ),
+    },
+    {
+      id: "verse-lover",
+      title: "Pěvec latinský",
+      text: "Získejte veršovaný či rýmovaný kolofon do sbírky",
+      xp: "250 XP",
+      initial: "C",
+      check: () =>
+        state.trophies.includes("verse-lover") ||
+        cards.some(
+          (c) =>
+            state.collection[c.id] &&
+            ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše"))
+        ),
+    },
+    {
+      id: "initial-master",
+      title: "Zlatá iniciála",
+      text: "Získejte kartu kolofonu zdobenou iluminovanou iniciálou",
+      xp: "200 XP",
+      initial: "M",
+      check: () =>
+        state.trophies.includes("initial-master") ||
+        cards.some(
+          (c) =>
+            state.collection[c.id] &&
+            ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála"))
+        ),
+    },
+    {
+      id: "rare-seeker",
+      title: "Sběratel kuriozit",
+      text: "Získejte alespoň jednu vzácnou (Rare) či epickou (Epic) kartu",
+      xp: "250 XP",
+      initial: "E",
+      check: () =>
+        state.trophies.includes("rare-seeker") ||
+        cards.some(
+          (c) =>
+            state.collection[c.id] &&
+            (c.rarity === "Rare" || c.rarity === "Epic" || c.rarity === "Legendary" || c.rarity === "Unique")
+        ),
+    },
+    {
+      id: "unique",
+      title: "Zlacené tajemství",
+      text: "Najděte Unikátní (Unique) monumentální kolofon",
+      xp: "500 XP",
+      initial: "G",
+      check: () =>
+        state.trophies.includes("unique") ||
+        cards.some((c) => state.collection[c.id] && c.rarity === "Unique"),
+    },
+    {
+      id: "paleographer",
+      title: "Písařský mistr",
+      text: "Úspěšně absolvujte alespoň 5 písařských výzev",
+      xp: "300 XP",
+      initial: "D",
+      check: () => state.gamesPlayed >= 5 || state.trophies.includes("paleographer"),
+    },
+    {
+      id: "philanthropist",
+      title: "Štědrý tovaryš",
+      text: "Darujte duplicitní kartu svému kolegovi ve skriptoriu",
+      xp: "200 XP",
+      initial: "F",
+      check: () => state.trophies.includes("philanthropist"),
+    },
+    {
+      id: "mosaic-master",
+      title: "Mistr iluminátor",
+      text: "Složte celou 16dílnou mozaiku alespoň jednoho cyklu",
+      xp: "600 XP",
+      initial: "Z",
+      check: () => state.puzzle >= 16 || (state.gallery && state.gallery.length > 0) || state.trophies.includes("mosaic-master"),
+    },
   ];
+
+  const earnedCount = trophies.filter((t) => t.check()).length;
+
   return <div className="screen trophies-screen">
     <PageTitle kicker="Poutníkovy milníky">Písařská ocenění</PageTitle>
     <section className="puzzle-board">
@@ -1992,18 +2425,20 @@ function TrophiesScreen({
       </div>
       <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
     </section>
-    <div className="section-title"><h2>Získané pocty</h2><span>{state.trophies.length}/5 splněno</span></div>
+    <div className="section-title">
+      <h2>Získané pocty</h2>
+      <span>{earnedCount}/{trophies.length} splněno</span>
+    </div>
     <div className="trophy-list">
-      {trophies.map(([id, title, text, xp, initial]) => {
-        const ownsUnique = cards.some(card => card.rarity === "Unique" && state.collection[card.id]);
-        const earned = state.trophies.includes(id) || (id === "collector" && Object.keys(state.collection).length >= 8) || (id === "streak" && state.streak >= 16) || (id === "unique" && ownsUnique);
+      {trophies.map((t) => {
+        const earned = t.check();
         return (
-          <article key={id} className={earned ? "earned" : "locked"}>
-            <div className="illuminated-initial">{initial}</div>
+          <article key={t.id} className={earned ? "earned" : "locked"}>
+            <div className="illuminated-initial">{t.initial}</div>
             <div>
-              <strong>{title}</strong>
-              <p>{text}</p>
-              <small>{earned ? "Splněno" : xp}</small>
+              <strong>{t.title}</strong>
+              <p>{t.text}</p>
+              <small>{earned ? "Splněno" : t.xp}</small>
             </div>
             <span>{earned ? <Award size={18} /> : <LockKeyhole size={16} />}</span>
           </article>
@@ -2022,12 +2457,15 @@ function ProfileScreen({
   currentProfile,
   activeIllumination,
   illuminations,
+  colleagues = [],
+  pendingGifts = [],
   onOpenAuth,
   onLogout,
   onReset,
   onAdvanceDay,
   onBreakStreak,
   onSend,
+  onAcceptGift,
   onSetAvatar,
 }: {
   state: GameState;
@@ -2038,12 +2476,15 @@ function ProfileScreen({
   currentProfile?: UserProfile | null;
   activeIllumination: IlluminationMosaicItem;
   illuminations: IlluminationMosaicItem[];
+  colleagues?: any[];
+  pendingGifts?: any[];
   onOpenAuth: () => void;
   onLogout: () => void;
   onReset: () => void;
   onAdvanceDay: () => void;
   onBreakStreak: () => void;
-  onSend: () => void;
+  onSend: (target?: any) => void;
+  onAcceptGift: (gift: any) => void;
   onSetAvatar: (id: string) => void;
 }) {
   const level = levelForXp(state.xp);
@@ -2205,13 +2646,74 @@ function ProfileScreen({
       <p className="empty-gallery">Složte 16denní mozaiku pro odemčení první celistvé iluminace do své stálé galerie a portrétů.</p>
     )}
 
+    {/* Čekající dary od kolegů */}
+    {pendingGifts && pendingGifts.length > 0 && (
+      <div
+        className="pending-gifts-banner"
+        style={{
+          margin: "18px 0 22px",
+          padding: "14px 16px",
+          background: "linear-gradient(135deg, #fdf6e2, #f5dfa8)",
+          border: "2px double #b8860b",
+          borderRadius: "10px",
+          boxShadow: "0 4px 15px rgba(184,134,11,0.2)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <strong style={{ color: "#784714", display: "flex", alignItems: "center", gap: 6, fontSize: "13px" }}>
+              <Sparkles size={15} color="#b8860b" /> Požehnání ze skriptoria ({pendingGifts.length})
+            </strong>
+            <small style={{ color: "#543818", display: "block", marginTop: 3 }}>
+              Kolega <strong>{pendingGifts[0].sender_name}</strong> vám daroval kolofon: <em>{pendingGifts[0].card_title}</em>
+              {pendingGifts[0].message && ` – „${pendingGifts[0].message}“`}
+            </small>
+          </div>
+          <button
+            type="button"
+            onClick={() => onAcceptGift(pendingGifts[0])}
+            style={{
+              padding: "7px 16px",
+              background: "linear-gradient(180deg, #9a6712, #684107)",
+              color: "#fff3cf",
+              border: "1px solid #4a2d04",
+              borderRadius: "6px",
+              fontWeight: 700,
+              fontSize: "11px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            }}
+          >
+            <ScrollText size={13} /> Přijmout do sbírky
+          </button>
+        </div>
+      </div>
+    )}
+
     <div className="section-title">
       <h2>Kolegové ve skriptoriu</h2>
-      <button className="icon-label" onClick={() => onSend()}><UserPlus size={13} /> Odeslat duplikát</button>
+      <button className="icon-label" onClick={() => onSend()}>
+        <UserPlus size={13} /> Odeslat duplikát
+      </button>
     </div>
     <div className="friends">
-      <article><div className="friend-avatar">B</div><div><strong>BeatriceWrites</strong><small>14 dní v řadě · 9 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
-      <article><div className="friend-avatar blue">T</div><div><strong>theo.history</strong><small>6 dní v řadě · 7 karet</small></div><button onClick={onSend}><Send size={12} /> Darovat</button></article>
+      {colleagues.map((friend) => (
+        <article key={friend.id}>
+          <div className="friend-avatar">
+            {friend.display_name ? friend.display_name.substring(0, 1).toUpperCase() : "K"}
+          </div>
+          <div>
+            <strong>{friend.display_name || friend.username || "Kolega"}</strong>
+            <small>{friend.streak || 1} dní v řadě · {friend.xp ? `${friend.xp} XP` : "Tovaryš skriptoria"}</small>
+          </div>
+          <button onClick={() => onSend(friend)}>
+            <Send size={12} /> Darovat
+          </button>
+        </article>
+      ))}
     </div>
 
     <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>

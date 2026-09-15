@@ -280,15 +280,69 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Lišta rozdělena na levou zónu (návrat do hry a název), střední zónu (akční tlačítka Heurist, Glosy, Mozaiky, Nápověda) a pravou zónu (online tým, správa rolí, profil, uložení a odhlášení).
   * Filtry v katalogu karet rozšířeny o stavy: `Vše`, `Publikováno`, `Ke kontrole` a `Koncepty` s barevnými puntíky a počty záznamů.
 
+### [2026-09-15] Fáze 1 (Dokončení): Redesign Písařských výzev, filtry Heuristu, autorství karet & čistý layout Studia
+* **Odstranění duplicity a pročištění katalogu:**
+  * Z levého postranního panelu katalogu karet bylo odstraněno matoucí duplicitní tlačítko `+ Kolofon`. Hlavním a jediným tlačítkem pro import je nyní prominentní zlaté tlačítko `+ Přidat kolofon (Heurist)` v horní liště.
+  * Z levého katalogu bylo odstraněno tlačítko `Šifry`, které tam bylo nadbytečné a přesunuto přímo do filtrů Heuristu.
+* **Rozšířené paleografické a typologické filtry v Heurist katalogu (`HeuristCatalogModal.tsx`):**
+  * Z původního exportu Heuristu byla zanalyzována a vyextrahována typologie kódů a klíčových slov:
+    * `🔑 Šifry (274 digitalizátů)` – kryptogramy, substituce, tajné písmo písařů.
+    * `📜 Verše (458 digitalizátů)` – metrické rýmované kolofony (hexametry, disticha).
+    * `✨ Iniciály (1 188 digitalizátů)` – iluminované a kaligrafické iniciály.
+    * `✒️ Změna ruky (724 digitalizátů)` – střídání písařských rukou a duktů.
+    * `🎨 Kresba (284 digitalizátů)` a `🔴 Rubrika`.
+  * Přidán rychlý výběr století: *14. století (do r. 1400)*, *15. století (1401–1500)* a *16. století a novější (1501+)*.
+* **Kompletní redesign panelu „Písařské výzvy“ (Minigames Builder):**
+  * Pravý postranní panel rozšířen na `440 px` na velkých monitorech pro vzdušné a pohodlné čtení textů.
+  * **Formulář:** Původní jednořádkové inputy pro nápovědu a výklad nahrazeny vícedořádkovými textovými oblastmi (`<textarea>`) s flexibilní výškou – žádný text se již neořezává.
+  * Přidán 3stupňový přepínač obtížnosti: `Snadná` (zelená), `Střední` (jantarová) a `Expert` (červená).
+  * **Přehled výzev k rukopisu:** Každá minihra v seznamu nyní přehledně zobrazuje plný text nápovědy hráči (`💡 Nápověda pro hráče (Hint)`), plný odborný výklad (`📖 Paleografický vhled / odborný výklad`) a všechny možnosti odpovědi se zvýrazněnou správnou volbou.
+* **Systém autorství a editorství karet (Audit Trail):**
+  * Připravena databázová migrace `db/migrations/02_add_card_authors.sql` (`created_by`, `created_by_name`, `updated_by`, `updated_by_name`).
+  * Automatické zaznamenání editora při uložení či importu s bezpečným fallbackem.
+  * V levém katalogu přibyl odznak `✍️ [Jméno editora]`, v pravém panelu informační karta autorství s datem vytvoření a poslední úpravy.
+* **Terminologie:**
+  * Důsledně sjednoceno oslovení v celém projektu na **Editor**, **Redakční studio** a **Příručka editora**.
+
+### [2026-09-15] Fáze 2: Reálné P2P darování karet (Social Trading) & 16 paleografických ocenění
+* **Reálné darování a výměna karet mezi studenty (`card_gifts`):**
+  * Připravena databázová migrace `db/migrations/03_add_card_gifts.sql` s vazbami na dárce, příjemce, kartu, zprávu a status (`pending`, `accepted`, `declined`).
+  * **Načítání skutečných spolužáků:** V profilu se načítají reální studenti ze Supabase tabulky `profiles` (seřazeni podle streaku a XP) s elegantním fallbackem na demo tovaryše pro offline režim.
+  * **Darovací pergamen (Gift Modal):**
+    * Možnost zvolit příjemce a vybrat duplicitní kolofon ze sbírky (pouze karty, kde hráč vlastní 2 a více kusů).
+    * Pole pro dobrovolné dobové věnování (*„Ať ti toto folio dobře poslouží při nočním bádání...“*).
+    * Tlačítko *„Zpečetit a darovat (-1 ks)“* odečte 1 kus z inventáře hráče, zapíše dar do Supabase, udělí +30 XP za štědrost a automaticky odemkne trofej *Štědrý tovaryš*.
+  * **Příjem daru ve skriptoriu:**
+    * Pokud má hráč čekající dary, v horní části profilu se rozsvítí zlatý pergamenový banner *„Požehnání ze skriptoria“* s informací, kdo kartu poslal, a tlačítkem *„Přijmout do sbírky“* (+50 XP a triumfální fanfára).
+* **Rozšíření sady trofejí a poct na 16 tematických odznaků:**
+  * Původních 5 trofejí rozšířeno na plnohodnotnou sadu 16 akademických milníků:
+    1. *První jiskra (Q)* – otevření 1. balíčku.
+    2. *Lamač pečetí (S)* – 5 různých kolofonů.
+    3. *Zkušený tovaryš (A)* – 10 různých kodexů.
+    4. *Knihovník Klementina (K)* – 20 různých kodexů.
+    5. *Týden ve skriptoriu (T)* – 7 dní nepřetržitého bádání v řadě.
+    6. *Vytrvalý iluminátor (I)* – 16denní streak návštěvnosti.
+    7. *Pražský magistr (P)* – vlastnictví 3 pražských kodexů.
+    8. *Vyšebrodský mnich (V)* – kodex z kláštera Vyšší Brod.
+    9. *Lamač šifer (X)* – kolofon se šifrou či kryptogramem.
+    10. *Pěvec latinský (C)* – veršovaný či rýmovaný kolofon.
+    11. *Zlatá iniciála (M)* – karta zdobená iluminovanou iniciálou.
+    12. *Sběratel kuriozit (E)* – vzácná (Rare) nebo epická (Epic) karta.
+    13. *Zlacené tajemství (G)* – unikátní monumentální kolofon (Unique).
+    14. *Písařský mistr (D)* – alespoň 5 vyřešených písařských výzev.
+    15. *Štědrý tovaryš (F)* – odeslání duplikátu kolegovi ve skriptoriu.
+    16. *Mistr iluminátor (Z)* – složení celého 16dílného cyklu mozaiky.
+  * Dynamické vyhodnocování stavu v reálném čase a ukazatel pokroku (např. *8/16 splněno*).
+
 ---
 
-### Následující kroky (Fáze 2):
-* [ ] **Napojení dynamických miniher ze Supabase (`game_questions`):**
-  * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
-* [ ] **Reálné darování a výměna duplikátů (P2P Trading):**
-  * Propojit herní postup a darování karet se Supabase účty spolužáků.
-* [ ] **Rozšíření sady trofejí a akademických ocenění:**
-  * Implementovat rozšířenou sadu 15–20 odznaků a ocenění za objevování kodexů.
+### Následující kroky:
+* [ ] **2.3. Dynamické napojení miniher ze Supabase do hry (`game_questions`):**
+  * Propojit denní herní výzvy v `app/page.tsx` s reálnými otázkami zadanými editory ve Studiu.
+* [ ] **FÁZE 3: Autentizace bez limitů & PWA mobilní instalace:**
+  * Příprava `manifest.json` pro PWA instalaci na plochu telefonu (iOS & Android).
+
+
 
 
 
