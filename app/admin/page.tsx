@@ -799,6 +799,23 @@ export default function AdminPage() {
     );
   }
 
+  async function handleDeleteColleague(profileId: string, name: string) {
+    if (profileId === currentUser?.id) {
+      alert("Nemůžete smazat svůj vlastní přihlášený administrátorský účet.");
+      return;
+    }
+    if (!confirm(`Opravdu si přejete odebrat člena týmu „${name}“? Tato akce smaže jeho profil i přístup.`)) {
+      return;
+    }
+    try {
+      await supabase.from("profiles").delete().eq("id", profileId);
+      setTeamProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      alert(`Člen týmu „${name}“ byl úspěšně odebrán.`);
+    } catch (e: any) {
+      alert("Chyba při odebírání člena týmu: " + (e.message || "Neznámá chyba"));
+    }
+  }
+
   function generateColleaguePassword() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
     let pass = "";
@@ -3178,6 +3195,17 @@ export default function AdminPage() {
                         <option value="editor">Editor (Curator)</option>
                         <option value="player">Hráč (Pouze čtení)</option>
                       </select>
+
+                      {p.id !== currentUser?.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteColleague(p.id, p.display_name || p.username || "Uživatel")}
+                          title="Odebrat člena týmu"
+                          className="p-1.5 text-[#a85252] hover:text-red-400 hover:bg-red-950/40 rounded transition"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

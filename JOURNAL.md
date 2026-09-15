@@ -356,9 +356,13 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Potvrzovací odkaz z e-mailu tak studenta vždy spolehlivě přesměruje zpět na ostrou Vercel doménu (či do `/admin` pro redaktory), bez ohledu na to, zda byl e-mail otevřen na počítači nebo mobilním telefonu.
 * **Česká středověká pergamenová e-mailová šablona:**
   * Vytvořen soubor `db/email-templates/confirm-signup.html` s luxusním pergamenovým designem, zlatým pečetním tlačítkem (`{{ .ConfirmationURL }}`) a akademickou hlavičkou pro potřeby projektu prof. Lucie Doležalové.
-* **Připraveny návody pro bezplatné externí SMTP napojení do Supabase:**
-  * Varianta Gmail SMTP (500 mailů/den zdarma bez nutnosti domény přes Google Heslo aplikace).
-  * Varianta Resend / Brevo (pro případ napojení vlastní domény).
+* **Detekce a ošetření duplicitních účtů:**
+  * Implementována spolehlivá kontrola při pokusu o registraci na již existující e-mail (ošetřen standardní error i případ se zapnutým `Prevent email enumeration`, kdy Supabase vrací prázdné pole `identities: []`).
+  * Uživatel dostane srozumitelnou zprávu: *„Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.“* a formulář se automaticky přepne do záložky Přihlášení.
+* **Možnost zrušení a trvalého smazání účtu (GDPR):**
+  * Připravena migrace `db/migrations/04_add_delete_account.sql` pro bezpečné vymazání uživatelských dat i z tabulky `auth.users`.
+  * V profilu hráče (`ProfileScreen`) přibylo tlačítko *„Zrušit účet“* s bezpečnostním potvrzovacím dialogem, vyčištěním `localStorage` i databáze a korektním odhlášením.
+  * Ve Studiu (`/admin`) v sekci *Správa týmu* přibyla možnost pro administrátora odebrat libovolného editora či člena týmu tlačítkem s košem.
 
 ---
 

@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
+import { AlertCircle, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
@@ -713,8 +713,23 @@ export default function Home() {
         },
       });
       if (error) {
-        setAuthError(error.message);
+        if (
+          error.message.toLowerCase().includes("already registered") ||
+          error.message.toLowerCase().includes("already exists") ||
+          error.message.toLowerCase().includes("duplicate")
+        ) {
+          setAuthError("Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
+          setAuthMode("login");
+        } else {
+          setAuthError(error.message);
+        }
       } else if (data.user) {
+        // Kontrola duplicity při zapnutém "Prevent email enumeration" v Supabase
+        if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setAuthError("Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
+          setAuthMode("login");
+          return;
+        }
         if (data.session) {
           setCurrentUser(data.user);
           await loadUserData(data.user, cards);
@@ -755,6 +770,32 @@ export default function Home() {
     setCurrentProfile(null);
     setShowAuthModal(true);
     setToast("Byli jste odhlášeni z Quilldrop.");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentUser) return;
+    const confirmed = window.confirm(
+      "Opravdu si přejete trvale zrušit svůj písařský účet? Tato akce je nevratná a smaže celou vaši sbírku karet i veškerý postup."
+    );
+    if (!confirmed) return;
+    try {
+      const { error } = await supabase.rpc("delete_user_account");
+      if (error) {
+        console.warn("RPC delete_user_account warning:", error.message);
+        await supabase.from("profiles").delete().eq("id", currentUser.id);
+        await supabase.from("user_cards").delete().eq("user_id", currentUser.id);
+      }
+      localStorage.removeItem(`quilldrop-state-${currentUser.id}`);
+      localStorage.removeItem("quilldrop-state");
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setCurrentProfile(null);
+      setState(INITIAL_STATE);
+      setShowAuthModal(true);
+      setToast("Váš účet a veškerá herní data byla úspěšně smazána.");
+    } catch (err: any) {
+      setToast("Chyba při mazání účtu: " + (err.message || "Zkuste to znovu"));
+    }
   };
 
   useEffect(() => {
@@ -1161,6 +1202,7 @@ export default function Home() {
               onSend={handleOpenGiftModal}
               onAcceptGift={handleAcceptGift}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
+              onDeleteAccount={handleDeleteAccount}
             />
           )}
         </div>
@@ -2521,6 +2563,7 @@ function ProfileScreen({
   onSend,
   onAcceptGift,
   onSetAvatar,
+  onDeleteAccount,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -2540,6 +2583,7 @@ function ProfileScreen({
   onSend: (target?: any) => void;
   onAcceptGift: (gift: any) => void;
   onSetAvatar: (id: string) => void;
+  onDeleteAccount?: () => void;
 }) {
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
@@ -2579,9 +2623,33 @@ function ProfileScreen({
               <ExternalLink size={13} /> Vstoupit do Studia
             </a>
           ) : <span />}
-          <button type="button" className="profile-logout-btn" onClick={onLogout}>
-            <LogOut size={13} /> Odhlásit se
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button type="button" className="profile-logout-btn" onClick={onLogout}>
+              <LogOut size={13} /> Odhlásit se
+            </button>
+            {onDeleteAccount && (
+              <button
+                type="button"
+                onClick={onDeleteAccount}
+                title="Trvale zrušit účet a smazat data"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #b91c1c",
+                  color: "#b91c1c",
+                  borderRadius: "6px",
+                  padding: "6px 10px",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <Trash2 size={12} /> Zrušit účet
+              </button>
+            )}
+          </div>
         </div>
       </div>
     ) : (
