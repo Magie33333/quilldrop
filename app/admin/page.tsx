@@ -206,7 +206,6 @@ export default function AdminPage() {
   const [lastSavedSummary, setLastSavedSummary] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [cipherOnly, setCipherOnly] = useState(false);
 
   // React-image-crop stavy (PowerPoint style úchyty a posun)
   const [crop, setCrop] = useState<Crop>();
@@ -1287,8 +1286,7 @@ export default function AdminPage() {
       c.colophons?.quote.toLowerCase().includes(search.toLowerCase()) ||
       c.colophons?.scribe.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchCipher = !cipherOnly || isCipherCard(c);
-    return matchSearch && matchStatus && matchCipher;
+    return matchSearch && matchStatus;
   });
 
   // Uživatelé v reálném čase editující stejnou kartu (detekce kolizí)
@@ -1619,13 +1617,6 @@ export default function AdminPage() {
                   {cards.length} ve hře · 3 640 v Heuristu
                 </small>
               </div>
-              <button
-                onClick={() => setShowNewModal(true)}
-                className="text-xs text-[#ffd580] hover:text-white bg-[#2e2518] hover:bg-[#3d3120] border border-[#52422b] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition font-bold shadow-xs"
-                title="Vybrat kolofon z 3 640 digitalizátů Heurist"
-              >
-                <PlusCircle size={13} className="text-[#d4af37]" /> + Kolofon
-              </button>
             </div>
 
             <input
@@ -1646,7 +1637,7 @@ export default function AdminPage() {
                   key={st.id}
                   onClick={() => setStatusFilter(st.id)}
                   className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1.5 transition cursor-pointer ${
-                    statusFilter === st.id && !cipherOnly
+                    statusFilter === st.id
                       ? "bg-[#3d3226] text-[#ffd580] font-semibold border border-[#5c4627]"
                       : "text-[#8c7b6d] hover:text-[#d1c2b4]"
                   }`}
@@ -1655,18 +1646,6 @@ export default function AdminPage() {
                   {st.label}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setCipherOnly(!cipherOnly)}
-                className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition ${
-                  cipherOnly
-                    ? "bg-[#543414] text-[#ffd580] font-bold border border-[#c49233]"
-                    : "text-[#c9a96e] hover:bg-[#2e2318]"
-                }`}
-                title="Filtrovat pouze kolofony se šifrou či kryptogramem"
-              >
-                <KeyRound size={11} /> Šifry ({cards.filter(isCipherCard).length})
-              </button>
             </div>
           </div>
 
@@ -2180,7 +2159,7 @@ export default function AdminPage() {
         </main>
 
         {/* PRAVÝ PANEL: ŽIVÝ NÁHLED KARTY (PŘIROZENÉ MĚŘÍTKO BEZ DEFORMACE) + FORMULÁŘ */}
-        <aside className="w-96 border-l border-[#2e2721] bg-[#161310] flex flex-col min-h-0 overflow-y-auto">
+        <aside className="w-96 xl:w-[440px] shrink-0 border-l border-[#2e2721] bg-[#161310] flex flex-col min-h-0 overflow-y-auto">
           {selectedCard && (
             <div className="flex flex-col min-h-0 flex-1">
               {/* ZÁLOŽKY: Karta a výřez VS Písařské výzvy */}
@@ -2486,43 +2465,130 @@ export default function AdminPage() {
                   return (
                     <div
                       key={q.id || idx}
-                      className="p-2.5 bg-[#1f1a16] border border-[#332921] rounded text-xs space-y-1.5 relative group"
+                      className="p-3 bg-[#1c1713] border border-[#382d22] rounded-lg text-xs space-y-2.5 relative group hover:border-[#52412d] transition shadow-xs"
                     >
-                      <div className="flex justify-between font-bold text-[#ffd580]">
-                        <span className="flex items-center gap-1.5">
-                          {qMode === "mood"
-                            ? "🎭"
-                            : qMode === "cipher"
-                            ? "🔑"
-                            : qMode === "transcription"
-                            ? "✒️"
-                            : "📜"}
-                          <span>{q.title}</span>
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2e241b] text-[#c9a96e] uppercase">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center gap-1.5 font-bold text-[#ffd580] min-w-0">
+                          <span className="text-base leading-none shrink-0">
+                            {qMode === "mood"
+                              ? "🎭"
+                              : qMode === "cipher"
+                              ? "🔑"
+                              : qMode === "transcription"
+                              ? "✒️"
+                              : "📜"}
+                          </span>
+                          <span className="truncate">{q.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#2e241b] text-[#c9a96e] uppercase font-semibold">
                             {qMode}
                           </span>
+                          {q.difficulty && (
+                            <span
+                              className={`text-[9.5px] px-1.5 py-0.5 rounded font-semibold ${
+                                q.difficulty === "easy"
+                                  ? "bg-emerald-950/60 text-emerald-300 border border-emerald-800/40"
+                                  : q.difficulty === "expert"
+                                  ? "bg-rose-950/60 text-rose-300 border border-rose-800/40"
+                                  : "bg-amber-950/60 text-amber-300 border border-amber-800/40"
+                              }`}
+                            >
+                              {q.difficulty === "easy" ? "Snadná" : q.difficulty === "expert" ? "Expert" : "Střední"}
+                            </span>
+                          )}
                           {q.id && (
                             <button
                               type="button"
                               onClick={() => handleDeleteGame(q.id!)}
-                              className="text-[#8c524b] hover:text-[#ff6b6b] p-0.5"
+                              className="text-[#8c524b] hover:text-[#ff6b6b] p-1 rounded hover:bg-rose-950/30 transition cursor-pointer"
                               title="Smazat minihru"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={13} />
                             </button>
                           )}
                         </div>
                       </div>
-                      <p className="text-[11px] text-[#9c8976]">{q.intro}</p>
+
+                      {q.intro && (
+                        <p className="text-[11.5px] text-[#c2b2a1] leading-relaxed">
+                          {q.intro}
+                        </p>
+                      )}
+
                       {isTrans ? (
-                        <div className="text-[11px] text-[#ffd580] bg-[#14110f] p-1.5 rounded border border-[#2e2620]">
-                          <b>Cílový přepis:</b> <i>{q.target_transcription || q.quote}</i>
+                        <div className="text-[11px] text-[#ffd580] bg-[#14110f] p-2.5 rounded border border-[#2e2620] space-y-1">
+                          <div className="text-[#a89278] text-[10px] font-semibold uppercase tracking-wider">
+                            Cílový paleografický přepis:
+                          </div>
+                          <div className="font-serif italic text-sm leading-snug">
+                            {q.target_transcription || q.quote}
+                          </div>
+                          {q.accepted_variants && q.accepted_variants.length > 0 && (
+                            <div className="text-[10px] text-[#8c7b6d] pt-0.5">
+                              Tolerované varianty: {q.accepted_variants.join(", ")}
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="text-[10px] text-[#73d13d]">
-                          Správná volba: {Array.isArray(q.options) ? (q.options[q.correct_index]?.[1] || q.options[q.correct_index]) : "Zvolena"}
+                        Array.isArray(q.options) && q.options.length > 0 && (
+                          <div className="space-y-1 bg-[#14100c] p-2 rounded border border-[#2e241b]">
+                            <div className="text-[#a89278] text-[10px] font-semibold uppercase tracking-wider mb-1">
+                              Možnosti odpovědi pro hráče:
+                            </div>
+                            <div className="space-y-1">
+                              {q.options.map((opt: any, optIdx: number) => {
+                                const isCorrect = optIdx === q.correct_index;
+                                const optText = Array.isArray(opt)
+                                  ? opt[1] || opt[0]
+                                  : typeof opt === "object"
+                                  ? opt.text || opt.label
+                                  : String(opt);
+                                return (
+                                  <div
+                                    key={optIdx}
+                                    className={`text-[11px] px-2 py-1 rounded flex items-center justify-between gap-2 ${
+                                      isCorrect
+                                        ? "bg-emerald-950/50 text-emerald-300 font-medium border border-emerald-800/50"
+                                        : "bg-[#1d1813] text-[#a89887] border border-[#2c221a]"
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-mono text-[10px] text-[#7d6f62] shrink-0">
+                                        {optIdx + 1}.
+                                      </span>
+                                      <span className="truncate">{optText}</span>
+                                    </span>
+                                    {isCorrect && (
+                                      <span className="text-[9px] uppercase font-bold text-emerald-400 bg-emerald-900/60 px-1 py-0.2 rounded shrink-0">
+                                        Správná
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      {/* Plný text nápovědy pro hráče (Hint) */}
+                      {q.hint && (
+                        <div className="text-[11px] bg-amber-950/30 text-amber-200 border border-amber-800/40 p-2 rounded space-y-0.5">
+                          <span className="font-bold text-amber-300 flex items-center gap-1 text-[10.5px]">
+                            💡 Nápověda pro hráče (Hint):
+                          </span>
+                          <p className="leading-relaxed whitespace-pre-wrap">{q.hint}</p>
+                        </div>
+                      )}
+
+                      {/* Plný text odborného vysvětlení */}
+                      {q.explanation && (
+                        <div className="text-[11px] bg-[#221c17] text-[#ffd580] border border-[#473928] p-2 rounded space-y-0.5">
+                          <span className="font-bold text-[#e6b955] flex items-center gap-1 text-[10.5px]">
+                            📖 Paleografický vhled / odborný výklad:
+                          </span>
+                          <p className="text-[#d9cbba] leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
                         </div>
                       )}
                     </div>
@@ -2987,26 +3053,63 @@ export default function AdminPage() {
                       </div>
                     )}
 
+                    {/* Volba obtížnosti výzvy */}
+                    <div>
+                      <label className="text-[10.5px] font-semibold text-[#c9a96e] block mb-1">
+                        Obtížnost výzvy
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(["easy", "medium", "expert"] as const).map((diff) => {
+                          const labels = { easy: "Snadná", medium: "Střední", expert: "Expert" };
+                          const isSel = builderDifficulty === diff;
+                          return (
+                            <button
+                              key={diff}
+                              type="button"
+                              onClick={() => setBuilderDifficulty(diff)}
+                              className={`py-1 rounded text-xs font-semibold border transition cursor-pointer ${
+                                isSel
+                                  ? diff === "easy"
+                                    ? "bg-emerald-950 text-emerald-300 border-emerald-500 shadow"
+                                    : diff === "expert"
+                                    ? "bg-rose-950 text-rose-300 border-rose-500 shadow"
+                                    : "bg-amber-950 text-amber-300 border-amber-500 shadow"
+                                  : "bg-[#14110f] text-[#8c7b6d] border-[#2e2620] hover:text-[#ffd580] hover:bg-[#1e1813]"
+                              }`}
+                            >
+                              {labels[diff]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     {/* Nápověda a vysvětlení */}
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-2.5 pt-1">
                       <div>
-                        <label className="text-[10px] text-[#9c8976]">Nápověda (Hint pro hráče)</label>
-                        <input
-                          type="text"
+                        <label className="text-[10.5px] font-semibold text-[#ffd580] flex items-center justify-between mb-1">
+                          <span className="flex items-center gap-1">💡 Nápověda pro hráče (Hint)</span>
+                          <span className="text-[10px] text-[#8c7b6d] font-normal">Hráč si ji může odkrýt ve hře</span>
+                        </label>
+                        <textarea
+                          rows={2}
                           value={builderHint}
                           onChange={(e) => setBuilderHint(e.target.value)}
-                          placeholder="Např. Podívejte se na konec..."
-                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          placeholder="Např. Všímejte si neobvyklých znaků, vynechaných samohlásek nebo narážek na konec práce..."
+                          className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-[#9c8976]">Vysvětlení / paleografický vhled</label>
-                        <input
-                          type="text"
+                        <label className="text-[10.5px] font-semibold text-[#ffd580] flex items-center justify-between mb-1">
+                          <span className="flex items-center gap-1">📖 Odborné vysvětlení / paleografický vhled</span>
+                          <span className="text-[10px] text-[#8c7b6d] font-normal">Zobrazí se po vyřešení výzvy</span>
+                        </label>
+                        <textarea
+                          rows={3}
                           value={builderExplanation}
                           onChange={(e) => setBuilderExplanation(e.target.value)}
-                          placeholder="Např. Písař byl unaven..."
-                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          placeholder="Např. Písař vyjadřuje úlevu a radost z dokončení celého kodexu. Použitá forma textu svědčí o..."
+                          className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
                         />
                       </div>
                     </div>

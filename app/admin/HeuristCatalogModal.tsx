@@ -77,9 +77,34 @@ export default function HeuristCatalogModal({
   const [unimportedOnly, setUnimportedOnly] = useState(true);
   const [drawingOnly, setDrawingOnly] = useState(false);
   const [rubricOnly, setRubricOnly] = useState(false);
+  const [cipherOnly, setCipherOnly] = useState(false);
+  const [verseOnly, setVerseOnly] = useState(false);
+  const [initialOnly, setInitialOnly] = useState(false);
+  const [scriptChangeOnly, setScriptChangeOnly] = useState(false);
+  const [centuryFilter, setCenturyFilter] = useState<"all" | "14" | "15" | "16">("all");
   const [starredOnly, setStarredOnly] = useState(false);
   const [hostFilter, setHostFilter] = useState<"all" | "scribes" | "manuscriptorium" | "other">("all");
   const [placeFilter, setPlaceFilter] = useState("all");
+
+  // Předpočítané počty speciálních rysů pro filtry
+  const featureCounts = useMemo(() => {
+    let cipher = 0;
+    let verse = 0;
+    let initial = 0;
+    let script = 0;
+    let drawing = 0;
+    let rubric = 0;
+    catalog.forEach((item) => {
+      const f = item.features || [];
+      if (f.includes("Šifra")) cipher++;
+      if (f.includes("Verše")) verse++;
+      if (f.includes("Iniciála")) initial++;
+      if (f.includes("Změna písma")) script++;
+      if (f.includes("Kresba")) drawing++;
+      if (f.includes("Rubrika")) rubric++;
+    });
+    return { cipher, verse, initial, script, drawing, rubric };
+  }, [catalog]);
 
   // Oblíbené / Záložky (uložené v localStorage)
   const [starredIds, setStarredIds] = useState<number[]>([]);
@@ -210,16 +235,47 @@ export default function HeuristCatalogModal({
       }
 
       // 3. Kresba
-      if (drawingOnly && !item.features.includes("Kresba")) {
+      if (drawingOnly && !item.features?.includes("Kresba")) {
         return false;
       }
 
       // 4. Rubrika
-      if (rubricOnly && !item.features.includes("Rubrika")) {
+      if (rubricOnly && !item.features?.includes("Rubrika")) {
         return false;
       }
 
-      // 5. Host server
+      // 5. Šifry a kryptogramy
+      if (cipherOnly && !item.features?.includes("Šifra")) {
+        return false;
+      }
+
+      // 6. Verše a rýmované kolofony
+      if (verseOnly && !item.features?.includes("Verše")) {
+        return false;
+      }
+
+      // 7. Iniciály
+      if (initialOnly && !item.features?.includes("Iniciála")) {
+        return false;
+      }
+
+      // 8. Změna písařské ruky / písma
+      if (scriptChangeOnly && !item.features?.includes("Změna písma")) {
+        return false;
+      }
+
+      // 9. Století / Časové období
+      if (centuryFilter === "14" && (item.year <= 0 || item.year > 1400)) {
+        return false;
+      }
+      if (centuryFilter === "15" && (item.year < 1401 || item.year > 1500)) {
+        return false;
+      }
+      if (centuryFilter === "16" && (item.year <= 0 || item.year < 1501)) {
+        return false;
+      }
+
+      // 10. Host server
       if (hostFilter === "scribes" && !item.host.includes("scribes.ff.cuni.cz")) {
         return false;
       }
@@ -230,12 +286,12 @@ export default function HeuristCatalogModal({
         return false;
       }
 
-      // 6. Místo
+      // 11. Místo
       if (placeFilter !== "all" && !item.place.toLowerCase().includes(placeFilter.toLowerCase())) {
         return false;
       }
 
-      // 7. Fulltext hledání
+      // 12. Fulltext hledání
       if (query) {
         const match =
           item.shelfmark.toLowerCase().includes(query) ||
@@ -250,12 +306,12 @@ export default function HeuristCatalogModal({
 
       return true;
     });
-  }, [catalog, searchQuery, unimportedOnly, starredOnly, starredIds, drawingOnly, rubricOnly, hostFilter, placeFilter, existingHeuristIds, existingImageUrls]);
+  }, [catalog, searchQuery, unimportedOnly, starredOnly, starredIds, drawingOnly, rubricOnly, cipherOnly, verseOnly, initialOnly, scriptChangeOnly, centuryFilter, hostFilter, placeFilter, existingHeuristIds, existingImageUrls]);
 
   // Reset stránky při změně filtrů
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, unimportedOnly, starredOnly, drawingOnly, rubricOnly, hostFilter, placeFilter, viewLayout]);
+  }, [searchQuery, unimportedOnly, starredOnly, drawingOnly, rubricOnly, cipherOnly, verseOnly, initialOnly, scriptChangeOnly, centuryFilter, hostFilter, placeFilter, viewLayout]);
 
   // Stránkované položky
   const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / PAGE_SIZE));
@@ -567,6 +623,18 @@ export default function HeuristCatalogModal({
                       </option>
                     ))}
                 </select>
+
+                {/* Rychlý výběr století / časového období */}
+                <select
+                  value={centuryFilter}
+                  onChange={(e) => setCenturyFilter(e.target.value as any)}
+                  className="bg-[#1e1712] border border-[#3d3122] rounded-lg px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] cursor-pointer shrink-0"
+                >
+                  <option value="all">Všechna období</option>
+                  <option value="14">14. století (do r. 1400)</option>
+                  <option value="15">15. století (1401–1500)</option>
+                  <option value="16">16. století a novější (1501+)</option>
+                </select>
               </div>
 
               {/* Tlačítka filtrů */}
@@ -601,6 +669,58 @@ export default function HeuristCatalogModal({
 
                   <button
                     type="button"
+                    onClick={() => setCipherOnly(!cipherOnly)}
+                    className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 font-semibold ${
+                      cipherOnly
+                        ? "bg-[#543414] text-[#ffd580] border-[#c49233] shadow"
+                        : "bg-[#1a140f] text-[#c9a96e] border-[#2e261d] hover:text-[#ffd580] hover:bg-[#251a11]"
+                    }`}
+                    title="Filtrovat kolofony se šifrou, kryptogramem nebo tajným písmem"
+                  >
+                    <span>🔑</span> Šifry ({featureCounts.cipher})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVerseOnly(!verseOnly)}
+                    className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 font-medium ${
+                      verseOnly
+                        ? "bg-[#382647] text-[#e9d5ff] border-[#a855f7]/60 shadow"
+                        : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
+                    }`}
+                    title="Filtrovat veršované a rýmované kolofony"
+                  >
+                    <span>📜</span> Verše ({featureCounts.verse})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInitialOnly(!initialOnly)}
+                    className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 font-medium ${
+                      initialOnly
+                        ? "bg-[#423215] text-[#fef08a] border-[#eab308]/60 shadow"
+                        : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
+                    }`}
+                    title="Filtrovat kolofony s dekorovanou iniciálou"
+                  >
+                    <span>✨</span> Iniciály ({featureCounts.initial})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScriptChangeOnly(!scriptChangeOnly)}
+                    className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 font-medium ${
+                      scriptChangeOnly
+                        ? "bg-[#253247] text-[#bae6fd] border-[#38bdf8]/60 shadow"
+                        : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
+                    }`}
+                    title="Filtrovat kolofony se změnou písařské ruky"
+                  >
+                    <span>✒️</span> Změna ruky ({featureCounts.script})
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setDrawingOnly(!drawingOnly)}
                     className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 ${
                       drawingOnly
@@ -608,7 +728,7 @@ export default function HeuristCatalogModal({
                         : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
                     }`}
                   >
-                    <span>🎨</span> S kresbou
+                    <span>🎨</span> Kresba ({featureCounts.drawing})
                   </button>
 
                   <button
@@ -620,7 +740,7 @@ export default function HeuristCatalogModal({
                         : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
                     }`}
                   >
-                    <span>🔴</span> S rubrikou
+                    <span>🔴</span> Rubrika
                   </button>
 
                   <span className="h-3.5 w-px bg-[#3d3122] mx-1" />

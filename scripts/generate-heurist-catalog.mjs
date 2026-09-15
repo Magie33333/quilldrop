@@ -105,7 +105,8 @@ for (const r of textual) {
   const note = clean(first(r, "visual_note", "note", "scriptNote") || "");
 
   const features = [];
-  const noteLower = note.toLowerCase();
+  const noteLower = (note + " " + quote + " " + JSON.stringify(r.details || [])).toLowerCase();
+
   if (
     yes(r, "graphical_element") ||
     /draw|drawing|figure|animal|face|cross|sketch|ornament|symbol|margin|border/i.test(
@@ -125,6 +126,38 @@ for (const r of textual) {
     /iniciál|initial|gold|zlato|illuminat/i.test(noteLower)
   ) {
     features.push("Iniciála");
+  }
+  if (
+    (r.details || []).some(
+      (d) =>
+        (d.fieldName === "Typology_JK" && (d.termLabel === "ci" || d.value === "ci")) ||
+        (d.fieldName === "Colophon type" && (d.termLabel === "CS" || d.termLabel === "SW"))
+    ) ||
+    /cipher|šifr|crypt|krypt|tajemn/i.test(noteLower)
+  ) {
+    features.push("Šifra");
+  }
+  if (
+    (r.details || []).some(
+      (d) =>
+        (d.fieldName === "Typology_JK" && (d.termLabel === "ve" || d.value === "ve")) ||
+        (d.fieldName === "Colophon type" && (d.termLabel === "VE" || d.termLabel === "VE?"))
+    ) ||
+    /in verse|verš|rhyme|rým|hexameter|distich/i.test(noteLower)
+  ) {
+    features.push("Verše");
+  }
+  if (
+    yes(r, "erasure") ||
+    /eras|rasur|vyškráb/i.test(noteLower)
+  ) {
+    features.push("Rasura");
+  }
+  if (
+    yes(r, "script_change") ||
+    /different hand|different script|jiná ruka|změna písma/i.test(noteLower)
+  ) {
+    features.push("Změna písma");
   }
 
   catalog.push({
