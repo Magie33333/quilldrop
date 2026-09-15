@@ -80,6 +80,12 @@ type CardData = {
   crop_y: number;
   crop_w: number;
   crop_h: number;
+  created_by?: string | null;
+  created_by_name?: string | null;
+  updated_by?: string | null;
+  updated_by_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
   colophons?: {
     id: string;
     heurist_id: number;
@@ -1157,19 +1163,39 @@ export default function AdminPage() {
     const pctW = Math.round((completedCrop.width / img.width) * 1000) / 10;
     const pctH = Math.round((completedCrop.height / img.height) * 1000) / 10;
 
-    const { error: cardErr } = await supabase
+    const editorName =
+      currentProfile?.display_name ||
+      currentUser?.email?.split("@")[0] ||
+      "Editor";
+
+    const updatePayload: any = {
+      title: editTitle,
+      rarity: editRarity,
+      rarity_reason: editRarityReason,
+      status: editStatus,
+      crop_x: pctX,
+      crop_y: pctY,
+      crop_w: pctW,
+      crop_h: pctH,
+      updated_by_name: editorName,
+      updated_by: currentUser?.id || null,
+    };
+
+    let { error: cardErr } = await supabase
       .from("cards")
-      .update({
-        title: editTitle,
-        rarity: editRarity,
-        rarity_reason: editRarityReason,
-        status: editStatus,
-        crop_x: pctX,
-        crop_y: pctY,
-        crop_w: pctW,
-        crop_h: pctH,
-      })
+      .update(updatePayload)
       .eq("id", selectedCard.id);
+
+    // Pokud ještě sloupce v Supabase nebyly přidány migrací, zopakujeme bez nich
+    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("updated_by"))) {
+      delete updatePayload.updated_by;
+      delete updatePayload.updated_by_name;
+      const retry = await supabase
+        .from("cards")
+        .update(updatePayload)
+        .eq("id", selectedCard.id);
+      cardErr = retry.error;
+    }
 
     if (selectedCard.colophon_id) {
       await supabase
@@ -1455,7 +1481,7 @@ export default function AdminPage() {
               Quilldrop Studio
             </span>
             <span className="text-[10px] uppercase font-bold text-[#c9a96e] bg-[#241c16] px-2 py-0.5 rounded border border-[#423425] tracking-wider">
-              Badatelský režim
+              Redakční studio
             </span>
           </div>
         </div>
@@ -1495,9 +1521,9 @@ export default function AdminPage() {
           <button
             onClick={() => setShowHelpModal(true)}
             className="flex items-center gap-1.5 text-xs bg-[#2e2316] hover:bg-[#3d301f] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#5c4627] cursor-pointer transition font-medium shadow-xs"
-            title="Metodický průvodce pro brigádníky a pravidla od prof. Lucie Doležalové"
+            title="Metodická příručka pro editory a instrukce od prof. Lucie Doležalové"
           >
-            <HelpCircle size={14} className="text-[#ffd580]" /> Metodika & Nápověda
+            <HelpCircle size={14} className="text-[#ffd580]" /> Příručka editora
           </button>
         </div>
 
@@ -1699,6 +1725,15 @@ export default function AdminPage() {
                         {isCipherCard(c) && (
                           <span className="bg-[#422915] text-[#ffd580] px-1 py-0.2 rounded border border-[#8a5b28] text-[9px] flex items-center gap-0.5">
                             <KeyRound size={9} /> Šifra
+                          </span>
+                        )}
+                        {(c.created_by_name || c.updated_by_name) && (
+                          <span
+                            className="text-[#a89887] text-[9.5px] truncate max-w-[125px] flex items-center gap-1 bg-[#1a1410] px-1 py-0.2 rounded border border-[#382b1f]"
+                            title={`Vytvořil: ${c.created_by_name || "Neznámý"}${c.updated_by_name ? ` · Naposledy upravil: ${c.updated_by_name}` : ""}`}
+                          >
+                            <PenTool size={8.5} className="text-[#d4af37]" />
+                            {c.created_by_name || c.updated_by_name}
                           </span>
                         )}
                         {otherEditor && (
@@ -2325,6 +2360,69 @@ export default function AdminPage() {
                     placeholder="Doplňte překlad pro studenty a veřejnost..."
                     className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                   />
+                </div>
+
+                {/* Informace o autorovi a historii úprav */}
+                <div className="bg-[#1a140f] border border-[#3b2f21] rounded-lg p-3 space-y-2 text-xs text-[#c9a96e]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#ffd580] flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                      <Shield size={12} className="text-[#d4af37]" /> Autorství karty
+                    </span>
+                    {selectedCard.status === "published" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 font-bold flex items-center gap-1">
+                        🟢 Publikováno
+                      </span>
+                    )}
+                    {selectedCard.status === "review" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/80 font-bold flex items-center gap-1">
+                        🔵 Ke kontrole
+                      </span>
+                    )}
+                    {selectedCard.status === "draft" && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/80 font-bold flex items-center gap-1">
+                        🟡 Koncept
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1.5 text-[11px] border-t border-[#2d2318]">
+                    <div>
+                      <span className="text-[#7d6f62] block text-[10px]">Vytvořil editor:</span>
+                      <span className="text-[#e8ded1] font-semibold truncate block" title={selectedCard.created_by_name || "Původní import"}>
+                        {selectedCard.created_by_name || "Původní import"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#7d6f62] block text-[10px]">Naposledy upravil:</span>
+                      <span className="text-[#e8ded1] font-semibold truncate block" title={selectedCard.updated_by_name || selectedCard.created_by_name || "—"}>
+                        {selectedCard.updated_by_name || selectedCard.created_by_name || "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#7d6f62] block text-[10px]">Vytvořeno:</span>
+                      <span className="text-[#a89887]">
+                        {selectedCard.created_at
+                          ? new Date(selectedCard.created_at).toLocaleDateString("cs-CZ", {
+                              day: "numeric",
+                              month: "numeric",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[#7d6f62] block text-[10px]">Poslední úprava:</span>
+                      <span className="text-[#a89887]">
+                        {selectedCard.updated_at
+                          ? new Date(selectedCard.updated_at).toLocaleDateString("cs-CZ", {
+                              day: "numeric",
+                              month: "numeric",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -3212,6 +3310,8 @@ export default function AdminPage() {
         isOpen={showNewModal}
         onClose={() => setShowNewModal(false)}
         existingCards={cards}
+        currentUser={currentUser}
+        currentProfile={currentProfile}
         onCardCreated={(newCard) => {
           setCards([newCard as CardData, ...cards]);
           selectCard(newCard as CardData);
@@ -3931,7 +4031,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO: METODICKÝ PRŮVODCE A NÁVOD PRO BRIGÁDNÍKY */}
+      {/* MODÁLNÍ OKNO: METODICKÁ PŘÍRUČKA PRO EDITORY */}
       <StudioHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
 
       {/* MODÁLNÍ OKNO: PŘEHLED TÝMU A REALTIME AKTIVITY (PRESENCE) */}
@@ -3945,7 +4045,7 @@ export default function AdminPage() {
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                 </span>
                 <h3 className="font-serif font-bold text-sm text-[#ffd580] tracking-wide">
-                  Aktivní badatelé v reálném čase ({onlineUsers.length || 1})
+                  Aktivní editoři online ({onlineUsers.length || 1})
                 </h3>
               </div>
               <button
@@ -3958,7 +4058,7 @@ export default function AdminPage() {
 
             <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
               <p className="text-xs text-[#a89887] leading-relaxed">
-                Supabase Realtime sleduje připojené badatele a editory. Pokud dva editoři otevřou tentýž kolofon, systém okamžitě zobrazí varování, aby nedošlo k přepsání rozpracovaných dat.
+                Supabase Realtime sleduje připojené editory. Pokud dva editoři otevřou tentýž kolofon, systém okamžitě zobrazí varování, aby nedošlo k nechtěnému přepsání rozpracovaných dat.
               </p>
 
               <div className="space-y-2 divide-y divide-[#2a221b]">

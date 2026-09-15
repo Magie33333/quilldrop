@@ -38,7 +38,7 @@ export default function StudioHelpModal({
             </div>
             <div>
               <h3 className="font-serif font-bold text-base text-[#ffd580] tracking-wide">
-                Příručka editora & brigádníka Quilldrop Studia
+                Příručka editora Quilldrop Studia
               </h3>
               <p className="text-xs text-[#8c7b6d]">
                 Odborné instrukce pro zpracování středověkých kolofonů pod vedením prof. Lucie Doležalové

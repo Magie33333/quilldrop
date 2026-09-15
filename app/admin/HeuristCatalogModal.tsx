@@ -55,11 +55,15 @@ export default function HeuristCatalogModal({
   onClose,
   existingCards,
   onCardCreated,
+  currentUser,
+  currentProfile,
 }: {
   isOpen: boolean;
   onClose: () => void;
   existingCards: any[];
   onCardCreated: (newCard: any) => void;
+  currentUser?: any;
+  currentProfile?: any;
 }) {
   const [mode, setMode] = useState<"heurist" | "manual">("heurist");
   const [catalog, setCatalog] = useState<HeuristCatalogItem[]>([]);
@@ -341,21 +345,38 @@ export default function HeuristCatalogModal({
         throw new Error(`Chyba při ukládání kolofonu: ${colError?.message || "Neznámá chyba"}`);
       }
 
-      // 2. Založení karty
-      const { data: newCard, error: cardError } = await supabase
+      // 2. Založení karty s evidencí autora
+      const authorName =
+        currentProfile?.display_name ||
+        currentUser?.email?.split("@")[0] ||
+        "Editor";
+      const authorId = currentUser?.id || null;
+
+      const cardPayload: any = {
+        colophon_id: colophon.id,
+        slug: `card-${targetHeuristId}`,
+        title: formTitle.trim() || "Nový kolofon",
+        rarity: formRarity,
+        status: formStatus,
+        image_url: formImageUrl.trim(),
+        crop_x: 15,
+        crop_y: 15,
+        crop_w: 70,
+        crop_h: 52.5,
+        created_by_name: authorName,
+        updated_by_name: authorName,
+      };
+      if (authorId) {
+        cardPayload.created_by = authorId;
+        cardPayload.updated_by = authorId;
+      }
+
+      let newCard: any = null;
+      let cardError: any = null;
+
+      const res = await supabase
         .from("cards")
-        .insert({
-          colophon_id: colophon.id,
-          slug: `card-${targetHeuristId}`,
-          title: formTitle.trim() || "Nový kolofon",
-          rarity: formRarity,
-          status: formStatus,
-          image_url: formImageUrl.trim(),
-          crop_x: 15,
-          crop_y: 15,
-          crop_w: 70,
-          crop_h: 52.5,
-        })
+        .insert(cardPayload)
         .select(
           `
           *,
@@ -365,6 +386,33 @@ export default function HeuristCatalogModal({
         `
         )
         .single();
+
+      newCard = res.data;
+      cardError = res.error;
+
+      // Pokud sloupce v Supabase ještě nebyly přidány migrací (PGRST204), zopakujeme bez nich
+      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("created_by"))) {
+        delete cardPayload.created_by;
+        delete cardPayload.created_by_name;
+        delete cardPayload.updated_by;
+        delete cardPayload.updated_by_name;
+
+        const retry = await supabase
+          .from("cards")
+          .insert(cardPayload)
+          .select(
+            `
+            *,
+            colophons (
+              id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+            )
+          `
+          )
+          .single();
+
+        newCard = retry.data;
+        cardError = retry.error;
+      }
 
       if (cardError || !newCard) {
         throw new Error(`Chyba při vytváření karty: ${cardError?.message || "Neznámá chyba"}`);
@@ -398,7 +446,7 @@ export default function HeuristCatalogModal({
                   Výběr ze soupisu Heurist ({catalog.length > 0 ? catalog.length.toLocaleString("cs-CZ") : "3 640"} digitalizátů)
                 </h3>
                 <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
-                  Volný badatelský režim
+                  Průzkum fondu Heurist
                 </span>
               </div>
               <p className="text-[11px] text-[#8c7b6d]">
@@ -987,7 +1035,7 @@ export default function HeuristCatalogModal({
                         onChange={(e) => setFormStatus(e.target.value as CardStatus)}
                         className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       >
-                        <option value="draft">🟡 Koncept (Draft) – doporučeno pro brigádníky</option>
+                        <option value="draft">🟡 Koncept (Draft) – výchozí stav pro nová data</option>
                         <option value="review">🔵 Ke kontrole (Review) – k posouzení</option>
                         <option value="published">🟢 Publikováno (Published) – rovnou do ostré hry</option>
                       </select>
