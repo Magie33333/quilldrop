@@ -759,6 +759,9 @@ export default function AdminPage() {
     const { data, error } = await supabase.auth.signUp({
       email: authEmail,
       password: authPassword,
+      options: {
+        emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/admin" : undefined,
+      },
     });
     if (error) {
       setAuthError(error.message);
@@ -836,6 +839,7 @@ export default function AdminPage() {
             username: cleanName,
             full_name: cleanName,
           },
+          emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/admin" : undefined,
         },
       });
 

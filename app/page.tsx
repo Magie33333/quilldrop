@@ -709,6 +709,7 @@ export default function Home() {
             display_name: name,
             username: name,
           },
+          emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
         },
       });
       if (error) {

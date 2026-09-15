@@ -350,14 +350,21 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Skript provede kompletní export všech databázových tabulek (`cards`, `colophons`, `game_questions`, `profiles`, `user_cards`, `card_gifts`) do přehledného strukturovaného JSON snapshotu do složky `backups/quilldrop-backup-[timestamp].json` a udržuje aktuální ukazatel `backups/latest.json`.
   * Ochrana dat: historické zálohy jsou přidány do `.gitignore`, aby nezatěžovaly repozitář, zatímco lokální archiv je kdykoliv k dispozici pro obnovu v případě omylu editorů.
 
+### [2026-09-15] Fáze 3.2: Funkční potvrzovací e-maily přes externí SMTP zdarma & HTML šablona
+* **Podpora přesměrování po potvrzení e-mailu (`emailRedirectTo`):**
+  * Ve volání `supabase.auth.signUp` v aplikaci (`app/page.tsx`) i v administraci (`app/admin/page.tsx`) byl přidán parametr `emailRedirectTo: window.location.origin`.
+  * Potvrzovací odkaz z e-mailu tak studenta vždy spolehlivě přesměruje zpět na ostrou Vercel doménu (či do `/admin` pro redaktory), bez ohledu na to, zda byl e-mail otevřen na počítači nebo mobilním telefonu.
+* **Česká středověká pergamenová e-mailová šablona:**
+  * Vytvořen soubor `db/email-templates/confirm-signup.html` s luxusním pergamenovým designem, zlatým pečetním tlačítkem (`{{ .ConfirmationURL }}`) a akademickou hlavičkou pro potřeby projektu prof. Lucie Doležalové.
+* **Připraveny návody pro bezplatné externí SMTP napojení do Supabase:**
+  * Varianta Gmail SMTP (500 mailů/den zdarma bez nutnosti domény přes Google Heslo aplikace).
+  * Varianta Resend / Brevo (pro případ napojení vlastní domény).
+
 ---
 
 ### Následující kroky:
-* [ ] **FÁZE 3.2 & 3.3: Autentizace bez limitů & produkční spuštění:**
-  * Potvrzení vypnutí „Confirm email“ v Supabase Dashboardu pro okamžitý start studentů.
-  * Kontrola Google OAuth konfigurace pro školní účty.
 * [ ] **FÁZE 4.2 & 4.3: Předání prof. Doležalové & instruktáž editorů:**
-  * Otestování chování na mobilních zařízeních a předání odkazů na Studio `/admin`.
+  * Závěrečný zátěžový test a předání odkazů na Studio `/admin`.
 
 
 
