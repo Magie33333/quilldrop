@@ -1,4 +1,4 @@
-﻿-- ==========================================================
+-- ==========================================================
 -- Migrace 04: Bezpečná funkce pro zrušení / smazání účtu (GDPR)
 -- ==========================================================
 
@@ -18,7 +18,11 @@ begin
 
   -- 1. Smazat navázané záznamy uživatele
   delete from public.user_cards where user_id = current_user_id;
-  delete from public.card_gifts where sender_id = current_user_id or recipient_id = current_user_id;
+  begin
+    delete from public.card_gifts where sender_id = current_user_id or recipient_id = current_user_id;
+  exception when undefined_table then
+    null;
+  end;
   delete from public.profiles where id = current_user_id;
 
   -- 2. Smazat uživatele z auth.users
