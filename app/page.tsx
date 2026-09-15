@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
@@ -57,6 +57,32 @@ type Colophon = {
   crop_y?: number;
   crop_w?: number;
   crop_h?: number;
+};
+
+type TradeItem = {
+  card_id: string | number;
+  title: string;
+  rarity: Rarity;
+  count: number;
+  crop_x?: number;
+  crop_y?: number;
+  crop_w?: number;
+  crop_h?: number;
+  imageUrl?: string;
+};
+
+type CardTrade = {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  recipient_id: string;
+  recipient_name: string;
+  sender_offer: TradeItem[];
+  recipient_request: TradeItem[];
+  message?: string;
+  status: "pending" | "accepted" | "declined" | "countered";
+  parent_trade_id?: string;
+  created_at?: string;
 };
 
 type GameState = {
@@ -262,6 +288,46 @@ export default function Home() {
   const [selectedGiftCardId, setSelectedGiftCardId] = useState<string>("");
   const [giftMessage, setGiftMessage] = useState<string>("");
   const [isSendingGift, setIsSendingGift] = useState(false);
+
+  // P2P Vzájemná směna karet (Bilateral Card Trading)
+  const [pendingTrades, setPendingTrades] = useState<CardTrade[]>([
+    {
+      id: "demo-trade-1",
+      sender_id: "demo-1",
+      sender_name: "Lucie z Klementina",
+      recipient_id: "me",
+      recipient_name: "Vy",
+      sender_offer: [
+        {
+          card_id: COLOPHONS[2]?.id || "3",
+          title: COLOPHONS[2]?.title || "Iniciála sv. Jeronýma",
+          rarity: (COLOPHONS[2]?.rarity as Rarity) || "Rare",
+          count: 1,
+          imageUrl: COLOPHONS[2]?.imageUrl,
+        },
+      ],
+      recipient_request: [
+        {
+          card_id: COLOPHONS[0]?.id || "1",
+          title: COLOPHONS[0]?.title || "Pražský kodex písaře Václava",
+          rarity: (COLOPHONS[0]?.rarity as Rarity) || "Uncommon",
+          count: 1,
+          imageUrl: COLOPHONS[0]?.imageUrl,
+        },
+      ],
+      message: "Zdravím ze skriptoria! Chybí mi tento pražský kolofon. Rád ti za něj nabídnu tuto vzácnou iluminaci.",
+      status: "pending",
+      created_at: new Date().toISOString(),
+    },
+  ]);
+  const [activeTradeModal, setActiveTradeModal] = useState<{
+    colleague: any;
+    initialOffer?: TradeItem[];
+    initialRequest?: TradeItem[];
+    message?: string;
+    parentTradeId?: string;
+  } | null>(null);
+  const [reviewTradeModal, setReviewTradeModal] = useState<CardTrade | null>(null);
 
   // 16dílné iluminace a denní streak (Cesta písaře)
   const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
@@ -566,6 +632,18 @@ export default function Home() {
                 .eq("status", "pending");
               if (gifts && gifts.length > 0) {
                 setPendingGifts(gifts);
+              }
+            } catch {}
+            // Načíst příchozí návrhy směny pro tohoto hráče
+            try {
+              const { data: trades } = await supabase
+                .from("card_trades")
+                .select("*")
+                .eq("recipient_id", user.id)
+                .eq("status", "pending")
+                .order("created_at", { ascending: false });
+              if (trades && trades.length > 0) {
+                setPendingTrades(trades);
               }
             } catch {}
           }
@@ -1142,6 +1220,171 @@ export default function Home() {
     } catch {}
   };
 
+  // --- P2P Obchodování a smlouvy o směně (Bilateral Card Trading) ---
+  const handleOpenTradeModal = (
+    colleague?: any,
+    initialOffer?: TradeItem[],
+    initialRequest?: TradeItem[],
+    message?: string,
+    parentTradeId?: string
+  ) => {
+    const target = colleague || colleagues[0] || { id: "demo-1", display_name: "Lucie z Klementina" };
+    setActiveTradeModal({
+      colleague: target,
+      initialOffer,
+      initialRequest,
+      message: message || "",
+      parentTradeId,
+    });
+  };
+
+  const handleSendTrade = async (
+    offer: TradeItem[],
+    request: TradeItem[],
+    msg: string,
+    parentTradeId?: string
+  ) => {
+    if (!activeTradeModal) return;
+    if (offer.length === 0 && request.length === 0) {
+      setToast("Vyberte prosím alespoň jeden kolofon k nabídce nebo žádosti.");
+      return;
+    }
+
+    // Ověřit, zda hráč skutečně vlastní všechny nabízené karty
+    for (const item of offer) {
+      const owned = state.collection[item.card_id] || 0;
+      if (owned < item.count) {
+        setToast(`Nemáte dostatek kusů karty „${item.title}“ k nabídnutí.`);
+        return;
+      }
+    }
+
+    playParchmentFlip(0.28);
+    const target = activeTradeModal.colleague;
+    const senderName =
+      currentProfile?.display_name ||
+      currentUser?.user_metadata?.display_name ||
+      currentUser?.email?.split("@")[0] ||
+      "Písařský tovaryš";
+    const recipientName = target.display_name || target.username || "Kolega";
+
+    // Pokud šlo o protinabídku, označíme původní nabídku jako 'countered'
+    if (parentTradeId) {
+      setPendingTrades((prev) => prev.filter((t) => t.id !== parentTradeId));
+      try {
+        if (currentUser && !parentTradeId.startsWith("demo-")) {
+          await supabase.from("card_trades").update({ status: "countered" }).eq("id", parentTradeId);
+        }
+      } catch {}
+    }
+
+    // Zapsat do Supabase pokud existuje reálný uživatel
+    try {
+      if (currentUser && !target.id?.startsWith("demo-")) {
+        await supabase.from("card_trades").insert({
+          sender_id: currentUser.id,
+          sender_name: senderName,
+          recipient_id: target.id,
+          recipient_name: recipientName,
+          sender_offer: offer,
+          recipient_request: request,
+          message: msg.trim() || "Návrh na vzájemnou výměnu kolofonů mezi písaři.",
+          status: "pending",
+          parent_trade_id: parentTradeId || null,
+        });
+      }
+    } catch {}
+
+    // Připsat XP za diplomatické vyjednávání
+    setState((s) => ({
+      ...s,
+      xp: s.xp + 15,
+    }));
+
+    setActiveTradeModal(null);
+    setToast(`Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (+15 XP)`);
+  };
+
+  const handleAcceptTrade = async (trade: CardTrade) => {
+    // Ověřit dostupnost požadovaných karet u příjemce
+    for (const req of trade.recipient_request) {
+      const owned = state.collection[req.card_id] || 0;
+      if (owned < req.count) {
+        setToast(`Pro přijetí směny vám chybí požadovaný kolofon: „${req.title}“.`);
+        return;
+      }
+    }
+
+    playTriumphFanfare("Epic");
+
+    // Atomická výměna ve sbírce hráče:
+    // 1. Odečíst karty, které hráč odevzdává (recipient_request)
+    // 2. Přičíst karty, které hráč získává (sender_offer)
+    const nextCollection = { ...state.collection };
+    for (const req of trade.recipient_request) {
+      const current = nextCollection[req.card_id] || 0;
+      const left = current - req.count;
+      if (left <= 0) {
+        delete nextCollection[req.card_id];
+      } else {
+        nextCollection[req.card_id] = left;
+      }
+    }
+    for (const off of trade.sender_offer) {
+      nextCollection[off.card_id] = (nextCollection[off.card_id] || 0) + off.count;
+    }
+
+    // Odemknout trofej Štědrý tovaryš pokud ještě nemá
+    const nextTrophies = state.trophies.includes("philanthropist")
+      ? state.trophies
+      : [...state.trophies, "philanthropist"];
+
+    setState((s) => ({
+      ...s,
+      collection: nextCollection,
+      trophies: nextTrophies,
+      xp: s.xp + 60,
+    }));
+
+    setPendingTrades((prev) => prev.filter((t) => t.id !== trade.id));
+    setReviewTradeModal(null);
+    setToast(`Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (+60 XP).`);
+
+    try {
+      if (currentUser && !trade.id.startsWith("demo-")) {
+        await supabase.from("card_trades").update({ status: "accepted" }).eq("id", trade.id);
+      }
+    } catch {}
+  };
+
+  const handleCounterTrade = (trade: CardTrade) => {
+    setReviewTradeModal(null);
+    // Invertovat strany: co odesílatel nabízel, to příjemce nyní žádá (a naopak)
+    setActiveTradeModal({
+      colleague: {
+        id: trade.sender_id,
+        display_name: trade.sender_name,
+      },
+      initialOffer: trade.recipient_request,
+      initialRequest: trade.sender_offer,
+      message: `Navrhuji mírnou úpravu naší směny kolofonů...`,
+      parentTradeId: trade.id,
+    });
+  };
+
+  const handleDeclineTrade = async (trade: CardTrade) => {
+    playParchmentFlip(0.2);
+    setPendingTrades((prev) => prev.filter((t) => t.id !== trade.id));
+    setReviewTradeModal(null);
+    setToast(`Návrh směny od kolegy ${trade.sender_name} byl zdvořile odmítnut.`);
+
+    try {
+      if (currentUser && !trade.id.startsWith("demo-")) {
+        await supabase.from("card_trades").update({ status: "declined" }).eq("id", trade.id);
+      }
+    } catch {}
+  };
+
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
@@ -1194,6 +1437,7 @@ export default function Home() {
               illuminations={illuminations}
               colleagues={colleagues}
               pendingGifts={pendingGifts}
+              pendingTrades={pendingTrades}
               onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
               onLogout={handleLogout}
               onReset={resetDemo}
@@ -1201,6 +1445,8 @@ export default function Home() {
               onBreakStreak={handleBreakStreak}
               onSend={handleOpenGiftModal}
               onAcceptGift={handleAcceptGift}
+              onOpenTrade={handleOpenTradeModal}
+              onReviewTrade={(trade) => setReviewTradeModal(trade)}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
               onDeleteAccount={handleDeleteAccount}
             />
@@ -1359,6 +1605,30 @@ export default function Home() {
               </div>
             </div>
           </div>
+        )}
+        {activeTradeModal && (
+          <TradeModal
+            colleague={activeTradeModal.colleague}
+            cards={cards}
+            userCollection={state.collection}
+            initialOffer={activeTradeModal.initialOffer}
+            initialRequest={activeTradeModal.initialRequest}
+            initialMessage={activeTradeModal.message}
+            parentTradeId={activeTradeModal.parentTradeId}
+            onClose={() => setActiveTradeModal(null)}
+            onSend={handleSendTrade}
+          />
+        )}
+        {reviewTradeModal && (
+          <TradeReviewModal
+            trade={reviewTradeModal}
+            cards={cards}
+            userCollection={state.collection}
+            onAccept={handleAcceptTrade}
+            onCounter={handleCounterTrade}
+            onDecline={handleDeclineTrade}
+            onClose={() => setReviewTradeModal(null)}
+          />
         )}
         {showAuthModal && (
           <AuthModal
@@ -2555,6 +2825,7 @@ function ProfileScreen({
   illuminations,
   colleagues = [],
   pendingGifts = [],
+  pendingTrades = [],
   onOpenAuth,
   onLogout,
   onReset,
@@ -2562,6 +2833,8 @@ function ProfileScreen({
   onBreakStreak,
   onSend,
   onAcceptGift,
+  onOpenTrade,
+  onReviewTrade,
   onSetAvatar,
   onDeleteAccount,
 }: {
@@ -2575,6 +2848,7 @@ function ProfileScreen({
   illuminations: IlluminationMosaicItem[];
   colleagues?: any[];
   pendingGifts?: any[];
+  pendingTrades?: CardTrade[];
   onOpenAuth: () => void;
   onLogout: () => void;
   onReset: () => void;
@@ -2582,6 +2856,8 @@ function ProfileScreen({
   onBreakStreak: () => void;
   onSend: (target?: any) => void;
   onAcceptGift: (gift: any) => void;
+  onOpenTrade?: (colleague?: any) => void;
+  onReviewTrade?: (trade: CardTrade) => void;
   onSetAvatar: (id: string) => void;
   onDeleteAccount?: () => void;
 }) {
@@ -2768,6 +3044,54 @@ function ProfileScreen({
       <p className="empty-gallery">Složte 16denní mozaiku pro odemčení první celistvé iluminace do své stálé galerie a portrétů.</p>
     )}
 
+    {/* Čekající nabídky směn od kolegů */}
+    {pendingTrades && pendingTrades.length > 0 && (
+      <div
+        className="pending-trades-banner"
+        style={{
+          margin: "18px 0 22px",
+          padding: "14px 16px",
+          background: "linear-gradient(135deg, #f7efe1, #edd5aa)",
+          border: "2px double #8b5a19",
+          borderRadius: "10px",
+          boxShadow: "0 4px 15px rgba(139,90,25,0.2)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <strong style={{ color: "#593309", display: "flex", alignItems: "center", gap: 6, fontSize: "13px" }}>
+              <ArrowLeftRight size={15} color="#8b5a19" /> Písařská směna kolofonů ({pendingTrades.length})
+            </strong>
+            <small style={{ color: "#452706", display: "block", marginTop: 3 }}>
+              Kolega <strong>{pendingTrades[0].sender_name}</strong> vám navrhuje směnu:{" "}
+              <em>{pendingTrades[0].sender_offer.length} {pendingTrades[0].sender_offer.length === 1 ? "kolofon" : "kolofony"} za {pendingTrades[0].recipient_request.length}</em>
+              {pendingTrades[0].message && ` – „${pendingTrades[0].message}“`}
+            </small>
+          </div>
+          <button
+            type="button"
+            onClick={() => onReviewTrade && onReviewTrade(pendingTrades[0])}
+            style={{
+              padding: "7px 16px",
+              background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+              color: "#fff3cf",
+              border: "1px solid #3d2206",
+              borderRadius: "6px",
+              fontWeight: 700,
+              fontSize: "11px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            }}
+          >
+            <ScrollText size={13} /> Posoudit smlouvu
+          </button>
+        </div>
+      </div>
+    )}
+
     {/* Čekající dary od kolegů */}
     {pendingGifts && pendingGifts.length > 0 && (
       <div
@@ -2817,9 +3141,16 @@ function ProfileScreen({
 
     <div className="section-title">
       <h2>Kolegové ve skriptoriu</h2>
-      <button className="icon-label" onClick={() => onSend()}>
-        <UserPlus size={13} /> Odeslat duplikát
-      </button>
+      <div style={{ display: "flex", gap: 8 }}>
+        {onOpenTrade && (
+          <button className="icon-label" onClick={() => onOpenTrade()}>
+            <ArrowLeftRight size={13} /> Zahájit směnu
+          </button>
+        )}
+        <button className="icon-label" onClick={() => onSend()}>
+          <UserPlus size={13} /> Odeslat duplikát
+        </button>
+      </div>
     </div>
     <div className="friends">
       {colleagues.map((friend) => (
@@ -2831,9 +3162,32 @@ function ProfileScreen({
             <strong>{friend.display_name || friend.username || "Kolega"}</strong>
             <small>{friend.streak || 1} dní v řadě · {friend.xp ? `${friend.xp} XP` : "Tovaryš skriptoria"}</small>
           </div>
-          <button onClick={() => onSend(friend)}>
-            <Send size={12} /> Darovat
-          </button>
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            {onOpenTrade && (
+              <button
+                type="button"
+                onClick={() => onOpenTrade(friend)}
+                style={{
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+                  color: "#fff4d4",
+                  border: "1px solid #3d2206",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <ArrowLeftRight size={11} /> Směna
+              </button>
+            )}
+            <button onClick={() => onSend(friend)}>
+              <Send size={12} /> Darovat
+            </button>
+          </div>
         </article>
       ))}
     </div>
@@ -2899,6 +3253,695 @@ function IlluminationMosaic({
             {i >= pieces ? i + 1 : ""}
           </span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TradeModal({
+  colleague,
+  cards,
+  userCollection,
+  initialOffer = [],
+  initialRequest = [],
+  initialMessage = "",
+  parentTradeId,
+  onClose,
+  onSend,
+}: {
+  colleague: any;
+  cards: Colophon[];
+  userCollection: Record<string | number, number>;
+  initialOffer?: TradeItem[];
+  initialRequest?: TradeItem[];
+  initialMessage?: string;
+  parentTradeId?: string;
+  onClose: () => void;
+  onSend: (offer: TradeItem[], request: TradeItem[], message: string, parentTradeId?: string) => Promise<void>;
+}) {
+  const [activeTab, setActiveTab] = useState<"offer" | "request">("offer");
+  const [search, setSearch] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<Rarity | "All">("All");
+  const [message, setMessage] = useState(initialMessage);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Map of cardId -> count
+  const [offeredCounts, setOfferedCounts] = useState<Record<string | number, number>>(() => {
+    const map: Record<string | number, number> = {};
+    initialOffer.forEach((item) => {
+      map[item.card_id] = item.count;
+    });
+    return map;
+  });
+
+  const [requestedCounts, setRequestedCounts] = useState<Record<string | number, number>>(() => {
+    const map: Record<string | number, number> = {};
+    initialRequest.forEach((item) => {
+      map[item.card_id] = item.count;
+    });
+    return map;
+  });
+
+  // Cards owned by current user
+  const ownedCards = useMemo(() => {
+    return cards.filter((c) => (userCollection[c.id] || 0) > 0);
+  }, [cards, userCollection]);
+
+  // Filtered lists
+  const currentList = useMemo(() => {
+    const base = activeTab === "offer" ? ownedCards : cards;
+    return base.filter((c) => {
+      const matchSearch =
+        !search ||
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        (c.place && c.place.toLowerCase().includes(search.toLowerCase())) ||
+        (c.quote && c.quote.toLowerCase().includes(search.toLowerCase())) ||
+        (c.scribe && c.scribe.toLowerCase().includes(search.toLowerCase()));
+      const matchRarity = rarityFilter === "All" || c.rarity === rarityFilter;
+      return matchSearch && matchRarity;
+    });
+  }, [activeTab, ownedCards, cards, search, rarityFilter]);
+
+  const totalOfferedCount = useMemo(() => {
+    return Object.values(offeredCounts).reduce((a, b) => a + b, 0);
+  }, [offeredCounts]);
+
+  const totalRequestedCount = useMemo(() => {
+    return Object.values(requestedCounts).reduce((a, b) => a + b, 0);
+  }, [requestedCounts]);
+
+  const handleIncrement = (c: Colophon) => {
+    if (activeTab === "offer") {
+      const owned = userCollection[c.id] || 0;
+      const cur = offeredCounts[c.id] || 0;
+      if (cur < owned) {
+        setOfferedCounts((prev) => ({ ...prev, [c.id]: cur + 1 }));
+      }
+    } else {
+      const cur = requestedCounts[c.id] || 0;
+      setRequestedCounts((prev) => ({ ...prev, [c.id]: cur + 1 }));
+    }
+  };
+
+  const handleDecrement = (c: Colophon) => {
+    if (activeTab === "offer") {
+      const cur = offeredCounts[c.id] || 0;
+      if (cur <= 1) {
+        setOfferedCounts((prev) => {
+          const next = { ...prev };
+          delete next[c.id];
+          return next;
+        });
+      } else {
+        setOfferedCounts((prev) => ({ ...prev, [c.id]: cur - 1 }));
+      }
+    } else {
+      const cur = requestedCounts[c.id] || 0;
+      if (cur <= 1) {
+        setRequestedCounts((prev) => {
+          const next = { ...prev };
+          delete next[c.id];
+          return next;
+        });
+      } else {
+        setRequestedCounts((prev) => ({ ...prev, [c.id]: cur - 1 }));
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (totalOfferedCount === 0 && totalRequestedCount === 0) return;
+    setIsSubmitting(true);
+
+    const offerItems: TradeItem[] = Object.entries(offeredCounts)
+      .filter(([_, cnt]) => cnt > 0)
+      .map(([cardId, cnt]) => {
+        const c = cards.find((item) => String(item.id) === String(cardId));
+        return {
+          card_id: cardId,
+          title: c?.title || "Neznámý kolofon",
+          rarity: (c?.rarity as Rarity) || "Common",
+          count: cnt,
+          crop_x: c?.crop_x,
+          crop_y: c?.crop_y,
+          crop_w: c?.crop_w,
+          crop_h: c?.crop_h,
+          imageUrl: c?.imageUrl,
+        };
+      });
+
+    const requestItems: TradeItem[] = Object.entries(requestedCounts)
+      .filter(([_, cnt]) => cnt > 0)
+      .map(([cardId, cnt]) => {
+        const c = cards.find((item) => String(item.id) === String(cardId));
+        return {
+          card_id: cardId,
+          title: c?.title || "Neznámý kolofon",
+          rarity: (c?.rarity as Rarity) || "Common",
+          count: cnt,
+          crop_x: c?.crop_x,
+          crop_y: c?.crop_y,
+          crop_w: c?.crop_w,
+          crop_h: c?.crop_h,
+          imageUrl: c?.imageUrl,
+        };
+      });
+
+    try {
+      await onSend(offerItems, requestItems, message, parentTradeId);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Smlouva o písařské směně">
+      <div className="modal" style={{ maxWidth: 540, borderRadius: 12, padding: "20px 24px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <button className="close" onClick={onClose} title="Zavřít">×</button>
+
+        {/* Hlavička modálu */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <ArrowLeftRight size={20} className="text-[#8b5a19]" />
+          <div>
+            <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
+              {parentTradeId ? "Protinabídka ke směně" : "Smlouva o písařské směně"}
+            </h3>
+            <small style={{ color: "#784f1d", fontSize: "11px" }}>
+              {parentTradeId ? "Upravte podmínky a zašlete protinávrh zpět" : "Navrhněte výměnu kolofonů s kolegou ze skriptoria"}
+            </small>
+          </div>
+        </div>
+
+        {/* Partner ve směně */}
+        <div style={{ padding: "8px 12px", background: "#f8ecd4", border: "1px solid #d8b884", borderRadius: 8, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#4a2d0b", color: "#ffd580", display: "grid", placeItems: "center", fontWeight: "bold", fontSize: 13, flexShrink: 0 }}>
+              {colleague.display_name ? colleague.display_name.substring(0, 1).toUpperCase() : "K"}
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#3d2206" }}>
+                Partner ve směně: {colleague.display_name || colleague.username || "Kolega"}
+              </div>
+              <div style={{ fontSize: "10px", color: "#7a5323" }}>
+                {colleague.streak ? `${colleague.streak} dní v řadě` : "Tovaryš skriptoria"}
+              </div>
+            </div>
+          </div>
+          {parentTradeId && (
+            <span style={{ fontSize: "10px", background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: 10, border: "1px solid #f59e0b", fontWeight: 600 }}>
+              🔄 Protinabídka
+            </span>
+          )}
+        </div>
+
+        {/* Záložky nabídka vs žádost */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("offer")}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: activeTab === "offer" ? "2px solid #8b5a19" : "1px solid #d4c09b",
+              background: activeTab === "offer" ? "#fff5dc" : "#fbf7ee",
+              fontWeight: 700,
+              fontSize: "12px",
+              color: activeTab === "offer" ? "#4a2d0b" : "#8c6020",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>📤 Co nabízíte ({totalOfferedCount} ks)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("request")}
+            style={{
+              flex: 1,
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: activeTab === "request" ? "2px solid #8b5a19" : "1px solid #d4c09b",
+              background: activeTab === "request" ? "#fff5dc" : "#fbf7ee",
+              fontWeight: 700,
+              fontSize: "12px",
+              color: activeTab === "request" ? "#4a2d0b" : "#8c6020",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>📥 Co žádáte ({totalRequestedCount} ks)</span>
+          </button>
+        </div>
+
+        {/* Vyhledávání a filtr rarit */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <input
+            type="text"
+            placeholder={activeTab === "offer" ? "Hledat ve vaší sbírce..." : "Hledat v celém katalogu..."}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: 1,
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #c9b084",
+              background: "#fffdf9",
+              fontSize: "11px",
+              color: "var(--ink)",
+            }}
+          />
+          <select
+            value={rarityFilter}
+            onChange={(e) => setRarityFilter(e.target.value as any)}
+            style={{
+              padding: "6px 8px",
+              borderRadius: 6,
+              border: "1px solid #c9b084",
+              background: "#fffdf9",
+              fontSize: "11px",
+              color: "var(--brown)",
+              cursor: "pointer",
+            }}
+          >
+            <option value="All">Všechny rarity</option>
+            <option value="Common">Common</option>
+            <option value="Uncommon">Uncommon</option>
+            <option value="Rare">Rare</option>
+            <option value="Epic">Epic</option>
+            <option value="Legendary">Legendary</option>
+            <option value="Unique">Unique</option>
+          </select>
+        </div>
+
+        {/* Seznam karet */}
+        <div style={{ flex: 1, minHeight: 180, maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4, marginBottom: 12 }}>
+          {currentList.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "24px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
+              {activeTab === "offer" ? "Ve sbírce nemáte žádné odpovídající kolofony k nabídnutí." : "Nenalezen žádný kolofon."}
+            </div>
+          ) : (
+            currentList.map((c) => {
+              const ownedCount = userCollection[c.id] || 0;
+              const selectedCount = activeTab === "offer" ? (offeredCounts[c.id] || 0) : (requestedCounts[c.id] || 0);
+              const isSelected = selectedCount > 0;
+
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: isSelected ? "2px solid #b8860b" : "1px solid #dfcfb2",
+                    background: isSelected ? "#fff4d4" : "#fdfbf6",
+                    transition: "all 0.12s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
+                      {c.imageUrl ? (
+                        <img src={c.imageUrl} alt={c.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <ScrollText size={16} color="#d4af37" style={{ margin: 8 }} />
+                      )}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ fontSize: "12px", color: "#3d2206", display: "block" }} className="truncate">
+                        {c.title}
+                      </strong>
+                      <div style={{ fontSize: "10px", color: "#7a5323", display: "flex", alignItems: "center", gap: 4 }}>
+                        <span className="truncate">{c.place || "Neznámé místo"}</span>
+                        <span>·</span>
+                        <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
+                          {c.rarity}
+                        </span>
+                        {activeTab === "offer" && (
+                          <span style={{ color: "#8c6020", fontWeight: 600 }}>
+                            (Máte: {ownedCount} ks)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Počítadlo kusů */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDecrement(c)}
+                      disabled={selectedCount <= 0}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 4,
+                        border: "1px solid #c9b084",
+                        background: selectedCount > 0 ? "#fff" : "#eee",
+                        cursor: selectedCount > 0 ? "pointer" : "default",
+                        display: "grid",
+                        placeItems: "center",
+                        fontWeight: "bold",
+                        fontSize: 13,
+                        color: "#4a2d0b",
+                        opacity: selectedCount > 0 ? 1 : 0.4,
+                      }}
+                    >
+                      -
+                    </button>
+                    <span style={{ minWidth: 18, textAlign: "center", fontSize: "12px", fontWeight: "bold", color: selectedCount > 0 ? "#b8860b" : "#888" }}>
+                      {selectedCount}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleIncrement(c)}
+                      disabled={activeTab === "offer" && selectedCount >= ownedCount}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 4,
+                        border: "1px solid #c9b084",
+                        background: (activeTab !== "offer" || selectedCount < ownedCount) ? "#fff" : "#eee",
+                        cursor: (activeTab !== "offer" || selectedCount < ownedCount) ? "pointer" : "default",
+                        display: "grid",
+                        placeItems: "center",
+                        fontWeight: "bold",
+                        fontSize: 13,
+                        color: "#4a2d0b",
+                        opacity: (activeTab !== "offer" || selectedCount < ownedCount) ? 1 : 0.4,
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Souhrnný poměr směny */}
+        <div style={{
+          padding: "6px 12px",
+          background: "#f4ede0",
+          borderRadius: 6,
+          border: "1px dashed #c4ab80",
+          fontSize: "11px",
+          color: "#5c3d14",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 10,
+        }}>
+          <span>⚖️ Bilance smlouvy:</span>
+          <strong>{totalOfferedCount} ks dáváte ⇄ {totalRequestedCount} ks žádáte</strong>
+        </div>
+
+        {/* Pergamenový vzkaz */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 4 }}>
+            📜 Pergamenový vzkaz / průvodní listina (volitelné):
+          </label>
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ať ti tento kolofon poslouží. Rád bych za něj získal..."
+            style={{
+              width: "100%",
+              padding: "7px 10px",
+              borderRadius: 6,
+              border: "1px solid #c9b084",
+              background: "#fffdf7",
+              fontSize: "12px",
+              color: "var(--ink)",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Tlačítka */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ padding: "7px 14px", background: "none", border: "1px solid #ba9f73", borderRadius: 6, fontSize: "12px", color: "var(--brown)", cursor: "pointer" }}
+          >
+            Zrušit
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={(totalOfferedCount === 0 && totalRequestedCount === 0) || isSubmitting}
+            style={{
+              padding: "7px 18px",
+              background: "linear-gradient(180deg, #9a6712, #684107)",
+              color: "#fff3cf",
+              border: "1px solid #4a2d04",
+              borderRadius: 6,
+              fontWeight: 700,
+              fontSize: "12px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              opacity: (totalOfferedCount === 0 && totalRequestedCount === 0) || isSubmitting ? 0.5 : 1,
+            }}
+          >
+            <ScrollText size={13} /> {isSubmitting ? "Zpečeťuji..." : parentTradeId ? "Odeslat protinabídku" : "Zpečetit a odeslat návrh"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TradeReviewModal({
+  trade,
+  cards,
+  userCollection,
+  onAccept,
+  onCounter,
+  onDecline,
+  onClose,
+}: {
+  trade: CardTrade;
+  cards: Colophon[];
+  userCollection: Record<string | number, number>;
+  onAccept: (trade: CardTrade) => void;
+  onCounter: (trade: CardTrade) => void;
+  onDecline: (trade: CardTrade) => void;
+  onClose: () => void;
+}) {
+  // Check if current user actually has all the cards requested by sender
+  const canAccept = useMemo(() => {
+    return trade.recipient_request.every((item) => {
+      const owned = userCollection[item.card_id] || 0;
+      return owned >= item.count;
+    });
+  }, [trade.recipient_request, userCollection]);
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Posouzení návrhu směny">
+      <div className="modal" style={{ maxWidth: 520, borderRadius: 12, padding: "20px 24px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <button className="close" onClick={onClose} title="Zavřít">×</button>
+
+        {/* Hlavička */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <ArrowLeftRight size={20} className="text-[#8b5a19]" />
+          <div>
+            <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
+              Posouzení písařské směny
+            </h3>
+            <small style={{ color: "#784f1d", fontSize: "11px" }}>
+              Přezkoumejte podmínky nabízené smlouvy o výměně kolofonů
+            </small>
+          </div>
+        </div>
+
+        {/* Odesílatel a zpráva */}
+        <div style={{ padding: "10px 14px", background: "#f8ecd4", border: "1px solid #d8b884", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#4a2d0b", color: "#ffd580", display: "grid", placeItems: "center", fontWeight: "bold", fontSize: 13, flexShrink: 0 }}>
+              {trade.sender_name.substring(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "#3d2206" }}>
+                Návrh od: {trade.sender_name}
+              </div>
+              <div style={{ fontSize: "10.5px", color: "#7a5323" }}>
+                {trade.created_at ? new Date(trade.created_at).toLocaleDateString("cs-CZ") : "Nedávno"} · Smlouva o směně pergamenu
+              </div>
+            </div>
+          </div>
+          {trade.message && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "#fffaf0", borderLeft: "3px solid #b8860b", borderRadius: "0 4px 4px 0", fontSize: "11.5px", color: "#4a2e0a", fontStyle: "italic", lineHeight: 1.4 }}>
+              „{trade.message}“
+            </div>
+          )}
+        </div>
+
+        {/* Obsah směny: Co získáte vs Co odevzdáte */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, marginBottom: 14, paddingRight: 4 }}>
+          {/* 1. Nabízeno (co získáte) */}
+          <div style={{ background: "#fdfbf5", border: "1px solid #c9b084", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>📥 Kolega vám nabízí (získáte do sbírky):</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {trade.sender_offer.length === 0 ? (
+                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>Žádné kolofony (dar z vaší strany)</div>
+              ) : (
+                trade.sender_offer.map((item, idx) => {
+                  const cardMatch = cards.find((c) => String(c.id) === String(item.card_id));
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 8px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
+                          {(item.imageUrl || cardMatch?.imageUrl) ? (
+                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <ScrollText size={14} color="#d4af37" style={{ margin: 7 }} />
+                          )}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ fontSize: "11.5px", color: "#14532d", display: "block" }} className="truncate">
+                            {item.title}
+                          </strong>
+                          <span className={`rarity-tag rarity-${item.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
+                            {item.rarity}
+                          </span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>
+                        +{item.count} ks
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 2. Požadováno (co odevzdáte) */}
+          <div style={{ background: "#fdfbf5", border: "1px solid #c9b084", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "#991b1b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>📤 Kolega od vás žádá (odevzdáte ze sbírky):</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {trade.recipient_request.length === 0 ? (
+                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>Žádné kolofony (čistý dar pro vás)</div>
+              ) : (
+                trade.recipient_request.map((item, idx) => {
+                  const cardMatch = cards.find((c) => String(c.id) === String(item.card_id));
+                  const owned = userCollection[item.card_id] || 0;
+                  const hasEnough = owned >= item.count;
+
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 8px", background: hasEnough ? "#fff" : "#fef2f2", border: hasEnough ? "1px solid #e5e7eb" : "1px solid #fca5a5", borderRadius: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
+                          {(item.imageUrl || cardMatch?.imageUrl) ? (
+                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <ScrollText size={14} color="#d4af37" style={{ margin: 7 }} />
+                          )}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ fontSize: "11.5px", color: "#374151", display: "block" }} className="truncate">
+                            {item.title}
+                          </strong>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span className={`rarity-tag rarity-${item.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
+                              {item.rarity}
+                            </span>
+                            <span style={{ fontSize: "10px", color: hasEnough ? "#15803d" : "#b91c1c", fontWeight: 600 }}>
+                              {hasEnough ? `(Vlastníte: ${owned} ks ✓)` : `(Vlastníte jen ${owned} ks ✗)`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#991b1b", whiteSpace: "nowrap" }}>
+                        -{item.count} ks
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Upozornění, pokud hráč nevlastní požadované karty */}
+        {!canAccept && (
+          <div style={{ padding: "8px 12px", background: "#fee2e2", border: "1px solid #f87171", borderRadius: 6, color: "#991b1b", fontSize: "11px", marginBottom: 12 }}>
+            ⚠️ Pro okamžité přijetí nemáte dostatek požadovaných kolofonů. Můžete však navrhnout <strong>protinabídku</strong> a upravit požadované kusy na karty, které máte!
+          </div>
+        )}
+
+        {/* Tlačítka akcí: Přijmout / Protinabídka / Odmítnout */}
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => onDecline(trade)}
+            style={{ padding: "7px 12px", background: "none", border: "1px solid #dc2626", borderRadius: 6, fontSize: "11.5px", color: "#b91c1c", cursor: "pointer", fontWeight: 600 }}
+          >
+            ❌ Odmítnout
+          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => onCounter(trade)}
+              style={{
+                padding: "7px 14px",
+                background: "#fef3c7",
+                border: "1px solid #d97706",
+                borderRadius: 6,
+                fontSize: "11.5px",
+                color: "#92400e",
+                cursor: "pointer",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              🔄 Protinabídka
+            </button>
+            <button
+              type="button"
+              onClick={() => onAccept(trade)}
+              disabled={!canAccept}
+              style={{
+                padding: "7px 16px",
+                background: canAccept ? "linear-gradient(180deg, #15803d, #14532d)" : "#ccc",
+                color: "#fff",
+                border: "1px solid #14532d",
+                borderRadius: 6,
+                fontWeight: 700,
+                fontSize: "11.5px",
+                cursor: canAccept ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                boxShadow: canAccept ? "0 2px 6px rgba(21,128,61,0.3)" : "none",
+                opacity: canAccept ? 1 : 0.6,
+              }}
+            >
+              <CheckCircle2 size={13} /> Přijmout směnu (+60 XP)
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

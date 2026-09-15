@@ -364,6 +364,27 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * V profilu hráče (`ProfileScreen`) přibylo tlačítko *„Zrušit účet“* s bezpečnostním potvrzovacím dialogem, vyčištěním `localStorage` i databáze a korektním odhlášením.
   * Ve Studiu (`/admin`) v sekci *Správa týmu* přibyla možnost pro administrátora odebrat libovolného editora či člena týmu tlačítkem s košem.
 
+### [2026-09-15] Fáze 2.2+: Bilaterální obchodování a smlouvy o směně kolofonů (Písařská směna)
+* **P2P Směna kolofonů mezi studenty (Bilateral Trading):**
+  * Vedle jednostranného darování duplikátů byl implementován plnohodnotný dvoustranný systém výměny karet (*„Smlouva o písařské směně“*).
+  * **Tvorba návrhu směny (`TradeModal`):**
+    * Dvoupanelový dialog (*„Co nabízíte“* vs. *„Co žádáte“*) s vyhledáváním, filtrem rarit a tlačítky `+` / `-` pro nastavení libovolného počtu kusů.
+    * Hráč nemůže nabídnout více kusů, než kolik sám vlastní ve své sbírce.
+    * Ukazatel vyváženosti smlouvy: real-time poměr (např. *2 ks dáváte ⇄ 1 ks žádáte*).
+    * Možnost přiložit dobový pergamenový vzkaz / průvodní listinu.
+    * Odeslání návrhu udělí hráči **+15 XP** za diplomatické vyjednávání.
+  * **Posouzení příchozího návrhu (`TradeReviewModal`):**
+    * Příjemci se v profilu zobrazí pergamenový banner s počtem čekajících směn a tlačítkem *„Posoudit smlouvu“*.
+    * Zeleně zvýrazněné karty, které získá (+X ks) vs. červeně zvýrazněné karty, které odevzdá (-Y ks).
+    * Automatická validace: systém ověří, zda hráč požadované karty skutečně vlastní.
+    * Tři možnosti reakce:
+      1. `✅ Přijmout směnu (+60 XP)` – provede atomickou výměnu karet v inventáři, odemkne trofej a přehraje vítěznou fanfáru.
+      2. `🔄 Navrhnout protinabídku` – automaticky invertuje strany nabídky a žádosti, předvyplní stávající karty a umožní hráči provést libovolné korekce a odeslat protinávrh zpět původnímu odesílateli. Původní nabídka se označí stavem `countered`.
+      3. `❌ Odmítnout` – zdvořilé zamítnutí nabídky s označením stavu `declined`.
+  * **Databázové schéma (`card_trades`):**
+    * Vytvořena migrace `db/migrations/05_add_card_trades.sql` a začleněna do `db/migrations/ALL_PENDING_MIGRATIONS.sql`.
+    * Tabulka `card_trades` uchovává `sender_offer` a `recipient_request` jako JSONB pole, včetně řetězení protinabídek pomocí `parent_trade_id`.
+
 ---
 
 ### Následující kroky:
