@@ -24,16 +24,27 @@ Plán je časově dimenzován na **horizont 7 dnů**, aby bylo redakční i hern
   - [x] Filtry podle serverů (FF UK Scribes, Manuscriptorium), kreseb a rubrik.
   - [x] Filtr *„Pouze dosud nezařazené“* (vylučuje duplicity).
   - [x] 1-Click předvyplnění všech metadat z Heuristu a přechod do ořezávače.
-- [ ] **1.2. Řízení workflow a stavů karet (Draft → Published):**
-  - [ ] Přidat do Studia jasný přepínač stavu karty:
-    - `Koncept (Draft)` – brigádník na kartě pracuje, ještě není zkontrolovaná.
-    - `Ke kontrole (Review)` – brigádník dokončil ořez a překlad, čeká na schválení.
-    - `Publikováno (Published)` – schváleno pro ostrou hru (pouze publikované vidí hráči).
-  - [ ] Zobrazit u každé karty jméno editora / brigádníka, který ji naposledy upravil.
-- [ ] **1.3. Správa týmu a generování účtů pro brigádníky:**
-  - [ ] Prověřit sekci *Tým* v `/admin`, aby správce mohl jedním kliknutím založit účet pro brigádníka (s rolí `editor`), vygenerovat heslo a zkopírovat přístupové údaje.
-- [ ] **1.4. Integrovaný mininávod pro brigádníky přímo ve Studiu:**
-  - [ ] Přidat tlačítko *„Jak pracovat ve Studiu“* (nápověda s tipy: jak najít kolofon, jak správně oříznout poměr 4:3, jak zapsat český překlad a jak vytvořit paleografickou minihru).
+- [x] **1.2. Řízení workflow a stavů karet (Draft → Review → Published):**
+  - [x] Přepínač stavu karty ve Studiu i katalogu (`Koncept / Draft`, `Ke kontrole / Review`, `Publikováno / Published`).
+  - [x] Filtrování v levém sloupci podle stavu (Vše, Publikováno, Ke kontrole, Koncepty).
+  - [x] Vizuální barevné odznaky stavu u každé karty (zelená, modrá, žlutá).
+  - [x] **Real-time detekce kolizí (Supabase Presence):** Upozornění v reálném čase, pokud na stejné kartě zrovna pracuje jiný badatel, s varovným bannerem a ochranou proti přepsání.
+- [x] **1.3. Správa týmu a generování účtů pro brigádníky:**
+  - [x] Správa uživatelských účtů a rolí (`admin`, `editor`).
+  - [x] 1-Click generátor přístupových údajů a hesel s tlačítkem pro zkopírování do schránky.
+  - [x] Realtime přehled přítomnosti týmu (kdo je online a jakou kartu zrovna edituje).
+- [x] **1.4. Integrovaný metodický průvodce pro brigádníky přímo ve Studiu:**
+  - [x] Modální příručka (*Metodika & Nápověda*) s 5 kapitolami podle pokynů prof. Lucie Doležalové:
+    - *Výběr z Heuristu* (servery, vizuální znaky, tipy pro vyhledávání).
+    - *Ořez folia (4:3)* (zarovnání a měřítko bez deformace).
+    - *Překlad a data* (české překlady, odůvodnění rarit).
+    - *Tvorba miniher* (nálada, šifry, vizuální přepis řádků).
+    - *Workflow a schvalování* (Draft → Review → Published + pravidla kolizí).
+- [x] **1.5. Badatelský režim v Heurist katalogu:**
+  - [x] Interaktivní lupa a lightbox s plynulým zoomem (50% až 400%) a posunem.
+  - [x] Plovoucí přepisový panel pro porovnání latinského textu s rukopisem in-situ.
+  - [x] Galerie folijí (Grid View) vs. kompaktní seznam (List View).
+  - [x] Systém hvězdiček / oblíbených kolofonů s trvalým uložením.
 
 ---
 

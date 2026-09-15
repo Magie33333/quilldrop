@@ -42,6 +42,7 @@ import {
   Flame,
   Upload,
   Image as ImageIcon,
+  Radio,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -53,6 +54,7 @@ import {
   saveStoredIlluminations,
 } from "../data/illuminations";
 import HeuristCatalogModal from "./HeuristCatalogModal";
+import StudioHelpModal from "./StudioHelpModal";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -170,6 +172,21 @@ export default function AdminPage() {
   const [creatingColleague, setCreatingColleague] = useState(false);
   const [colleagueError, setColleagueError] = useState("");
   const [colleagueCreatedInfo, setColleagueCreatedInfo] = useState<{ email: string; pass: string; name: string } | null>(null);
+
+  // Kolaborace a Realtime Presence (prevence kolizí při editaci stejné karty)
+  type PresenceUser = {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    role: string;
+    cardId: string | null;
+    cardTitle: string | null;
+    onlineSince: string;
+  };
+  const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
+  const [showPresenceModal, setShowPresenceModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const presenceChannelRef = useRef<any>(null);
 
   // Karty a data
   const [cards, setCards] = useState<CardData[]>([]);
@@ -646,6 +663,67 @@ export default function AdminPage() {
       fetchCards();
     }
   }, [currentUser]);
+
+  // Supabase Realtime Presence - přehled online kolegů a prevence kolizí
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const channel = supabase.channel("quilldrop-studio-presence", {
+      config: {
+        presence: {
+          key: currentUser.id,
+        },
+      },
+    });
+
+    presenceChannelRef.current = channel;
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const usersList: PresenceUser[] = [];
+        for (const key in state) {
+          const list = state[key] as any[];
+          if (list && list.length > 0) {
+            usersList.push(list[0]);
+          }
+        }
+        setOnlineUsers(usersList);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({
+            userId: currentUser.id,
+            userName: currentProfile?.display_name || currentUser.email?.split("@")[0] || "Badatel",
+            userEmail: currentUser.email || "",
+            role: currentProfile?.role || "editor",
+            cardId: selectedCard?.id || null,
+            cardTitle: selectedCard?.title || null,
+            onlineSince: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      presenceChannelRef.current = null;
+    };
+  }, [currentUser]);
+
+  // Synchronizace aktuálně otevřené karty do Presence
+  useEffect(() => {
+    if (presenceChannelRef.current && currentUser) {
+      presenceChannelRef.current.track({
+        userId: currentUser.id,
+        userName: currentProfile?.display_name || currentUser.email?.split("@")[0] || "Badatel",
+        userEmail: currentUser.email || "",
+        role: currentProfile?.role || "editor",
+        cardId: selectedCard?.id || null,
+        cardTitle: selectedCard?.title || null,
+        onlineSince: new Date().toISOString(),
+      });
+    }
+  }, [selectedCard?.id, currentProfile]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -1187,6 +1265,11 @@ export default function AdminPage() {
     return matchSearch && matchStatus && matchCipher;
   });
 
+  // Uživatelé v reálném čase editující stejnou kartu (detekce kolizí)
+  const editorsOnCurrentCard = onlineUsers.filter(
+    (u) => u.userId !== currentUser?.id && selectedCard && u.cardId === selectedCard.id
+  );
+
   // Uniformní měřítko pro náhled karty (100% zachování proporcí bez jakékoliv deformace!)
   const CARD_IMG_W = 244;
   const CARD_IMG_H = 183; // přesný poměr 4:3 pro formát karty
@@ -1356,57 +1439,35 @@ export default function AdminPage() {
 
   return (
     <div className="h-screen max-h-screen bg-[#110f0d] text-[#e8ded1] flex flex-col font-sans overflow-hidden">
-      {/* HORNÍ LIŠTA */}
-      <header className="border-b border-[#2e2721] bg-[#1a1613] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      {/* HORNÍ LIŠTA: Zpřehledněné Studio (3 logické zóny) */}
+      <header className="border-b border-[#2e2721] bg-[#171310] px-5 py-2.5 flex items-center justify-between shrink-0 shadow-md">
+        {/* LEVÁ ČÁST: Navigace a název */}
+        <div className="flex items-center gap-3">
           <a
             href="/"
-            className="flex items-center gap-1.5 text-xs text-[#b39e87] hover:text-[#e8ded1] transition"
+            className="flex items-center gap-1.5 text-xs text-[#c9a96e] hover:text-[#ffd580] bg-[#231c16] hover:bg-[#2e241c] px-3 py-1.5 rounded-lg border border-[#423425] transition font-medium cursor-pointer"
           >
-            <ArrowLeft size={16} /> Zpět do hry
+            <ArrowLeft size={14} /> Zpět do hry
           </a>
-          <span className="text-[#4a3f35]">|</span>
+          <span className="text-[#3d3122]">|</span>
           <div className="flex items-center gap-2">
-            <span className="font-serif font-bold text-lg text-[#ffd580] tracking-wide">
+            <span className="font-serif font-bold text-base sm:text-lg text-[#ffd580] tracking-wide">
               Quilldrop Studio
             </span>
-            <span className="text-[11px] text-[#a89887] bg-[#29221b] px-2.5 py-0.5 rounded border border-[#3d3226]">
-              Správa rukopisů a karet
+            <span className="text-[10px] uppercase font-bold text-[#c9a96e] bg-[#241c16] px-2 py-0.5 rounded border border-[#423425] tracking-wider">
+              Badatelský režim
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Uživatel a role */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-[#8c7b6d]">{currentUser.email}</span>
-            <span
-              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
-                currentProfile?.role === "admin"
-                  ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
-                  : "bg-[#18232e] text-[#4a9eff] border-[#294a6e]"
-              }`}
-            >
-              {currentProfile?.role}
-            </span>
-          </div>
-
-          {currentProfile?.role === "admin" && (
-            <button
-              onClick={fetchTeam}
-              className="flex items-center gap-1.5 text-xs bg-[#241e19] hover:bg-[#332b24] text-[#c9a96e] px-2.5 py-1.5 rounded border border-[#42372d] cursor-pointer transition"
-              title="Správa uživatelů a rolí"
-            >
-              <Users size={13} /> Tým ({teamProfiles.length || "..."})
-            </button>
-          )}
-
+        {/* STŘEDNÍ ČÁST: Nástroje a akce */}
+        <div className="hidden lg:flex items-center gap-2">
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-1.5 text-xs bg-[#2e2518] hover:bg-[#3d3120] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#52422b] cursor-pointer transition font-bold shadow-xs"
+            className="flex items-center gap-1.5 text-xs bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] px-3.5 py-1.5 rounded-lg font-bold shadow transition cursor-pointer"
             title="Přidat nový kolofon z 3 640 digitalizátů Heurist"
           >
-            <PlusCircle size={14} className="text-[#d4af37]" /> + Kolofon (Heurist)
+            <PlusCircle size={14} /> + Přidat kolofon (Heurist)
           </button>
 
           <button
@@ -1414,7 +1475,7 @@ export default function AdminPage() {
               setShowCuriosModal(true);
               setEditingCurio(null);
             }}
-            className="flex items-center gap-1.5 text-xs bg-[#241e19] hover:bg-[#332b24] text-[#c9a96e] px-2.5 py-1.5 rounded border border-[#42372d] cursor-pointer transition"
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
             title="Správa historických glos, mouder a zajímavostí z knižní kultury"
           >
             <BookOpen size={13} /> Glosy & moudra ({curios.length})
@@ -1425,38 +1486,93 @@ export default function AdminPage() {
               setShowMosaicsModal(true);
               setEditingMosaic(null);
             }}
-            className="flex items-center gap-1.5 text-xs bg-[#241e19] hover:bg-[#332b24] text-[#c9a96e] px-2.5 py-1.5 rounded border border-[#42372d] cursor-pointer transition"
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
             title="Správa 16dílných iluminací a denních streaků (Cesta písaře)"
           >
-            <Puzzle size={13} /> Iluminace & mozaiky ({illuminations.length})
+            <Puzzle size={13} /> Iluminace & streaky ({illuminations.length})
           </button>
 
+          <button
+            onClick={() => setShowHelpModal(true)}
+            className="flex items-center gap-1.5 text-xs bg-[#2e2316] hover:bg-[#3d301f] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#5c4627] cursor-pointer transition font-medium shadow-xs"
+            title="Metodický průvodce pro brigádníky a pravidla od prof. Lucie Doležalové"
+          >
+            <HelpCircle size={14} className="text-[#ffd580]" /> Metodika & Nápověda
+          </button>
+        </div>
+
+        {/* PRAVÁ ČÁST: Tým, Uživatel a Uložení */}
+        <div className="flex items-center gap-2.5">
+          {/* Realtime indikátor přítomnosti týmu */}
+          <button
+            onClick={() => setShowPresenceModal(true)}
+            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition cursor-pointer ${
+              onlineUsers.length > 1
+                ? "bg-emerald-950/80 border-emerald-700/80 text-emerald-300 font-semibold shadow-xs"
+                : "bg-[#241c16] border-[#423425] text-[#a89887] hover:text-[#e8ded1] hover:bg-[#30261e]"
+            }`}
+            title="Aktivní badatelé a editoři online v reálném čase"
+          >
+            <span className="flex h-2 w-2 relative">
+              <span className={`inline-flex h-full w-full rounded-full ${onlineUsers.length > 1 ? "animate-ping bg-emerald-400 opacity-75 absolute" : ""}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${onlineUsers.length > 1 ? "bg-emerald-400" : "bg-emerald-600"}`}></span>
+            </span>
+            <Users size={13} />
+            <span className="hidden sm:inline">Tým online</span> ({onlineUsers.length || 1})
+          </button>
+
+          {currentProfile?.role === "admin" && (
+            <button
+              onClick={fetchTeam}
+              className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+              title="Správa uživatelských účtů a rolí"
+            >
+              <Shield size={13} /> Účty ({teamProfiles.length || "..."})
+            </button>
+          )}
+
+          {/* Uživatel a role */}
+          <div className="hidden md:flex items-center gap-2 text-xs bg-[#1f1914] px-2.5 py-1 rounded-lg border border-[#382d20]">
+            <span className="text-[#c9a96e] font-medium truncate max-w-[120px]">
+              {currentProfile?.display_name || currentUser.email?.split("@")[0]}
+            </span>
+            <span
+              className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                currentProfile?.role === "admin"
+                  ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                  : "bg-[#18232e] text-[#4a9eff] border-[#294a6e]"
+              }`}
+            >
+              {currentProfile?.role === "admin" ? "Admin" : "Editor"}
+            </span>
+          </div>
+
           {noChangesNotice && (
-            <span className="text-xs text-[#c9a96e] flex items-center gap-1 bg-[#29221b] px-2.5 py-1 rounded border border-[#52422b]">
-              <AlertCircle size={14} className="text-[#ffd580]" /> Žádné neuložené změny
+            <span className="text-xs text-[#c9a96e] hidden sm:flex items-center gap-1 bg-[#29221b] px-2.5 py-1 rounded border border-[#52422b]">
+              <AlertCircle size={14} className="text-[#ffd580]" /> Žádné změny
             </span>
           )}
 
           {saveSuccess && (
-            <span className="text-xs text-[#73d13d] flex items-center gap-1 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800/80">
-              <Check size={14} /> {lastSavedSummary || "Uloženo do Supabase"}
+            <span className="text-xs text-[#73d13d] hidden sm:flex items-center gap-1 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-800">
+              <Check size={14} /> {lastSavedSummary || "Uloženo"}
             </span>
           )}
 
           <button
             onClick={handleOpenSaveConfirmation}
             disabled={saving || !selectedCard}
-            className="flex items-center gap-2 bg-[#d4af37] hover:bg-[#c39e2e] text-[#1a1613] font-bold text-xs px-4 py-2 rounded shadow transition disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-2 bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer"
             title="Zkontrolovat a uložit změny do Supabase"
           >
-            <Save size={15} />
+            <Save size={14} />
             {saving ? "Ukládám..." : "Uložit změny"}
           </button>
 
           <button
             onClick={handleLogout}
-            className="text-[#8c7b6d] hover:text-white p-1.5 rounded hover:bg-[#2e261f] cursor-pointer transition"
-            title="Odhlásit se"
+            className="text-[#8c7b6d] hover:text-white p-1.5 rounded-lg hover:bg-[#2e261f] cursor-pointer transition"
+            title="Odhlásit se ze Studia"
           >
             <LogOut size={15} />
           </button>
@@ -1494,17 +1610,23 @@ export default function AdminPage() {
               className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
             />
             <div className="flex gap-1 items-center flex-wrap">
-              {["all", "published", "draft"].map((st) => (
+              {[
+                { id: "all", label: `Vše (${cards.length})` },
+                { id: "published", label: `Publikováno (${cards.filter((c) => c.status === "published").length})`, dot: "bg-emerald-400" },
+                { id: "review", label: `Ke kontrole (${cards.filter((c) => c.status === "review").length})`, dot: "bg-sky-400" },
+                { id: "draft", label: `Koncepty (${cards.filter((c) => c.status === "draft").length})`, dot: "bg-amber-400" },
+              ].map((st) => (
                 <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`text-[11px] px-2 py-0.5 rounded capitalize ${
-                    statusFilter === st && !cipherOnly
-                      ? "bg-[#3d3226] text-[#ffd580] font-semibold"
+                  key={st.id}
+                  onClick={() => setStatusFilter(st.id)}
+                  className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1.5 transition cursor-pointer ${
+                    statusFilter === st.id && !cipherOnly
+                      ? "bg-[#3d3226] text-[#ffd580] font-semibold border border-[#5c4627]"
                       : "text-[#8c7b6d] hover:text-[#d1c2b4]"
                   }`}
                 >
-                  {st === "all" ? "Vše" : st}
+                  {st.dot && <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />}
+                  {st.label}
                 </button>
               ))}
               <button
@@ -1528,46 +1650,100 @@ export default function AdminPage() {
             ) : filteredCards.length === 0 ? (
               <p className="text-xs text-[#7d6f62] p-4 text-center">Žádné karty nenalezeny.</p>
             ) : (
-              filteredCards.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => selectCard(c)}
-                  className={`w-full text-left p-3 transition flex items-start gap-2.5 cursor-pointer ${
-                    selectedCard?.id === c.id
-                      ? "bg-[#29221b] border-l-2 border-[#d4af37]"
-                      : "hover:bg-[#1a1512]"
-                  }`}
-                >
-                  <div className="w-10 h-14 bg-[#231d18] rounded border border-[#3d3226] overflow-hidden shrink-0 relative">
-                    <img src={c.image_url} alt="" className="w-full h-full object-cover opacity-80" />
-                    <span className="absolute bottom-0 right-0 text-[8px] bg-black/80 px-1 text-[#d4af37]">
-                      {c.rarity[0]}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate text-[#e8ded1]">{c.title}</p>
-                    <p className="text-[11px] text-[#9c8976] truncate italic">
-                      {c.colophons?.quote || "Bez citátu"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-[#7d6f62]">
-                      <span>{c.colophons?.scribe || "Neznámý písař"}</span>
-                      <span>•</span>
-                      <span className="text-[#c9a96e]">{c.rarity}</span>
-                      {isCipherCard(c) && (
-                        <span className="bg-[#422915] text-[#ffd580] px-1 py-0.5 rounded border border-[#8a5b28] text-[9px] flex items-center gap-0.5">
-                          <KeyRound size={9} /> Šifra
-                        </span>
-                      )}
+              filteredCards.map((c) => {
+                const otherEditor = onlineUsers.find(
+                  (u) => u.userId !== currentUser?.id && u.cardId === c.id
+                );
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => selectCard(c)}
+                    className={`w-full text-left p-3 transition flex items-start gap-2.5 cursor-pointer relative ${
+                      selectedCard?.id === c.id
+                        ? "bg-[#29221b] border-l-2 border-[#d4af37]"
+                        : "hover:bg-[#1a1512]"
+                    }`}
+                  >
+                    <div className="w-10 h-14 bg-[#231d18] rounded border border-[#3d3226] overflow-hidden shrink-0 relative">
+                      <img src={c.image_url} alt="" className="w-full h-full object-cover opacity-80" />
+                      <span className="absolute bottom-0 right-0 text-[8px] bg-black/80 px-1 text-[#d4af37]">
+                        {c.rarity[0]}
+                      </span>
                     </div>
-                  </div>
-                </button>
-              ))
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-semibold truncate text-[#e8ded1]">{c.title}</p>
+                        {c.status === "published" && (
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-medium">
+                            Publikováno
+                          </span>
+                        )}
+                        {c.status === "review" && (
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.2 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60 font-medium">
+                            Ke kontrole
+                          </span>
+                        )}
+                        {c.status === "draft" && (
+                          <span className="shrink-0 text-[9px] px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60 font-medium">
+                            Koncept
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#9c8976] truncate italic mt-0.5">
+                        {c.colophons?.quote || "Bez citátu"}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-[#7d6f62] flex-wrap">
+                        <span className="truncate max-w-[100px]">{c.colophons?.scribe || "Neznámý písař"}</span>
+                        <span>•</span>
+                        <span className="text-[#c9a96e]">{c.rarity}</span>
+                        {isCipherCard(c) && (
+                          <span className="bg-[#422915] text-[#ffd580] px-1 py-0.2 rounded border border-[#8a5b28] text-[9px] flex items-center gap-0.5">
+                            <KeyRound size={9} /> Šifra
+                          </span>
+                        )}
+                        {otherEditor && (
+                          <span className="bg-rose-950/90 text-rose-300 border border-rose-700/80 px-1.5 py-0.2 rounded text-[9px] flex items-center gap-1 font-semibold animate-pulse">
+                            <Users size={9} /> {otherEditor.userName || otherEditor.userEmail.split("@")[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </aside>
 
         {/* STŘEDNÍ PANEL: Plnohodnotný PowerPoint-style ořez NEBO vizuální vyznačení řádků */}
         <main className="flex-1 bg-[#0a0908] flex flex-col min-h-0 overflow-hidden">
+          {/* Upozornění na souběžnou editaci karty jiným členem týmu */}
+          {editorsOnCurrentCard.length > 0 && (
+            <div className="bg-[#2a1b12] border-b border-amber-600/70 px-4 py-2 flex items-center justify-between text-amber-200 text-xs shrink-0 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <AlertCircle size={15} className="text-amber-400 shrink-0" />
+                <span>
+                  <strong className="text-amber-300">Pozor na kolizi:</strong> Na tomto kolofonu má právě otevřený editor{" "}
+                  <span className="text-white font-bold underline bg-amber-900/60 px-1.5 py-0.5 rounded">
+                    {editorsOnCurrentCard.map((u) => u.userName || u.userEmail.split("@")[0]).join(", ")}
+                  </span>
+                  . Pokud oba provedete změny, můžete si navzájem přepsat práci.
+                </span>
+              </div>
+              <button
+                onClick={() => fetchCards()}
+                className="px-2.5 py-1 bg-[#3d2f1f] hover:bg-[#523f2b] text-[#ffd580] border border-[#70563b] rounded text-[11px] font-medium transition cursor-pointer flex items-center gap-1 shrink-0 ml-3 shadow-xs"
+                title="Znovu načíst data karty ze serveru"
+              >
+                <RefreshCw size={12} /> Obnovit kartu
+              </button>
+            </div>
+          )}
+
           <div className="p-2.5 border-b border-[#2e2721] bg-[#14110f] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2.5">
               {centerMode === "crop" ? (
@@ -3750,6 +3926,118 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODÁLNÍ OKNO: METODICKÝ PRŮVODCE A NÁVOD PRO BRIGÁDNÍKY */}
+      <StudioHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+
+      {/* MODÁLNÍ OKNO: PŘEHLED TÝMU A REALTIME AKTIVITY (PRESENCE) */}
+      {showPresenceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#16120e] border border-[#3d3226] rounded-xl max-w-lg w-full flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#2e2721] bg-[#1d1712]">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <h3 className="font-serif font-bold text-sm text-[#ffd580] tracking-wide">
+                  Aktivní badatelé v reálném čase ({onlineUsers.length || 1})
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPresenceModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              <p className="text-xs text-[#a89887] leading-relaxed">
+                Supabase Realtime sleduje připojené badatele a editory. Pokud dva editoři otevřou tentýž kolofon, systém okamžitě zobrazí varování, aby nedošlo k přepsání rozpracovaných dat.
+              </p>
+
+              <div className="space-y-2 divide-y divide-[#2a221b]">
+                {onlineUsers.map((user) => {
+                  const isCurrent = user.userId === currentUser?.id;
+                  return (
+                    <div
+                      key={user.userId}
+                      className={`pt-2.5 first:pt-0 flex items-start justify-between gap-3 ${
+                        isCurrent ? "bg-[#1f1913] p-2.5 rounded-lg border border-[#3d3020]" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-[#2e241b] border border-[#52412d] flex items-center justify-center text-xs font-bold text-[#ffd580] shrink-0">
+                          {user.userName ? user.userName.substring(0, 2).toUpperCase() : "U"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-[#e8ded1] truncate">
+                              {user.userName || user.userEmail.split("@")[0]}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-[9px] bg-[#3d3120] text-[#ffd580] px-1.5 py-0.2 rounded border border-[#5c4a2a] font-bold">
+                                Vy
+                              </span>
+                            )}
+                            <span
+                              className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border ${
+                                user.role === "admin"
+                                  ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                                  : "bg-[#18232e] text-[#4a9eff] border-[#294a6e]"
+                              }`}
+                            >
+                              {user.role}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#8c7b6d] truncate">{user.userEmail}</p>
+
+                          <div className="mt-1 text-[11px]">
+                            {user.cardId ? (
+                              <span className="text-[#ffd580] font-medium flex items-center gap-1">
+                                ✍️ Edituje: <span className="underline truncate max-w-[220px]">{user.cardTitle || "Kolofon"}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[#7d6f62] italic flex items-center gap-1">
+                                👀 Prohlíží katalog / lobby
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {user.cardId && !isCurrent && (
+                        <button
+                          onClick={() => {
+                            const c = cards.find((card) => card.id === user.cardId);
+                            if (c) {
+                              selectCard(c);
+                              setShowPresenceModal(false);
+                            }
+                          }}
+                          className="shrink-0 text-[10px] bg-[#29221b] hover:bg-[#3d3226] text-[#c9a96e] hover:text-[#ffd580] px-2 py-1 rounded border border-[#42372d] transition cursor-pointer"
+                        >
+                          Přejít na kartu
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-[#2e2721] bg-[#1a1511] flex justify-end">
+              <button
+                onClick={() => setShowPresenceModal(false)}
+                className="px-4 py-1.5 bg-[#292017] hover:bg-[#3a2e21] text-[#ffd580] border border-[#52412d] rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Rozumím
+              </button>
             </div>
           </div>
         </div>

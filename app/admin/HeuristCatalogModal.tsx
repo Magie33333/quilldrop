@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   Filter,
@@ -19,6 +19,13 @@ import {
   Calendar,
   User,
   Layers,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Star,
+  LayoutGrid,
+  List,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -41,6 +48,7 @@ export type HeuristCatalogItem = {
 };
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
+type CardStatus = "draft" | "review" | "published";
 
 export default function HeuristCatalogModal({
   isOpen,
@@ -57,20 +65,52 @@ export default function HeuristCatalogModal({
   const [catalog, setCatalog] = useState<HeuristCatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
+  // Vzhled a rozvržení
+  const [viewLayout, setViewLayout] = useState<"grid" | "list">("grid");
+
   // Filtry
   const [searchQuery, setSearchQuery] = useState("");
   const [unimportedOnly, setUnimportedOnly] = useState(true);
   const [drawingOnly, setDrawingOnly] = useState(false);
   const [rubricOnly, setRubricOnly] = useState(false);
+  const [starredOnly, setStarredOnly] = useState(false);
   const [hostFilter, setHostFilter] = useState<"all" | "scribes" | "manuscriptorium" | "other">("all");
   const [placeFilter, setPlaceFilter] = useState("all");
 
-  // Vybraná položka pro detail / formulář
+  // Oblíbené / Záložky (uložené v localStorage)
+  const [starredIds, setStarredIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("quilldrop_heurist_starred");
+        if (stored) setStarredIds(JSON.parse(stored));
+      } catch {}
+    }
+  }, []);
+
+  const toggleStar = (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setStarredIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
+      try {
+        localStorage.setItem("quilldrop_heurist_starred", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Vybraná položka pro formulář v pravém panelu
   const [selectedItem, setSelectedItem] = useState<HeuristCatalogItem | null>(null);
+
+  // Položka pro detailní inspekci snímku (Lupa / Celá obrazovka)
+  const [inspectItem, setInspectItem] = useState<HeuristCatalogItem | null>(null);
+  const [inspectZoom, setInspectZoom] = useState(1);
 
   // Formulářová pole pro vytvářenou kartu
   const [formTitle, setFormTitle] = useState("");
   const [formRarity, setFormRarity] = useState<Rarity>("Common");
+  const [formStatus, setFormStatus] = useState<CardStatus>("draft");
   const [formQuote, setFormQuote] = useState("");
   const [formTranslation, setFormTranslation] = useState("");
   const [formShelfmark, setFormShelfmark] = useState("");
@@ -83,7 +123,7 @@ export default function HeuristCatalogModal({
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = viewLayout === "grid" ? 24 : 30;
 
   // Dynamické načtení Heurist katalogu při otevření modalu
   useEffect(() => {
@@ -133,7 +173,20 @@ export default function HeuristCatalogModal({
         }
       }
     }
-    return ["all", "Praha", "Vyšší Brod", "Olomouc", "Trhové Sviny", "Plzeň", "Jihlava", "Lipsko", "Vídeň", ...Array.from(set).filter(p => !["Praha", "Vyšší Brod", "Olomouc", "Trhové Sviny", "Plzeň", "Jihlava", "Lipsko", "Vídeň"].includes(p)).slice(0, 15)];
+    return [
+      "all",
+      "Praha",
+      "Vyšší Brod",
+      "Olomouc",
+      "Trhové Sviny",
+      "Plzeň",
+      "Jihlava",
+      "Lipsko",
+      "Vídeň",
+      ...Array.from(set)
+        .filter((p) => !["Praha", "Vyšší Brod", "Olomouc", "Trhové Sviny", "Plzeň", "Jihlava", "Lipsko", "Vídeň"].includes(p))
+        .slice(0, 15),
+    ];
   }, [catalog]);
 
   // Filtrace položek
@@ -147,17 +200,22 @@ export default function HeuristCatalogModal({
         }
       }
 
-      // 2. Kresba
+      // 2. Oblíbené
+      if (starredOnly && !starredIds.includes(item.id)) {
+        return false;
+      }
+
+      // 3. Kresba
       if (drawingOnly && !item.features.includes("Kresba")) {
         return false;
       }
 
-      // 3. Rubrika
+      // 4. Rubrika
       if (rubricOnly && !item.features.includes("Rubrika")) {
         return false;
       }
 
-      // 4. Host server
+      // 5. Host server
       if (hostFilter === "scribes" && !item.host.includes("scribes.ff.cuni.cz")) {
         return false;
       }
@@ -168,12 +226,12 @@ export default function HeuristCatalogModal({
         return false;
       }
 
-      // 5. Místo
+      // 6. Místo
       if (placeFilter !== "all" && !item.place.toLowerCase().includes(placeFilter.toLowerCase())) {
         return false;
       }
 
-      // 6. Fulltext hledání
+      // 7. Fulltext hledání
       if (query) {
         const match =
           item.shelfmark.toLowerCase().includes(query) ||
@@ -188,19 +246,19 @@ export default function HeuristCatalogModal({
 
       return true;
     });
-  }, [catalog, searchQuery, unimportedOnly, drawingOnly, rubricOnly, hostFilter, placeFilter, existingHeuristIds, existingImageUrls]);
+  }, [catalog, searchQuery, unimportedOnly, starredOnly, starredIds, drawingOnly, rubricOnly, hostFilter, placeFilter, existingHeuristIds, existingImageUrls]);
 
   // Reset stránky při změně filtrů
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, unimportedOnly, drawingOnly, rubricOnly, hostFilter, placeFilter]);
+  }, [searchQuery, unimportedOnly, starredOnly, drawingOnly, rubricOnly, hostFilter, placeFilter, viewLayout]);
 
   // Stránkované položky
   const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / PAGE_SIZE));
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filteredCatalog.slice(start, start + PAGE_SIZE);
-  }, [filteredCatalog, page]);
+  }, [filteredCatalog, page, PAGE_SIZE]);
 
   // Při výběru položky z Heuristu předvyplníme formulář
   const handleSelectItem = (item: HeuristCatalogItem) => {
@@ -236,6 +294,7 @@ export default function HeuristCatalogModal({
 
     setFormTitle(suggestedTitle);
     setFormRarity(suggestedRarity);
+    setFormStatus("draft"); // Nové karty výchozí jako koncept
     setFormQuote(item.quote);
     setFormTranslation(item.translation || "");
     setFormShelfmark(item.shelfmark);
@@ -290,7 +349,7 @@ export default function HeuristCatalogModal({
           slug: `card-${targetHeuristId}`,
           title: formTitle.trim() || "Nový kolofon",
           rarity: formRarity,
-          status: "published",
+          status: formStatus,
           image_url: formImageUrl.trim(),
           crop_x: 15,
           crop_y: 15,
@@ -326,9 +385,9 @@ export default function HeuristCatalogModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-[#14100c] border border-[#3d3122] rounded-xl w-full max-w-6xl h-[92vh] max-h-[900px] flex flex-col shadow-2xl overflow-hidden text-[#e8ded1]">
+      <div className="bg-[#14100c] border border-[#3d3122] rounded-xl w-full max-w-7xl h-[94vh] max-h-[960px] flex flex-col shadow-2xl overflow-hidden text-[#e8ded1]">
         {/* ZÁHLAVÍ MODALU */}
-        <div className="px-5 py-3.5 border-b border-[#2e261d] bg-[#1a1510] flex items-center justify-between shrink-0">
+        <div className="px-5 py-3 border-b border-[#2e261d] bg-[#1a1510] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#2b2217] border border-[#52412c] flex items-center justify-center text-[#ffd580]">
               <BookOpen size={17} />
@@ -336,28 +395,52 @@ export default function HeuristCatalogModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-serif font-bold text-sm sm:text-base text-[#ffd580] tracking-wide">
-                  Přidat nový kolofon do Quilldropu
+                  Výběr ze soupisu Heurist ({catalog.length > 0 ? catalog.length.toLocaleString("cs-CZ") : "3 640"} digitalizátů)
                 </h3>
                 <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
-                  {catalog.length > 0 ? `${catalog.length.toLocaleString("cs-CZ")} digitalizátů v Heuristu` : "Načítám katalog..."}
+                  Volný badatelský režim
                 </span>
               </div>
               <p className="text-[11px] text-[#8c7b6d]">
-                Vyberte autentický rukopis ze soupisu Heurist nebo zadejte nový ručně.
+                Prozkoumejte digitalizáty folií, zkontrolujte čitelnost rukopisu lupou a jedním kliknutím zařaďte do hry.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Přepínač režimů */}
+          <div className="flex items-center gap-2.5">
+            {/* Přepínač zobrazení: Mřížka vs Seznam */}
+            {mode === "heurist" && (
+              <div className="flex bg-[#0f0c0a] p-0.5 rounded-lg border border-[#2e261d] text-xs mr-1">
+                <button
+                  type="button"
+                  onClick={() => setViewLayout("grid")}
+                  className={`p-1.5 rounded transition cursor-pointer flex items-center gap-1 ${
+                    viewLayout === "grid" ? "bg-[#3d3120] text-[#ffd580]" : "text-[#7d6f62] hover:text-[#c9a96e]"
+                  }`}
+                  title="Vizuální mřížka s velkými náhledy folií"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewLayout("list")}
+                  className={`p-1.5 rounded transition cursor-pointer flex items-center gap-1 ${
+                    viewLayout === "list" ? "bg-[#3d3120] text-[#ffd580]" : "text-[#7d6f62] hover:text-[#c9a96e]"
+                  }`}
+                  title="Kompaktní seznam"
+                >
+                  <List size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* Přepínač režimů: Heurist vs Ruční */}
             <div className="flex bg-[#0f0c0a] p-0.5 rounded-lg border border-[#2e261d] text-xs">
               <button
                 type="button"
                 onClick={() => setMode("heurist")}
                 className={`px-3 py-1 rounded-md transition cursor-pointer font-medium flex items-center gap-1.5 ${
-                  mode === "heurist"
-                    ? "bg-[#3d3120] text-[#ffd580] shadow-xs"
-                    : "text-[#8c7b6d] hover:text-[#c9a96e]"
+                  mode === "heurist" ? "bg-[#3d3120] text-[#ffd580] shadow-xs" : "text-[#8c7b6d] hover:text-[#c9a96e]"
                 }`}
               >
                 <BookOpen size={12} /> Heurist soupis
@@ -378,9 +461,7 @@ export default function HeuristCatalogModal({
                   setFormImageUrl("");
                 }}
                 className={`px-3 py-1 rounded-md transition cursor-pointer font-medium flex items-center gap-1.5 ${
-                  mode === "manual"
-                    ? "bg-[#3d3120] text-[#ffd580] shadow-xs"
-                    : "text-[#8c7b6d] hover:text-[#c9a96e]"
+                  mode === "manual" ? "bg-[#3d3120] text-[#ffd580] shadow-xs" : "text-[#8c7b6d] hover:text-[#c9a96e]"
                 }`}
               >
                 <FilePlus size={12} /> Ruční zadání
@@ -458,6 +539,20 @@ export default function HeuristCatalogModal({
 
                   <button
                     type="button"
+                    onClick={() => setStarredOnly(!starredOnly)}
+                    className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 ${
+                      starredOnly
+                        ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                        : "bg-[#1a140f] text-[#8c7b6d] border-[#2e261d] hover:text-[#c9a96e]"
+                    }`}
+                    title="Zobrazit pouze vámi označené oblíbené rukopisy"
+                  >
+                    <Star size={11} className={starredIds.length > 0 ? "text-[#ffd580] fill-[#ffd580]" : ""} />
+                    Oblíbené ({starredIds.length})
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setDrawingOnly(!drawingOnly)}
                     className={`px-2.5 py-1 rounded-full border transition cursor-pointer flex items-center gap-1 ${
                       drawingOnly
@@ -507,7 +602,7 @@ export default function HeuristCatalogModal({
                   })}
                 </div>
 
-                <div className="text-[#8c7b6d] text-[11px] font-medium">
+                <div className="text-[#8c7b6d] text-[11px] font-medium flex items-center gap-2">
                   {catalogLoading ? (
                     "Načítám záznamy z Heuristu..."
                   ) : (
@@ -519,11 +614,11 @@ export default function HeuristCatalogModal({
               </div>
             </div>
 
-            {/* HLAVNÍ SPLIT ZOBRAZENÍ: SEZNAM (60%) + INSPEKTOR S FORMULÁŘEM (40%) */}
+            {/* HLAVNÍ SPLIT ZOBRAZENÍ: SEZNAM/MŘÍŽKA (60%) + INSPEKTOR S FORMULÁŘEM (40%) */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-              {/* LEVÝ PANEL: SEZNAM RUKOPISŮ */}
+              {/* LEVÝ PANEL: SEZNAM NEBO VIZUÁLNÍ MŘÍŽKA RUKOPISŮ */}
               <div className="lg:col-span-7 border-r border-[#2e261d] flex flex-col min-h-0 bg-[#120e0b]">
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div className="flex-1 overflow-y-auto p-3">
                   {catalogLoading ? (
                     <div className="h-64 flex flex-col items-center justify-center text-[#8c7b6d] text-xs gap-2">
                       <div className="w-6 h-6 border-2 border-[#d4af37] border-t-transparent rounded-full animate-spin" />
@@ -537,67 +632,197 @@ export default function HeuristCatalogModal({
                         Zkuste uvolnit textové hledání nebo vypnout filtr „Pouze dosud nezařazené“.
                       </p>
                     </div>
-                  ) : (
-                    paginatedItems.map((item) => {
-                      const isSelected = selectedItem?.id === item.id;
-                      const isAlreadyImported =
-                        existingHeuristIds.has(item.id) || existingImageUrls.has(item.img);
+                  ) : viewLayout === "grid" ? (
+                    /* VIZUÁLNÍ MŘÍŽKA PRO VOLNĚJŠÍ PROHLÍŽENÍ FOTEK */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {paginatedItems.map((item) => {
+                        const isSelected = selectedItem?.id === item.id;
+                        const isStarred = starredIds.includes(item.id);
+                        const isAlreadyImported =
+                          existingHeuristIds.has(item.id) || existingImageUrls.has(item.img);
 
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => handleSelectItem(item)}
-                          className={`p-3 rounded-lg border text-left cursor-pointer transition flex gap-3 ${
-                            isSelected
-                              ? "bg-[#281f16] border-[#d4af37] shadow-md ring-1 ring-[#d4af37]/30"
-                              : "bg-[#17120e] border-[#292017] hover:border-[#4a3928] hover:bg-[#1d1712]"
-                          }`}
-                        >
-                          {/* Miniatura obrázku */}
-                          <div className="w-16 h-20 rounded border border-[#3d3122] overflow-hidden shrink-0 bg-[#0d0a08] relative">
-                            <img
-                              src={item.img}
-                              alt={item.shelfmark}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
-                              }}
-                            />
-                            {item.host.includes("scribes.ff.cuni.cz") && (
-                              <span
-                                className="absolute bottom-0 inset-x-0 bg-[#691818]/90 text-[8px] text-white text-center py-0.2 uppercase font-bold"
-                                title="Fakultní digitální knihovna FF UK"
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleSelectItem(item)}
+                            className={`group rounded-lg border text-left cursor-pointer transition flex flex-col overflow-hidden ${
+                              isSelected
+                                ? "bg-[#281f16] border-[#d4af37] shadow-lg ring-1 ring-[#d4af37]/50"
+                                : "bg-[#17120e] border-[#292017] hover:border-[#52412c] hover:bg-[#1d1611]"
+                            }`}
+                          >
+                            {/* Velký náhled folia */}
+                            <div className="h-44 bg-[#0d0a08] relative overflow-hidden">
+                              <img
+                                src={item.img}
+                                alt={item.shelfmark}
+                                loading="lazy"
+                                className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-[#14100c] via-transparent to-black/30 pointer-events-none" />
+
+                              {/* Tlačítko pro celoobrazovkovou lupu */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectItem(item);
+                                  setInspectZoom(1);
+                                }}
+                                className="absolute top-2 right-2 bg-black/70 hover:bg-[#d4af37] hover:text-[#120f0c] text-white p-1.5 rounded-md text-xs backdrop-blur-xs transition flex items-center gap-1 shadow cursor-pointer"
+                                title="Otevřít celoobrazovkovou lupu s přiblížením textu"
                               >
-                                FF UK
-                              </span>
-                            )}
-                          </div>
+                                <Maximize2 size={13} />
+                              </button>
 
-                          {/* Textové informace */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-between">
-                            <div>
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-mono text-[#8c7b6d]">
+                              {/* Tlačítko hvězdičky / oblíbené */}
+                              <button
+                                type="button"
+                                onClick={(e) => toggleStar(item.id, e)}
+                                className="absolute top-2 left-2 bg-black/70 hover:bg-black/90 p-1.5 rounded-md text-xs backdrop-blur-xs transition cursor-pointer shadow"
+                                title={isStarred ? "Odebrat z oblíbených" : "Uložit do oblíbených"}
+                              >
+                                <Star
+                                  size={13}
+                                  className={isStarred ? "text-[#ffd580] fill-[#ffd580]" : "text-[#8c7b6d]"}
+                                />
+                              </button>
+
+                              {/* Tag serveru */}
+                              <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                                {item.host.includes("scribes.ff.cuni.cz") && (
+                                  <span className="bg-[#781e1e]/90 text-[8.5px] text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                                    FF UK
+                                  </span>
+                                )}
+                                <span className="bg-black/70 text-[9px] text-[#ffd580] px-1.5 py-0.2 rounded font-mono">
                                   #{item.id} · {item.locus}
                                 </span>
+                              </div>
+                            </div>
+
+                            {/* Informace pod obrázkem */}
+                            <div className="p-3 flex-1 flex flex-col justify-between space-y-1.5">
+                              <div>
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="text-[10px] text-[#8c7b6d] truncate">
+                                    {item.place ? item.place.split(",")[0] : "Neznámé místo"} {item.date ? `· ${item.date}` : ""}
+                                  </span>
+                                  {isAlreadyImported && (
+                                    <span className="text-[8.5px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1 py-0.2 rounded font-bold">
+                                      Ve hře
+                                    </span>
+                                  )}
+                                </div>
+
+                                <h4 className="font-serif font-bold text-xs text-[#ffd580] line-clamp-1" title={item.shelfmark}>
+                                  {item.shelfmark}
+                                </h4>
+
+                                {item.scribe && item.scribe !== "Neznámý písař" && (
+                                  <p className="text-[10.5px] text-[#c9b8a3] truncate mt-0.5">
+                                    ✍️ {item.scribe}
+                                  </p>
+                                )}
+
+                                <p className="text-[10.5px] font-serif italic text-[#a89582] line-clamp-2 mt-1 bg-[#120e0b] p-1 rounded border border-[#221a13]">
+                                  “{item.quote}”
+                                </p>
+                              </div>
+
+                              <div className="pt-1 flex items-center justify-between border-t border-[#261d15] text-[10px]">
                                 <div className="flex items-center gap-1">
                                   {item.features.map((f) => (
                                     <span
                                       key={f}
-                                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                      className={`text-[8.5px] px-1 py-0.2 rounded font-bold ${
                                         f === "Kresba"
-                                          ? "bg-[#3d3120] text-[#ffd580] border border-[#d4af37]/40"
+                                          ? "bg-[#3d3120] text-[#ffd580]"
                                           : f === "Rubrika"
-                                          ? "bg-[#421d1d] text-[#fca5a5] border border-[#ef4444]/40"
+                                          ? "bg-[#421d1d] text-[#fca5a5]"
                                           : "bg-[#251d16] text-[#c9a96e]"
                                       }`}
                                     >
                                       {f}
                                     </span>
                                   ))}
+                                </div>
+                                <span className="text-[#ffd580] group-hover:underline text-[10.5px] font-medium">
+                                  Vybrat →
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* KOMPAKTNÍ SEZNAM */
+                    <div className="space-y-2">
+                      {paginatedItems.map((item) => {
+                        const isSelected = selectedItem?.id === item.id;
+                        const isStarred = starredIds.includes(item.id);
+                        const isAlreadyImported =
+                          existingHeuristIds.has(item.id) || existingImageUrls.has(item.img);
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleSelectItem(item)}
+                            className={`p-2.5 rounded-lg border text-left cursor-pointer transition flex gap-3 items-center ${
+                              isSelected
+                                ? "bg-[#281f16] border-[#d4af37] shadow-md ring-1 ring-[#d4af37]/30"
+                                : "bg-[#17120e] border-[#292017] hover:border-[#4a3928] hover:bg-[#1d1712]"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => toggleStar(item.id, e)}
+                              className="text-[#7d6f62] hover:text-[#ffd580] shrink-0"
+                            >
+                              <Star size={13} className={isStarred ? "text-[#ffd580] fill-[#ffd580]" : ""} />
+                            </button>
+
+                            <div className="w-14 h-16 rounded border border-[#3d3122] overflow-hidden shrink-0 bg-[#0d0a08] relative group">
+                              <img
+                                src={item.img}
+                                alt={item.shelfmark}
+                                loading="lazy"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInspectItem(item);
+                                  setInspectZoom(1);
+                                }}
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white"
+                                title="Lupa"
+                              >
+                                <Maximize2 size={12} />
+                              </button>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <span className="text-[10px] font-mono text-[#8c7b6d]">
+                                  #{item.id} · {item.locus}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  {item.features.map((f) => (
+                                    <span key={f} className="text-[8.5px] px-1 py-0.2 rounded font-bold bg-[#251d16] text-[#c9a96e]">
+                                      {f}
+                                    </span>
+                                  ))}
                                   {isAlreadyImported && (
-                                    <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                                    <span className="text-[8.5px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-1 py-0.2 rounded font-bold">
                                       Ve hře
                                     </span>
                                   )}
@@ -608,32 +833,18 @@ export default function HeuristCatalogModal({
                                 {item.shelfmark}
                               </h4>
 
-                              <div className="flex items-center gap-2 text-[10.5px] text-[#a89582] mt-0.5 truncate">
-                                {item.scribe && item.scribe !== "Neznámý písař" && (
-                                  <span className="flex items-center gap-1">
-                                    <User size={10} className="text-[#d4af37]" /> {item.scribe}
-                                  </span>
-                                )}
-                                {item.place && item.place !== "Neznámé místo" && (
-                                  <span className="flex items-center gap-1">
-                                    <MapPin size={10} className="text-[#8c7b6d]" /> {item.place.split(",")[0]}
-                                  </span>
-                                )}
-                                {item.date && (
-                                  <span className="flex items-center gap-1 text-[#8c7b6d]">
-                                    <Calendar size={10} /> {item.date}
-                                  </span>
-                                )}
-                              </div>
+                              <p className="text-[10.5px] text-[#8c7b6d] truncate">
+                                {item.scribe !== "Neznámý písař" ? item.scribe : item.place} · {item.date || "15. stol."}
+                              </p>
 
-                              <p className="text-[11px] font-serif italic text-[#c9b79e] line-clamp-2 mt-1.5 bg-[#120e0b]/60 p-1.5 rounded border border-[#261d15]">
+                              <p className="text-[10.5px] font-serif italic text-[#c9b79e] truncate mt-0.5">
                                 “{item.quote}”
                               </p>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
@@ -670,34 +881,57 @@ export default function HeuristCatalogModal({
                     <div className="flex items-center justify-between pb-2 border-b border-[#2e261d]">
                       <div>
                         <span className="text-[10px] uppercase font-bold text-[#d4af37] tracking-wider">
-                          1-Click Předvyplnění z Heuristu #{selectedItem.id}
+                          Předvyplněno z Heuristu #{selectedItem.id}
                         </span>
-                        <h4 className="font-serif font-bold text-sm text-[#ffd580] truncate max-w-[280px]">
+                        <h4 className="font-serif font-bold text-sm text-[#ffd580] truncate max-w-[260px]">
                           {selectedItem.shelfmark}
                         </h4>
                       </div>
-                      <a
-                        href={selectedItem.img}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] text-[#c9a96e] hover:text-[#ffd580] flex items-center gap-1 underline"
-                        title="Otevřít původní digitalizát ve vysokém rozlišení"
-                      >
-                        Originál <ExternalLink size={10} />
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInspectItem(selectedItem);
+                            setInspectZoom(1);
+                          }}
+                          className="text-[11px] bg-[#292017] hover:bg-[#3d3024] text-[#ffd580] px-2 py-1 rounded border border-[#52412c] flex items-center gap-1 transition cursor-pointer"
+                          title="Prozkoumat snímek lupou na celou obrazovku"
+                        >
+                          <Maximize2 size={11} /> Lupa
+                        </button>
+                        <a
+                          href={selectedItem.img}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-[#c9a96e] hover:text-[#ffd580] flex items-center gap-1 underline"
+                          title="Otevřít originální digitalizát"
+                        >
+                          Originál <ExternalLink size={10} />
+                        </a>
+                      </div>
                     </div>
 
-                    {/* Velký náhled folia */}
-                    <div className="h-36 rounded-lg border border-[#3d3122] overflow-hidden bg-[#0d0a08] relative group">
+                    {/* Náhled folia s tlačítkem pro lupu */}
+                    <div
+                      onClick={() => {
+                        setInspectItem(selectedItem);
+                        setInspectZoom(1);
+                      }}
+                      className="h-36 rounded-lg border border-[#3d3122] overflow-hidden bg-[#0d0a08] relative group cursor-pointer"
+                      title="Klikněte pro celoobrazovkovou lupu s přiblížením"
+                    >
                       <img
                         src={selectedItem.img}
                         alt={selectedItem.shelfmark}
-                        className="w-full h-full object-cover object-top"
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
                         }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2.5">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 flex flex-col justify-between p-2.5">
+                        <span className="self-end bg-black/70 text-[#ffd580] text-[10px] px-2 py-0.5 rounded backdrop-blur-xs flex items-center gap-1">
+                          <ZoomIn size={11} /> Klikněte pro zvětšení
+                        </span>
                         <span className="text-[11px] text-[#e8ded1] font-medium truncate">
                           {selectedItem.locus} · {selectedItem.institution}
                         </span>
@@ -741,6 +975,22 @@ export default function HeuristCatalogModal({
                           ))}
                         </select>
                       </div>
+                    </div>
+
+                    {/* Stav nové karty */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Výchozí stav po zařazení
+                      </label>
+                      <select
+                        value={formStatus}
+                        onChange={(e) => setFormStatus(e.target.value as CardStatus)}
+                        className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      >
+                        <option value="draft">🟡 Koncept (Draft) – doporučeno pro brigádníky</option>
+                        <option value="review">🔵 Ke kontrole (Review) – k posouzení</option>
+                        <option value="published">🟢 Publikováno (Published) – rovnou do ostré hry</option>
+                      </select>
                     </div>
 
                     {/* Latinský text kolofonu */}
@@ -841,7 +1091,7 @@ export default function HeuristCatalogModal({
                         )}
                       </button>
                       <p className="text-[10px] text-[#8c7b6d] text-center mt-1.5">
-                        Karta bude okamžitě vytvořena v Supabase a otevře se interaktivní ořezávač 4:3.
+                        Karta se uloží a rovnou se otevře pracovní stůl s ořezovým rámečkem 4:3.
                       </p>
                     </div>
                   </form>
@@ -851,10 +1101,10 @@ export default function HeuristCatalogModal({
                       <BookOpen size={22} />
                     </div>
                     <h4 className="font-serif font-bold text-sm text-[#ffd580]">
-                      Vyberte kolofon ze soupisu vlevo
+                      Vyberte rukopis ze soupisu vlevo
                     </h4>
                     <p className="text-xs text-[#7d6f62] max-w-xs mt-1 leading-relaxed">
-                      Kliknutím na libovolný záznam se automaticky načte digitalizát folia, signatura, latinský text a navrhne se název karty i rarita.
+                      Kliknutím na kartu se automaticky načte digitalizát folia, signatura, latinský text a navrhne se název i rarita.
                     </p>
                   </div>
                 )}
@@ -980,8 +1230,8 @@ export default function HeuristCatalogModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
                   <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název karty</label>
                   <input
                     type="text"
@@ -1008,6 +1258,19 @@ export default function HeuristCatalogModal({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Výchozí stav</label>
+                <select
+                  value={formStatus}
+                  onChange={(e) => setFormStatus(e.target.value as CardStatus)}
+                  className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
+                >
+                  <option value="draft">🟡 Koncept (Draft)</option>
+                  <option value="review">🔵 Ke kontrole (Review)</option>
+                  <option value="published">🟢 Publikováno (Published)</option>
+                </select>
+              </div>
+
               <div className="pt-3 flex justify-end gap-2 border-t border-[#2e261d]">
                 <button
                   type="button"
@@ -1028,6 +1291,110 @@ export default function HeuristCatalogModal({
           </div>
         )}
       </div>
+
+      {/* MODAL: CELOOBRAZOVKOVÁ LUPA / DEEP INSPECTION SNÍMKU */}
+      {inspectItem && (
+        <div className="fixed inset-0 z-60 bg-black/95 backdrop-blur-md flex flex-col p-4 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between pb-3 border-b border-[#2e261d] text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#2e2318] border border-[#52412c] flex items-center justify-center text-[#ffd580]">
+                <Maximize2 size={16} />
+              </div>
+              <div>
+                <h4 className="font-serif font-bold text-sm text-[#ffd580]">
+                  {inspectItem.shelfmark} · {inspectItem.locus}
+                </h4>
+                <p className="text-[11px] text-[#8c7b6d]">
+                  {inspectItem.scribe !== "Neznámý písař" ? inspectItem.scribe : inspectItem.place} ({inspectItem.date || "15. stol."})
+                </p>
+              </div>
+            </div>
+
+            {/* Ovládání lupy */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center bg-[#1c1611] border border-[#3d3122] rounded-lg p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setInspectZoom((z) => Math.max(0.5, z - 0.25))}
+                  className="p-1.5 rounded hover:bg-[#2a2016] text-[#c9b8a3] cursor-pointer"
+                  title="Oddálit (-)"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <span className="px-2 font-mono text-[11px] text-[#ffd580]">
+                  {Math.round(inspectZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInspectZoom((z) => Math.min(4, z + 0.25))}
+                  className="p-1.5 rounded hover:bg-[#2a2016] text-[#c9b8a3] cursor-pointer"
+                  title="Přiblížit (+)"
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectZoom(1)}
+                  className="p-1.5 rounded hover:bg-[#2a2016] text-[#8c7b6d] hover:text-[#ffd580] cursor-pointer"
+                  title="Původní velikost (100%)"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectItem(inspectItem);
+                  setInspectItem(null);
+                }}
+                className="bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 shadow"
+              >
+                <CheckCircle2 size={13} /> Vybrat tento kolofon
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setInspectItem(null)}
+                className="text-[#8c7b6d] hover:text-white p-1.5 rounded hover:bg-[#251d16] transition cursor-pointer"
+                title="Zavřít lupu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Střed lupy: Snímek a plovoucí panel s citací */}
+          <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
+            <div className="w-full h-full overflow-auto flex items-center justify-center">
+              <img
+                src={inspectItem.img}
+                alt={inspectItem.shelfmark}
+                style={{
+                  transform: `scale(${inspectZoom})`,
+                  transformOrigin: "center center",
+                  transition: "transform 0.15s ease",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                }}
+                className="shadow-2xl rounded"
+              />
+            </div>
+
+            {/* Plovoucí panel s citací pro porovnání textu s rukopisem */}
+            <div className="absolute bottom-4 left-4 right-4 max-w-2xl mx-auto bg-black/85 border border-[#3d3122] rounded-lg p-3.5 backdrop-blur-md shadow-2xl text-xs">
+              <div className="flex items-center justify-between text-[10px] text-[#ffd580] font-bold uppercase mb-1">
+                <span>Latinský přepis ze soupisu Heurist</span>
+                <span>Folio: {inspectItem.locus}</span>
+              </div>
+              <p className="font-serif italic text-[#e8ded1] text-xs leading-relaxed max-h-24 overflow-y-auto">
+                “{inspectItem.quote}”
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

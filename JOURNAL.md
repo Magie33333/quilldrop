@@ -257,15 +257,38 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Přidáno výrazné zlaté tlačítko `+ Kolofon (Heurist)` do horní lišty i levého panelu.
   * Zobrazení poměru karet: *„X ve hře · 3 640 v Heuristu“*.
 
+### [2026-09-15] Fáze 1: Zpřehlednění Studia, Metodická příručka pro brigádníky, Badatelský režim & Realtime detekce kolizí
+* **Integrovaný metodický průvodce pro brigádníky (`StudioHelpModal.tsx`):**
+  * Plnohodnotná 5kapitolová modální příručka přímo v rozhraní Studia pro nové brigádníky oslovené prof. Lucií Doležalovou:
+    1. *Výběr z Heuristu* – pravidla priority serverů (FF UK vs Manuscriptorium), filtry kreseb a vyhledávací tipy.
+    2. *Ořez folia (4:3)* – zásady proporcí, kompozice a zarovnání rámečku kolem kolofonu.
+    3. *Překlad a data* – pravidla českého překladu, kritéria pro rarity (Common až Legendary) a správný zápis signatur/loci.
+    4. *Tvorba miniher* – postupy pro kvíz nálady, šifry a vizuální transkripční pásky.
+    5. *Workflow a schvalování* – vysvětlení fází Koncept (Draft) → Ke kontrole (Review) → Publikováno (Published) a pravidla kolaborace.
+* **Badatelský režim v katalogu Heuristu (`HeuristCatalogModal.tsx`):**
+  * **Hloubková inspekce a lupa (Deep Zoom Lightbox):** Brigádníci mohou rozkliknout jakékoliv folio na celou obrazovku s plynulým přiblížením (50 % až 400 %), posunem myší a přímým odkazem na zdrojový digitalizát.
+  * **Plovoucí přepisový panel:** Umožňuje přímo při zkoumání rukopisné stránky číst a porovnávat latinský text s originálním středověkým duktem písaře.
+  * **Galerie folijí (LayoutGrid) vs. Seznam (List):** Možnost přepnout na velkoformátové náhledy (200px karty) pro vizuální procházení jako v galerii umění.
+  * **Hvězdičkování / Oblíbené kolofony:** Ukládání zajímavých rukopisů do oblíbených (`localStorage`) s rychlým filtrem `⭐ Oblíbené`.
+  * **Výchozí stav pro nováčky:** Nově importovaný kolofon se automaticky zakládá jako `Koncept (Draft)`, aby se nedostal do ostré hry před schválením.
+* **Realtime detekce kolizí a přítomnost týmu (Supabase Presence):**
+  * Integrován WebSocket kanál `quilldrop-studio-presence` bez nutnosti změn v databázovém schématu.
+  * **Prevence přepsání dat:** Pokud dva brigádníci či editoři otevřou stejnou kartu současně, v záhlaví pracovního plátna se okamžitě rozbliká varovný banner: *„Pozor na kolizi: Na tomto kolofonu právě pracuje [Jméno]...“* s tlačítkem pro okamžité obnovení dat ze serveru.
+  * **Indikátory v levém sloupci:** U každé karty je v reálném čase vidět odznak *„👤 Upravuje: [Jméno]“*.
+  * **Lobby přítomnosti týmu:** Tlačítko `🟢 Tým online (N)` v horní liště otevírá dialog se seznamem připojených badatelů, jejich rolemi a kartami, na kterých právě pracují.
+* **Zpřehledněné rozvržení Studia (3 logické zóny v hlavičce):**
+  * Lišta rozdělena na levou zónu (návrat do hry a název), střední zónu (akční tlačítka Heurist, Glosy, Mozaiky, Nápověda) a pravou zónu (online tým, správa rolí, profil, uložení a odhlášení).
+  * Filtry v katalogu karet rozšířeny o stavy: `Vše`, `Publikováno`, `Ke kontrole` a `Koncepty` s barevnými puntíky a počty záznamů.
+
 ---
 
 ### Následující kroky (Fáze 2):
 * [ ] **Napojení dynamických miniher ze Supabase (`game_questions`):**
   * Propojit minihry s reálnými otázkami vytvořenými k jednotlivým kodexům v administraci.
-* [ ] **Interaktivní mapa evropských skriptorií:**
-  * Nahradit provizorní mapu skutečnou interaktivní mapou historické Evropy s lokalitami ze záznamů (Praha, Olomouc, Bologna, Heidelberg, Krakov atd.).
 * [ ] **Reálné darování a výměna duplikátů (P2P Trading):**
   * Propojit herní postup a darování karet se Supabase účty spolužáků.
+* [ ] **Rozšíření sady trofejí a akademických ocenění:**
+  * Implementovat rozšířenou sadu 15–20 odznaků a ocenění za objevování kodexů.
 
 
 
