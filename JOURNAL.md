@@ -424,11 +424,29 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
     * **Písařské výzvy (5 ks):** Lazuritové rytířské medailonky (27px) v královské modři se stříbrným lemem, hvězdicí `✦` a popisem (*Výzva I až V*). Po splnění přechází do archivního stavu s fajfkou `✓` a nápisem *Hotovo*.
   * Celý pergamenový rám získal hřejivé vnitřní osvětlení, vyřezávaný sloupcový oddělovač a velká, důstojná čísla (*„3 ze 3 k dispozici“* a *„5 z 5 k dispozici“*).
 
+### [2026-09-17] Rozlišení neúspěchu ve výzvách (✗) & Striktní pravidlo denního přihlášení (žádná kumulace)
+* **Indikátor neúspěchu u písařských výzev (`dailyGamesHistory`):**
+  * Do herního stavu (`GameState`) přidáno sledování průběhu jednotlivých denních her `dailyGamesHistory: ("success" | "fail")[]`.
+  * Pokud hráč výzvu pokazí nebo zvolí chybnou odpověď:
+    * Systém započte výsledek jako `"fail"` a odečte denní pokus.
+    * V modálním okně se zobrazí jasné varování: *„✗ Výzva zmařena – pokus byl započten jako neúspěch.“*
+    * V přehledu balíčků (`PacksScreen`) se medailonek dané výzvy promění v **rudý spálený žeton s křížkem** (`✗`), ohraničený přerušovanou karmínovou linkou a označený popiskem **„Neúspěch“**.
+  * Při úspěšném vyřešení se zobrazí **zlatavý olivový medailonek s fajfkou** (`✓`) a popiskem **„Splněno“**.
+  * Neodehrané výzvy zůstávají v zářivě královské modři (`✦`, *„Výzva I–V“*).
+* **Striktní denní přihlášení bez kumulace zmeškaných dnů (No Inactive Stacking):**
+  * Prověřena a zpřesněna logika denního resetu (`loadState`, `dailyReset`):
+    * Denní balíčky (3 ks) a písařské výzvy (5 ks) se udělují **výhradně v den, kdy se uživatel aktivně přihlásí / vstoupí do aplikace**.
+    * Pokud hráč aplikaci týden nenavštíví, balíčky za uplynulé dny se **nijak nesčítají** (nikdy nedostane $7 \times 3 = 21$ balíčků). Po přihlášení má k dispozici přesně svých 3 denní balíčky a 5 výzev pro daný den.
+    * Při vynechání dne (`daysDiff > 1`) se dle pravidel okamžitě přeruší streak (návrat na Den 1 a 1. fragment mozaiky).
+  * Do spodní části denního přehledu (`daily-ledger`) přidána trvalá vysvětlující pergamenová patička:
+    * *„📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá.“*
+
 ---
 
 ### Následující kroky:
 * [ ] **FÁZE 4.2 & 4.3: Předání prof. Doležalové & instruktáž editorů:**
   * Závěrečný zátěžový test a předání odkazů na Studio `/admin`.
+
 
 
 

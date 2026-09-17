@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
@@ -95,6 +95,7 @@ type GameState = {
   trophies: string[];
   lastPlayed: string;
   gamesPlayed: number;
+  dailyGamesHistory?: ("success" | "fail")[];
   completedQuestionsToday?: string[];
   dailyTradedPartners?: string[];
   bonusPacks: PackQuality[];
@@ -119,6 +120,7 @@ const INITIAL_STATE: GameState = {
   trophies: ["first-spark"],
   lastPlayed: "",
   gamesPlayed: 0,
+  dailyGamesHistory: [],
   completedQuestionsToday: [],
   dailyTradedPartners: [],
   bonusPacks: [],
@@ -139,6 +141,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   trophies: [],
   lastPlayed: "",
   gamesPlayed: 0,
+  dailyGamesHistory: [],
   completedQuestionsToday: [],
   dailyTradedPartners: [],
   bonusPacks: [],
@@ -213,6 +216,7 @@ function loadState(userId?: string): GameState {
       ...(saved || {}),
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
+      dailyGamesHistory: Array.isArray(saved?.dailyGamesHistory) ? saved.dailyGamesHistory : [],
       completedQuestionsToday: saved?.completedQuestionsToday || [],
       dailyTradedPartners: saved?.dailyTradedPartners || [],
       hasSeenTutorial: saved?.hasSeenTutorial !== undefined ? saved.hasSeenTutorial : (userId ? false : true),
@@ -227,7 +231,7 @@ function loadState(userId?: string): GameState {
     const todayStr = today();
     const isNewDay = base.lastPlayed !== todayStr;
     const dailyReset: GameState = isNewDay
-      ? { ...base, packsOpened: 0, gamesPlayed: 0, completedQuestionsToday: [], dailyTradedPartners: [], bonusPacks: [], lastPlayed: todayStr }
+      ? { ...base, packsOpened: 0, gamesPlayed: 0, dailyGamesHistory: [], completedQuestionsToday: [], dailyTradedPartners: [], bonusPacks: [], lastPlayed: todayStr }
       : base;
 
     // Pokud se uživatel již dnes přihlásil, streak byl pro dnešek započten
@@ -1101,6 +1105,7 @@ export default function Home() {
       setState(s => withXpReward({
         ...s,
         gamesPlayed: s.gamesPlayed + 1,
+        dailyGamesHistory: [...(s.dailyGamesHistory || []), "success"],
         completedQuestionsToday: nextCompleted,
         bonusPacks: [...s.bonusPacks, quality],
         coins: s.coins + 25,
@@ -1116,10 +1121,11 @@ export default function Home() {
       setState(s => ({
         ...s,
         gamesPlayed: s.gamesPlayed + 1,
+        dailyGamesHistory: [...(s.dailyGamesHistory || []), "fail"],
         completedQuestionsToday: nextCompleted,
         trophies: nextTrophies,
       }));
-      setToast(`Pokus využit — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
+      setToast(`Výzva zmařena — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
     }
     const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
     setTimeout(() => {
@@ -1171,6 +1177,7 @@ export default function Home() {
         bonusPacks: nextBonusPacks,
         packsOpened: 0,
         gamesPlayed: 0,
+        dailyGamesHistory: [],
         completedQuestionsToday: [],
         dailyTradedPartners: [],
         lastLoginDate: today(),
@@ -2417,22 +2424,42 @@ function PacksScreen({
             {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => {
               const isPlayed = i < state.gamesPlayed;
               const roman = ["I", "II", "III", "IV", "V"][i];
+              const outcome = state.dailyGamesHistory?.[i] || "success";
+              const isFailed = isPlayed && outcome === "fail";
               return (
                 <div
                   key={i}
                   className="ledger-game-token"
-                  title={`Písařská výzva ${roman}: ${isPlayed ? "Dnes již splněno" : "K dispozici"}`}
+                  title={`Písařská výzva ${roman}: ${
+                    !isPlayed
+                      ? "K dispozici"
+                      : isFailed
+                      ? "Výzva zmařena (neúspěch)"
+                      : "Úspěšně splněno (+odměna)"
+                  }`}
                 >
-                  <div className={`ledger-game-token-pip ${isPlayed ? "used" : "ready"}`}>
-                    {isPlayed ? <CheckCircle2 size={13} /> : "✦"}
+                  <div
+                    className={`ledger-game-token-pip ${
+                      !isPlayed ? "ready" : isFailed ? "failed" : "success"
+                    }`}
+                  >
+                    {!isPlayed ? "✦" : isFailed ? <X size={13} strokeWidth={2.5} /> : <CheckCircle2 size={13} />}
                   </div>
-                  <span className={`ledger-game-token-label ${isPlayed ? "used" : ""}`}>
-                    {isPlayed ? "Hotovo" : `Výzva ${roman}`}
+                  <span
+                    className={`ledger-game-token-label ${
+                      !isPlayed ? "" : isFailed ? "failed" : "success"
+                    }`}
+                  >
+                    {!isPlayed ? `Výzva ${roman}` : isFailed ? "Neúspěch" : "Splněno"}
                   </span>
                 </div>
               );
             })}
           </div>
+        </div>
+
+        <div className="daily-ledger-footer">
+          <span>📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá.</span>
         </div>
       </div>
 
@@ -5046,7 +5073,7 @@ function GameModal({
         )}
 
         {answer === "wrong" && !isTranscription && (
-          <p className="wrong-answer">Bohužel vedle – hledejte nápovědu ve slovech a stylu písaře.</p>
+          <p className="wrong-answer">✗ Výzva zmařena – pokus byl započten jako neúspěch.</p>
         )}
 
         {step === 0 && !answer && question.hint && (
