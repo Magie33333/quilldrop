@@ -7,7 +7,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $body$
 declare
   current_user_id uuid;
 begin
@@ -23,12 +23,17 @@ begin
   exception when undefined_table then
     null;
   end;
+  begin
+    delete from public.card_trades where sender_id = current_user_id or recipient_id = current_user_id;
+  exception when undefined_table then
+    null;
+  end;
   delete from public.profiles where id = current_user_id;
 
   -- 2. Smazat uživatele z auth.users
   delete from auth.users where id = current_user_id;
 end;
-$$;
+$body$;
 
 -- Oprávnění: funkci smí volat pouze přihlášený uživatel (smaže výhradně svůj vlastní účet)
 grant execute on function public.delete_user_account() to authenticated;

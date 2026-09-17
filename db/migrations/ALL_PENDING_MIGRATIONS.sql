@@ -37,7 +37,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $body$
 DECLARE
   current_user_id UUID;
 BEGIN
@@ -47,15 +47,23 @@ BEGIN
   END IF;
 
   DELETE FROM public.user_cards WHERE user_id = current_user_id;
+  
   BEGIN
     DELETE FROM public.card_gifts WHERE sender_id = current_user_id OR recipient_id = current_user_id;
   EXCEPTION WHEN undefined_table THEN
     NULL;
   END;
+
+  BEGIN
+    DELETE FROM public.card_trades WHERE sender_id = current_user_id OR recipient_id = current_user_id;
+  EXCEPTION WHEN undefined_table THEN
+    NULL;
+  END;
+
   DELETE FROM public.profiles WHERE id = current_user_id;
   DELETE FROM auth.users WHERE id = current_user_id;
 END;
-$$;
+$body$;
 
 GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
 
