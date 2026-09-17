@@ -332,6 +332,7 @@ export default function Home() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [filter, setFilter] = useState<Rarity | "All">("All");
   const [showMap, setShowMap] = useState(false);
+  const [mapInitialPlace, setMapInitialPlace] = useState<ScriptoriumPlace | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [pendingPackLevel, setPendingPackLevel] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
@@ -1615,7 +1616,10 @@ export default function Home() {
               activeIllumination={activeIllumination}
               onPacks={() => setTab("packs")}
               onCollection={() => setTab("collection")}
-              onMap={() => setShowMap(true)}
+              onMap={(place) => {
+                if (place) setMapInitialPlace(place);
+                setShowMap(true);
+              }}
               onGallery={() => setTab("profile")}
               onGame={startGame}
               onDetail={setDetail}
@@ -1695,9 +1699,10 @@ export default function Home() {
           <MapModal
             state={state}
             cards={cards}
-            onClose={() => setShowMap(false)}
+            onClose={() => { setShowMap(false); setMapInitialPlace(null); }}
             onDetail={(card) => { setShowMap(false); setDetail(card); }}
             lang={lang}
+            initialPlace={mapInitialPlace}
           />
         )}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} lang={lang} />}
@@ -2169,7 +2174,7 @@ function HomeScreen({
   activeIllumination: IlluminationMosaicItem;
   onPacks: () => void;
   onCollection: () => void;
-  onMap: () => void;
+  onMap: (place?: ScriptoriumPlace) => void;
   onGallery: () => void;
   onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
   onDetail: (c: Colophon) => void;
@@ -2191,9 +2196,7 @@ function HomeScreen({
     return getScriptoriaWithCards(cards, state.collection);
   }, [cards, state.collection]);
 
-  const [selectedHomePlace, setSelectedHomePlace] = useState<ScriptoriumPlace>(() => {
-    return scriptoriaWithCards.find((s) => s.owned.length > 0)?.place || SCRIPTORIA_PLACES[0];
-  });
+  const [selectedHomePlace, setSelectedHomePlace] = useState<ScriptoriumPlace | null>(null);
 
   return (
     <div className="screen home-screen">
@@ -2409,7 +2412,7 @@ function HomeScreen({
                   : "Kde jsou dochované středověké kodexy a kolofony dnes uloženy."}
               </p>
             </div>
-            <button className="icon-label" onClick={onMap} style={{ padding: "4px 8px", fontSize: "11px" }}>
+            <button className="icon-label" onClick={() => onMap()} style={{ padding: "4px 8px", fontSize: "11px" }}>
               {lang === "en" ? `Full Map (${uniqueOwned}/${totalCards}) →` : `Celá mapa (${uniqueOwned}/${totalCards}) →`}
             </button>
           </div>
@@ -2420,7 +2423,7 @@ function HomeScreen({
               selectedPlace={selectedHomePlace}
               onSelectPlace={(place) => setSelectedHomePlace(place)}
               compact
-              onOpenFull={onMap}
+              onOpenFull={(place) => onMap(place)}
               lang={lang}
             />
           </div>
@@ -2429,7 +2432,7 @@ function HomeScreen({
             <div className="home-map-storage-pill">
               🏛️ <strong>{lang === "en" ? "Custody of Codices:" : "Uložení kodexů:"}</strong> {lang === "en" ? "National Library of the CR (Prague), Opava Land Archive (Olomouc), Vyšší Brod Monastery, Moravian Library Brno, Rajhrad, Krakow, Zittau, Bologna, Florence." : "Národní knihovna ČR (Praha), Zemský archiv v Opavě (Olomouc), Klášter Vyšší Brod, MZK Brno, Rajhrad, Krakov, Zittau, Bologna, Florencie."}
             </div>
-            <button className="illuminated-button" onClick={onMap} style={{ width: "100%", justifyContent: "center" }}>
+            <button className="illuminated-button" onClick={() => onMap()} style={{ width: "100%", justifyContent: "center" }}>
               {lang === "en" ? `Open full map with manuscript details (${uniqueOwned}/${totalCards})` : `Otevřít velkou mapu s detaily kodexů (${uniqueOwned}/${totalCards})`} <span>→</span>
             </button>
           </div>
@@ -5547,18 +5550,21 @@ function MapModal({
   onClose,
   onDetail,
   lang = "cs",
+  initialPlace,
 }: {
   state: GameState;
   cards: Colophon[];
   onClose: () => void;
   onDetail: (card: Colophon) => void;
   lang?: Language;
+  initialPlace?: ScriptoriumPlace | null;
 }) {
   const scriptoriaWithCards = useMemo(() => {
     return getScriptoriaWithCards(cards, state.collection);
   }, [cards, state.collection]);
 
   const [selectedPlace, setSelectedPlace] = useState<ScriptoriumPlace>(() => {
+    if (initialPlace) return initialPlace;
     const withOwned = scriptoriaWithCards.find((s) => s.owned.length > 0);
     return withOwned ? withOwned.place : SCRIPTORIA_PLACES[0];
   });

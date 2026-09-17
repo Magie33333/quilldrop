@@ -20,10 +20,10 @@ export default function RealLeafletMap({
   lang = "cs",
 }: {
   scriptoria: ScriptoriaData[];
-  selectedPlace: ScriptoriumPlace;
-  onSelectPlace: (place: ScriptoriumPlace) => void;
+  selectedPlace?: ScriptoriumPlace | null;
+  onSelectPlace?: (place: ScriptoriumPlace) => void;
   compact?: boolean;
-  onOpenFull?: () => void;
+  onOpenFull?: (place?: ScriptoriumPlace) => void;
   lang?: Language;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -228,7 +228,7 @@ export default function RealLeafletMap({
 
       scriptoria.forEach(({ place, cards, owned }) => {
         const hasOwned = owned.length > 0;
-        const isSelected = selectedPlace.id === place.id;
+        const isSelected = !compact && selectedPlace ? selectedPlace.id === place.id : false;
         const markerSize = compact ? 34 : 40;
         const placeName = getPlaceName(place, lang);
         const placeCountry = getPlaceCountry(place, lang);
@@ -255,9 +255,9 @@ export default function RealLeafletMap({
         }).addTo(map);
 
         marker.on("click", () => {
-          onSelectPlace(place);
+          onSelectPlace?.(place);
           if (compact && onOpenFull) {
-            onOpenFull();
+            onOpenFull(place);
           } else {
             map.flyTo([place.lat, place.lng], Math.max(map.getZoom(), 8), {
               duration: 0.8,
@@ -358,7 +358,7 @@ export default function RealLeafletMap({
         <button
           type="button"
           className="map-compact-expand-btn"
-          onClick={onOpenFull}
+          onClick={() => onOpenFull()}
           title={lang === "en" ? "Open full interactive map" : "Otevřít celou interaktivní mapu"}
         >
           {lang === "en" ? "🔍 Open Full Map ↗" : "🔍 Otevřít velkou mapu ↗"}
@@ -394,7 +394,7 @@ export default function RealLeafletMap({
       </div>
 
       {/* Stavový štítek se souřadnicemi a lokalitou */}
-      {!compact && (
+      {!compact && selectedPlace && (
         <div className="real-map-status">
           <span className="status-pin">{selectedPlace.icon}</span>
           <strong>{getPlaceName(selectedPlace, lang)}</strong>
