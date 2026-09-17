@@ -441,11 +441,39 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Do spodní části denního přehledu (`daily-ledger`) přidána trvalá vysvětlující pergamenová patička:
     * *„📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá.“*
 
+### [2026-09-17] Revize tutoriálu, dynamická mapa skriptorií a dvojjazyčný systém (🇨🇿 Čeština / 🇬🇧 English)
+* **1. Úpravy a zpřesnění úvodního tutoriálu (`OnboardingTutorialModal`):**
+  * **Odstranění zmínek o Heuristu:** Texty byly neutralizovány pro širokou veřejnost – odkazují na *„dlouholetou vědeckou databázi rukopisů“*.
+  * **Doplnění 4. písařské disciplíny v kroku 4:** Do výčtu aktivit byla doplněna chybějící disciplína **Písmo a století** (*„Určete gotický či humanistický typ písma (bastarda, rotunda, textura) a století vzniku kodexu“*).
+  * **Formulace pro širokou veřejnost:** Odstraněny interní reference na vyučující i účet `benysek.vojta`. Texty uvádějí: *„výzkum středověkých rukopisů, který vede tým prof. Lucie Doležalové“* a v profilu *„seznam dalších písařů a badatelů, se kterými můžete navázat kontakt“*.
+  * **Striktně jednorázový uvítací bonus (+50 XP):** Bonus +50 XP se nováčkovi připíše výhradně jednou v životě (`!prev.hasSeenTutorial`).
+  * **Omezení spouštění tutoriálu z profilu:** Tlačítko pro opětovné spuštění tutoriálu v profilu je nyní zobrazeno **pouze administrátorům** pro účely testování. Běžným hráčům se po dokončení již nenabízí.
+
+* **2. Dynamická mapa skriptorií reagující na nalezené kodexy (`getScriptoriaWithCards`):**
+  * **Reaktivní aktualizace podle sbírky:** Mapa skriptorií na domovské obrazovce i ve velkém modálním okně (`MapModal`) se automaticky a dynamicky přeskupuje podle toho, jak hráč otevírá balíčky a získává nové kodexy.
+  * **Zlaté pečetní záření objevených míst:** Skriptoria, kde hráč již vlastní alespoň jeden kodex, získala zlatou voskovou pečeť s pulzující aurou (`discovered-pulse`), indikátorem `✓` a počtem objevených kodexů (`owned/total`). Místa bez vlastněných kodexů zůstávají zapečetěna ikonou `🔒`.
+  * **Příprava na stovky lokalit od brigádníků:** Databáze skriptorií (`scriptoria.ts`) byla rozšířena o další středoevropská centra (Fulštejn, Vratislav/Wrocław, Třeboň, Litoměřice, Erfurt atd.). Pomocná funkce `getScriptoriaWithCards` automaticky filtruje pouze lokality, které mají v sadě reálné karty, a řadí objevená místa na první pozice.
+
+* **3. Plnohodnotná lokalizace (🇨🇿 Čeština & 🇬🇧 English):**
+  * **Výběr jazyka při registraci i přihlášení (`AuthModal`):** Hráč si přímo v uvítacím přihlašovacím okně volí preferovaný jazyk pomocí tlačítek s vlajkami (**🇨🇿 Čeština** | **🇬🇧 English**). Okno obsahuje výslovné upozornění, že volbu lze kdykoliv později změnit v profilu.
+  * **Správa jazyka v profilu i horní liště:**
+    * V horní liště (`StatusBar`) je trvale dostupný rychlý přepínač `🇨🇿 CZ` / `🇬🇧 EN`.
+    * V profilu (`ProfileScreen`) byl přidán dedikovaný panel *„🌐 Jazyk hry a kolofonů / Game & Colophon Language“*.
+    * Volba se ukládá do `localStorage` (`quilldrop-lang`).
+  * **Dvojjazyčné názvy karet a překlady kolofonů (`translations.ts`):**
+    * Všech 30 původních fakultních karet má kompletní české poetické názvy (např. *„Sepsáno na Pražském hradě“*, *„Chvála Trojjedinému“*, *„Zjevení na Fulštejně“*) i autentické anglické názvy.
+    * Všech 30 karet má zpracované plné anglické překlady latinských textů.
+    * Funkce `getCardTitle(card, lang)`, `getCardTranslation(card, lang)` a `getCardRarityReason(card, lang)` dynamicky servírují správný jazyk v celé aplikaci (detail karty, odhalování balíčků, vyhledávání ve sbírce, mapa, tutoriál).
+  * **Dvojjazyčné Studio pro brigádníky a editory (`/admin`):**
+    * Editační formulář karty v administrátorském Studiu byl rozšířen o pole pro český i anglický název (`title_cs`, `title_en`), překlad (`translation_cs`, `translation_en`) a důvod rarity (`rarity_reason_cs`, `rarity_reason_en`).
+    * Data se ukládají do Supabase s bezpečným fallbackem.
+
 ---
 
 ### Následující kroky:
 * [ ] **FÁZE 4.2 & 4.3: Předání prof. Doležalové & instruktáž editorů:**
   * Závěrečný zátěžový test a předání odkazů na Studio `/admin`.
+
 
 
 

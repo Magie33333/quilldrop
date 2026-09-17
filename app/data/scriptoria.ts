@@ -2,7 +2,7 @@ export type ScriptoriumPlace = {
   id: string;
   name: string;
   region: string;
-  country: string; // Moderní stát: Česká republika, Polsko, Německo, Itálie, Rakousko, Maďarsko
+  country: string; // Moderní stát: Česká republika, Polsko, Německo, Itálie, Rakousko, Maďarsko, Francie, Švýcarsko
   modernRepository: string; // Současná paměťová instituce / knihovna / archiv
   description: string;
   lat: number;
@@ -28,7 +28,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 48,
     y: 36,
     icon: "👑",
-    matchKeywords: ["prague", "praha", "castro", "sanctorum", "klementinum", "národní knihovna"],
+    matchKeywords: ["prague", "praha", "castro", "sanctorum", "klementinum", "národní knihovna", "czechia (praha?)"],
   },
   {
     id: "olomouc",
@@ -91,6 +91,51 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     matchKeywords: ["rajhrad", "raygern", "památník písemnictví"],
   },
   {
+    id: "trebon",
+    name: "Třeboň",
+    region: "Augustiniánský klášter a rožmberský archiv",
+    country: "Česká republika",
+    modernRepository: "Státní oblastní archiv v Třeboni",
+    description: "Významné centrum středověkého klášterního a rožmberského písemnictví. Rukopisy a archiválie jsou uloženy v třeboňském archivu.",
+    lat: 49.0036,
+    lng: 14.7707,
+    zoom: 12,
+    x: 48,
+    y: 50,
+    icon: "🏰",
+    matchKeywords: ["třeboň", "trebon", "wittingau"],
+  },
+  {
+    id: "fulstejn",
+    name: "Fulštejn (Bohušov)",
+    region: "Osoblažsko, Slezsko",
+    country: "Česká republika",
+    modernRepository: "Zemský archiv v Opavě / Biskupský lenní archiv",
+    description: "Sídlo biskupského lenního rodu Supů z Fulštejna. Hradní kaple a písařské záznamy jsou spjaty s olomouckým biskupstvím a archivovány v Opavě.",
+    lat: 50.2762,
+    lng: 17.7169,
+    zoom: 12,
+    x: 67,
+    y: 33,
+    icon: "🛡️",
+    matchKeywords: ["fulštejn", "fulstein", "osoblaha", "bohušov"],
+  },
+  {
+    id: "litomerice",
+    name: "Litoměřice",
+    region: "Severní Čechy",
+    country: "Česká republika",
+    modernRepository: "Státní oblastní archiv v Litoměřicích / Katedrální kapitula",
+    description: "Kolegiátní kapitula sv. Štěpána a významné královské město na Labi. Působiště probošta Benedikta z Valdštejna.",
+    lat: 50.5335,
+    lng: 14.1318,
+    zoom: 12,
+    x: 46,
+    y: 30,
+    icon: "📖",
+    matchKeywords: ["litoměřice", "litomerice", "litho", "leitmeritz"],
+  },
+  {
     id: "krakow",
     name: "Krakov",
     region: "Malopolsko",
@@ -106,6 +151,21 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     matchKeywords: ["kazimierz", "krakow", "cracov", "polon", "jagiellon"],
   },
   {
+    id: "wroclaw",
+    name: "Vratislav (Wrocław)",
+    region: "Dolní Slezsko",
+    country: "Polsko",
+    modernRepository: "Biblioteka Uniwersytecka we Wrocławiu",
+    description: "Klíčové obchodní a církevní centrum Koruny české. Bohaté sbírky gotických kodexů z klášterů a kapitol jsou dnes chráněny ve Vratislavské univerzitní knihovně.",
+    lat: 51.1079,
+    lng: 17.0385,
+    zoom: 11,
+    x: 62,
+    y: 28,
+    icon: "🕊️",
+    matchKeywords: ["wrocław", "wroclaw", "breslau", "vratislav"],
+  },
+  {
     id: "zittau",
     name: "Žitava (Zittau)",
     region: "Sasko (Horní Lužice)",
@@ -119,6 +179,66 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     y: 26,
     icon: "🛡️",
     matchKeywords: ["zittau", "žitava", "lusatia", "christian-weise"],
+  },
+  {
+    id: "germany",
+    name: "Lipsko & Norimberk",
+    region: "Sasko & Bavorsko",
+    country: "Německo",
+    modernRepository: "Universitätsbibliothek Leipzig, Stadtbibliothek Nürnberg",
+    description: "Německá univerzitní a městská centra. Bohemikální i německé rukopisy jsou uchovány v Lipské univerzitní knihovně a v Norimberku.",
+    lat: 51.3397,
+    lng: 12.3731,
+    zoom: 11,
+    x: 41,
+    y: 24,
+    icon: "📖",
+    matchKeywords: ["german speaking", "leipzig", "lipsk", "nürnberg", "norimberk", "erfurt", "aleman", "německo"],
+  },
+  {
+    id: "konstanz",
+    name: "Kostnice",
+    region: "Bádensko-Württembersko",
+    country: "Německo",
+    modernRepository: "Stadtarchiv Konstanz, Badische Landesbibliothek Karlsruhe",
+    description: "Místo konání Kostnického koncilu (1414–1418). Zdejší koncilní opisy a dokumenty jsou uloženy v městském archivu v Kostnici a v Karlsruhe.",
+    lat: 47.6634,
+    lng: 9.1757,
+    zoom: 11,
+    x: 31,
+    y: 54,
+    icon: "🕯️",
+    matchKeywords: ["konstanz", "kostnice", "leutershausen"],
+  },
+  {
+    id: "austria",
+    name: "Vídeň & Melk",
+    region: "Dolní Rakousy",
+    country: "Rakousko",
+    modernRepository: "Österreichische Nationalbibliothek (ÖNB), Vídeň / Stiftsbibliothek Melk",
+    description: "Klíčová středoevropská paměťová centra. Kodexy jsou uloženy v Rakouské národní knihovně ve Vídni a v podunajských klášterech.",
+    lat: 48.2082,
+    lng: 16.3738,
+    zoom: 11,
+    x: 56,
+    y: 58,
+    icon: "🦅",
+    matchKeywords: ["austria", "wien", "vienna", "vídeň", "rakousk", "melk", "österreichische"],
+  },
+  {
+    id: "esztergom",
+    name: "Ostřihom (Esztergom)",
+    region: "Komárom-Esztergom",
+    country: "Maďarsko",
+    modernRepository: "Főszékesegyházi Könyvtár (Katedrální knihovna v Ostřihomi)",
+    description: "Centrum uherské církve na Dunaji. Liturgické a teologické kodexy jsou uchovány v historické katedrální knihovně v Ostřihomi.",
+    lat: 47.7855,
+    lng: 18.7402,
+    zoom: 11,
+    x: 72,
+    y: 56,
+    icon: "🕊️",
+    matchKeywords: ["esztergom", "oradea", "varadin", "hungar", "ostřihom", "uhry"],
   },
   {
     id: "bologna",
@@ -150,66 +270,6 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     icon: "⚜️",
     matchKeywords: ["firenze", "florentie", "florence", "laurenziana"],
   },
-  {
-    id: "esztergom",
-    name: "Ostřihom (Esztergom)",
-    region: "Komárom-Esztergom",
-    country: "Maďarsko",
-    modernRepository: "Főszékesegyházi Könyvtár (Katedrální knihovna v Ostřihomi)",
-    description: "Centrum uherské církve na Dunaji. Liturgické a teologické kodexy jsou uchovány v historické katedrální knihovně v Ostřihomi.",
-    lat: 47.7855,
-    lng: 18.7402,
-    zoom: 11,
-    x: 72,
-    y: 56,
-    icon: "🕊️",
-    matchKeywords: ["esztergom", "oradea", "varadin", "hungar", "ostřihom"],
-  },
-  {
-    id: "austria",
-    name: "Vídeň",
-    region: "Dolní Rakousy",
-    country: "Rakousko",
-    modernRepository: "Österreichische Nationalbibliothek (ÖNB), Vídeň / Stiftsbibliothek Melk",
-    description: "Klíčová středoevropská paměťová centra. Kodexy jsou uloženy v Rakouské národní knihovně ve Vídni a v podunajských klášterech.",
-    lat: 48.2082,
-    lng: 16.3738,
-    zoom: 11,
-    x: 56,
-    y: 58,
-    icon: "🦅",
-    matchKeywords: ["austria", "wien", "vienna", "rakousk", "melk", "österreichische"],
-  },
-  {
-    id: "germany",
-    name: "Lipsko",
-    region: "Sasko",
-    country: "Německo",
-    modernRepository: "Universitätsbibliothek Leipzig, Stadtbibliothek Nürnberg",
-    description: "Německá univerzitní a městská centra. Bohemikální i německé rukopisy jsou uchovány v Lipské univerzitní knihovně a v Norimberku.",
-    lat: 51.3397,
-    lng: 12.3731,
-    zoom: 11,
-    x: 41,
-    y: 24,
-    icon: "📖",
-    matchKeywords: ["german speaking", "leipzig", "lipsk", "nürnberg", "erfurt", "aleman", "německo"],
-  },
-  {
-    id: "konstanz",
-    name: "Kostnice",
-    region: "Bádensko-Württembersko",
-    country: "Německo",
-    modernRepository: "Stadtarchiv Konstanz, Badische Landesbibliothek Karlsruhe",
-    description: "Místo konání Kostnického koncilu (1414–1418). Zdejší koncilní opisy a dokumenty jsou uloženy v městském archivu v Kostnici a v Karlsruhe.",
-    lat: 47.6634,
-    lng: 9.1757,
-    zoom: 11,
-    x: 31,
-    y: 54,
-    icon: "🕯️",
-    matchKeywords: ["konstanz", "kostnice", "leutershausen"],
-  },
 ];
 
 export function getScriptoriumForCard(card: { place?: string; manuscript?: string }): ScriptoriumPlace {
@@ -230,6 +290,9 @@ export function getScriptoriumForCard(card: { place?: string; manuscript?: strin
     if (p.includes("ital")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "bologna")!;
     }
+    if (p.includes("poland") || p.includes("polsk")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "krakow")!;
+    }
   }
 
   // 2. Pokud je místo vzniku neznámé, zařadíme kartu podle místa dochování kodexu (card.manuscript)
@@ -241,4 +304,46 @@ export function getScriptoriumForCard(card: { place?: string; manuscript?: strin
 
   // Fallback: Olomouc (kde je uchována většina olomouckých kapitulních kodexů)
   return SCRIPTORIA_PLACES.find((x) => x.id === "olomouc") || SCRIPTORIA_PLACES[0];
+}
+
+// Dynamické sestavení přehledu skriptorií podle reálně nahraných karet a stavu hráčovy sbírky
+export function getScriptoriaWithCards<T extends { id: string | number; place?: string; manuscript?: string }>(
+  cards: T[],
+  collection: Record<string | number, number>
+) {
+  // Seskupíme karty podle přiřazeného skriptoria
+  const map = new Map<string, { place: ScriptoriumPlace; cards: T[]; owned: T[] }>();
+
+  for (const place of SCRIPTORIA_PLACES) {
+    map.set(place.id, {
+      place,
+      cards: [],
+      owned: [],
+    });
+  }
+
+  for (const card of cards) {
+    const place = getScriptoriumForCard(card);
+    let entry = map.get(place.id);
+    if (!entry) {
+      entry = { place, cards: [], owned: [] };
+      map.set(place.id, entry);
+    }
+    entry.cards.push(card);
+    if (collection[card.id] && collection[card.id] > 0) {
+      entry.owned.push(card);
+    }
+  }
+
+  // Zobrazujeme pouze skriptoria, která mají alespoň 1 kartu v aktuální sadě
+  const results = Array.from(map.values()).filter((e) => e.cards.length > 0);
+
+  // Řadíme: Nejdříve skriptoria, kde hráč již NĚCO OBJEVIL (owned > 0), a teprve potom dosud neobjevená
+  results.sort((a, b) => {
+    if (a.owned.length > 0 && b.owned.length === 0) return -1;
+    if (a.owned.length === 0 && b.owned.length > 0) return 1;
+    return b.owned.length - a.owned.length;
+  });
+
+  return results;
 }

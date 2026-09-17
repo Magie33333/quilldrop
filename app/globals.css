@@ -504,7 +504,23 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .medieval-leaf-marker.has-owned {
   background: radial-gradient(circle at 35% 28%, #ffe89d, #d49520 60%, #7d420a);
   border-color: #ffd580;
-  box-shadow: 0 0 0 2px #986518, 0 5px 14px rgba(212, 152, 29, 0.45);
+  box-shadow: 0 0 0 2px #986518, 0 5px 14px rgba(212, 152, 29, 0.55), 0 0 14px rgba(255, 213, 128, 0.45);
+  animation: discovered-pulse 3.5s ease-in-out infinite alternate;
+}
+.medieval-leaf-marker.is-unowned {
+  background: radial-gradient(circle at 35% 28%, #dfcfb2, #ad9871 60%, #5c4a30);
+  border-color: #8c7853;
+  opacity: 0.68;
+  filter: grayscale(0.45);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.32);
+}
+.medieval-leaf-marker.is-unowned .marker-count {
+  background: #73644f;
+  border-color: #b5a484;
+}
+@keyframes discovered-pulse {
+  from { box-shadow: 0 0 0 2px #986518, 0 5px 14px rgba(212, 152, 29, 0.45); }
+  to { box-shadow: 0 0 0 3px #d4af37, 0 7px 18px rgba(212, 152, 29, 0.75), 0 0 16px rgba(255, 213, 128, 0.65); }
 }
 .medieval-leaf-marker .marker-seal {
   font-size: 18px;

@@ -230,10 +230,10 @@ export default function RealLeafletMap({
 
         // Vytvoření custom DivIconu ve stylu voskové pečeti
         const iconHtml = `
-          <div class="medieval-leaf-marker ${compact ? "is-compact" : ""} ${hasOwned ? "has-owned" : ""} ${isSelected ? "is-selected" : ""}" title="${place.name} (${place.country})">
-            <span class="marker-seal">${place.icon}</span>
+          <div class="medieval-leaf-marker ${compact ? "is-compact" : ""} ${hasOwned ? "has-owned" : "is-unowned"} ${isSelected ? "is-selected" : ""}" title="${place.name} (${place.country})">
+            <span class="marker-seal">${hasOwned ? place.icon : "🔒"}</span>
             <span class="marker-count">${owned.length}/${cards.length}</span>
-            <span class="marker-tooltip">${place.name} · ${place.country}</span>
+            <span class="marker-tooltip">${hasOwned ? "✓ " + place.name : "🔒 " + place.name} (${hasOwned ? `${owned.length}/${cards.length} objeveno` : "zatím neobjeveno"})</span>
           </div>
         `;
 

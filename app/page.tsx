@@ -7,7 +7,14 @@ import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
 import { DEFAULT_CURIOS, type Curio } from "./data/curios";
-import { SCRIPTORIA_PLACES, getScriptoriumForCard, type ScriptoriumPlace } from "./data/scriptoria";
+import { SCRIPTORIA_PLACES, getScriptoriumForCard, getScriptoriaWithCards, type ScriptoriumPlace } from "./data/scriptoria";
+import {
+  type Language,
+  UI_TRANSLATIONS,
+  getCardTitle,
+  getCardTranslation,
+  getCardRarityReason,
+} from "./data/translations";
 import {
   DEFAULT_ILLUMINATIONS,
   type IlluminationMosaicItem,
@@ -36,8 +43,12 @@ type Colophon = {
   uuid?: string;
   slug?: string;
   title: string;
+  title_cs?: string;
+  title_en?: string;
   quote: string;
   translation: string;
+  translation_cs?: string;
+  translation_en?: string;
   scribe: string;
   place: string;
   year: number;
@@ -52,6 +63,8 @@ type Colophon = {
   formulaFrequency?: number;
   features?: readonly string[];
   rarityReason?: string;
+  rarityReason_cs?: string;
+  rarityReason_en?: string;
   visualNote?: string;
   crop_x?: number;
   crop_y?: number;
@@ -367,6 +380,22 @@ export default function Home() {
   } | null>(null);
   const [reviewTradeModal, setReviewTradeModal] = useState<CardTrade | null>(null);
   const [showTutorialModal, setShowTutorialModal] = useState(false);
+
+  // Jazyk rozhraní a karet (Čeština / English)
+  const [lang, setLang] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("quilldrop-lang") as Language;
+      if (saved === "cs" || saved === "en") return saved;
+    }
+    return "cs";
+  });
+
+  const handleSetLang = (newLang: Language) => {
+    setLang(newLang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("quilldrop-lang", newLang);
+    }
+  };
 
   // 16dílné iluminace a denní streak (Cesta písaře)
   const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
@@ -1506,9 +1535,11 @@ export default function Home() {
 
   const handleFinishTutorial = () => {
     playTriumphFanfare("Common");
+    const isFirstTime = !state.hasSeenTutorial;
     setState((prev) => {
-      // Pokud nový hráč začínal s 0 XP, udělíme mu do začátku +50 XP
-      const awarded = prev.xp === 0 ? withXpReward(prev, 50) : prev;
+      // Bonus +50 XP se udělí POUZE JEDNOU za celou existenci účtu
+      const shouldAward = !prev.hasSeenTutorial;
+      const awarded = shouldAward ? withXpReward(prev, 50) : prev;
       const updated: GameState = {
         ...awarded,
         hasSeenTutorial: true,
@@ -1523,7 +1554,15 @@ export default function Home() {
     });
     setShowTutorialModal(false);
     setTab("packs");
-    setToast("Zasvěcení do skriptoria dokončeno (+50 XP)! Zde jsou vaše 3 denní zapečetěné balíčky.");
+    setToast(
+      isFirstTime
+        ? (lang === "en"
+            ? "Scriptorium initiation complete (+50 XP)! Here are your 3 sealed packs."
+            : "Zasvěcení do skriptoria dokončeno (+50 XP)! Zde jsou vaše 3 denní zapečetěné balíčky.")
+        : (lang === "en"
+            ? "Tutorial closed."
+            : "Průvodce skriptoriem zavřen.")
+    );
   };
 
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
@@ -1543,6 +1582,8 @@ export default function Home() {
           currentUser={currentUser}
           currentProfile={currentProfile}
           onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
+          lang={lang}
+          onToggleLang={() => handleSetLang(lang === "cs" ? "en" : "cs")}
         />
 
         <div className="scroll-area">
@@ -1561,10 +1602,11 @@ export default function Home() {
               onGallery={() => setTab("profile")}
               onGame={startGame}
               onDetail={setDetail}
+              lang={lang}
             />
           )}
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
-          {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} />}
+          {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} lang={lang} />}
           {tab === "trophies" && <TrophiesScreen state={state} cards={cards} activeIllumination={activeIllumination} />}
           {tab === "profile" && (
             <ProfileScreen
@@ -1588,19 +1630,37 @@ export default function Home() {
               onAcceptGift={handleAcceptGift}
               onOpenTrade={handleOpenTradeModal}
               onReviewTrade={(trade) => setReviewTradeModal(trade)}
-              onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
+              onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast(lang === "en" ? "Scribe portrait updated." : "Portrét písaře byl aktualizován."); }}
               onDeleteAccount={handleDeleteAccount}
-              onOpenTutorial={() => setShowTutorialModal(true)}
+              onOpenTutorial={currentProfile?.role === "admin" ? () => setShowTutorialModal(true) : undefined}
+              lang={lang}
+              onSetLang={handleSetLang}
             />
           )}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
-          {NAV.map(item => { const Icon = item.icon; return <button key={item.id} className={`${tab === item.id ? "active" : ""} ${item.id === "packs" ? "primary" : ""}`} onClick={() => setTab(item.id)} aria-label={item.label}><span><Icon size={21} strokeWidth={1.8} /></span><small>{item.label}</small></button>; })}
+          {NAV.map(item => {
+            const Icon = item.icon;
+            const label = lang === "en"
+              ? (item.id === "home" ? "Scriptorium" : item.id === "packs" ? "Packs" : item.id === "collection" ? "Collection" : item.id === "trophies" ? "Challenges" : "Profile")
+              : item.label;
+            return (
+              <button
+                key={item.id}
+                className={`${tab === item.id ? "active" : ""} ${item.id === "packs" ? "primary" : ""}`}
+                onClick={() => setTab(item.id)}
+                aria-label={label}
+              >
+                <span><Icon size={21} strokeWidth={1.8} /></span>
+                <small>{label}</small>
+              </button>
+            );
+          })}
         </nav>
 
-        {detail && <CardDetail card={detail} count={state.collection[detail.id] || 0} onClose={() => setDetail(null)} />}
-        {opened && <PackReveal key={`${reveal}-${cardShown}`} card={opened[reveal]} position={reveal + 1} total={opened.length} quality={packQuality} shown={cardShown} onReveal={() => setCardShown(true)} onNext={finishReveal} />}
+        {detail && <CardDetail card={detail} count={state.collection[detail.id] || 0} onClose={() => setDetail(null)} lang={lang} />}
+        {opened && <PackReveal key={`${reveal}-${cardShown}`} card={opened[reveal]} position={reveal + 1} total={opened.length} quality={packQuality} shown={cardShown} onReveal={() => setCardShown(true)} onNext={finishReveal} lang={lang} />}
         {game && activeQuestion && (
           <GameModal
             kind={game}
@@ -1619,6 +1679,7 @@ export default function Home() {
             cards={cards}
             onClose={() => setShowMap(false)}
             onDetail={(card) => { setShowMap(false); setDetail(card); }}
+            lang={lang}
           />
         )}
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
@@ -1778,6 +1839,7 @@ export default function Home() {
             isOpen={showTutorialModal}
             onClose={() => setShowTutorialModal(false)}
             onFinish={handleFinishTutorial}
+            lang={lang}
           />
         )}
         {showAuthModal && (
@@ -1796,6 +1858,8 @@ export default function Home() {
             onLogin={handleLogin}
             onRegister={handleRegister}
             onGoogle={handleGoogleSignIn}
+            lang={lang}
+            onSetLang={handleSetLang}
           />
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
@@ -1816,6 +1880,8 @@ function StatusBar({
   currentUser,
   currentProfile,
   onOpenAuth,
+  lang = "cs",
+  onToggleLang,
 }: {
   state: GameState;
   isLive: boolean;
@@ -1828,6 +1894,8 @@ function StatusBar({
   currentUser?: any;
   currentProfile?: UserProfile | null;
   onOpenAuth?: () => void;
+  lang?: Language;
+  onToggleLang?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -1844,6 +1912,9 @@ function StatusBar({
         {NAV.map((item) => {
           const Icon = item.icon;
           const isActive = tab === item.id;
+          const label = lang === "en"
+            ? (item.id === "home" ? "Scriptorium" : item.id === "packs" ? "Packs" : item.id === "collection" ? "Collection" : item.id === "trophies" ? "Challenges" : "Profile")
+            : item.label;
           return (
             <button
               key={item.id}
@@ -1851,7 +1922,7 @@ function StatusBar({
               onClick={() => setTab(item.id)}
             >
               <Icon size={15} />
-              <span>{item.label}</span>
+              <span>{label}</span>
               {item.id === "collection" && (
                 <span className="nav-count">{uniqueOwned}/{totalCards}</span>
               )}
@@ -1864,15 +1935,38 @@ function StatusBar({
       </nav>
 
       <div className="stats">
-        <span title="Dní v řadě bez přerušení" aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
-        <span title="16denní iluminace" aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
-        <span title="Zkušenostní body (XP)" aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
+        <span title={lang === "en" ? "Daily streak without interruption" : "Dní v řadě bez přerušení"} aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
+        <span title={lang === "en" ? "16-day illumination" : "16denní iluminace"} aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
+        <span title={lang === "en" ? "Experience Points (XP)" : "Zkušenostní body (XP)"} aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
+        {onToggleLang && (
+          <button
+            type="button"
+            className="lang-toggle-btn"
+            onClick={onToggleLang}
+            title={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}
+            style={{
+              background: "rgba(255, 255, 255, 0.45)",
+              border: "1px solid rgba(139, 37, 0, 0.25)",
+              borderRadius: "6px",
+              padding: "3px 7px",
+              fontSize: "11px",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              color: "#4a2d04",
+            }}
+          >
+            <span>{lang === "cs" ? "🇨🇿 CZ" : "🇬🇧 EN"}</span>
+          </button>
+        )}
         {onToggleSound && (
           <button
             type="button"
             className={`sound-toggle-btn ${soundOn ? "active" : "muted"}`}
             onClick={onToggleSound}
-            title={soundOn ? "Zvuk skriptoria je zapnutý (kliknutím ztlumit)" : "Zvuk je ztlumený (kliknutím zapnout)"}
+            title={soundOn ? (lang === "en" ? "Scriptorium audio is ON (click to mute)" : "Zvuk skriptoria je zapnutý (kliknutím ztlumit)") : (lang === "en" ? "Scriptorium audio is muted (click to unmute)" : "Zvuk je ztlumený (kliknutím zapnout)")}
             aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
           >
             {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
@@ -1893,10 +1987,10 @@ function StatusBar({
             type="button"
             className="login-trigger-btn"
             onClick={onOpenAuth}
-            title="Přihlásit se do skriptoria"
+            title={lang === "en" ? "Sign in to scriptorium" : "Přihlásit se do skriptoria"}
           >
             <LogIn size={13} />
-            <span>Přihlásit</span>
+            <span>{lang === "en" ? "Sign In" : "Přihlásit"}</span>
           </button>
         )}
       </div>
@@ -2068,6 +2162,7 @@ function HomeScreen({
   onGallery,
   onGame,
   onDetail,
+  lang = "cs",
 }: {
   state: GameState;
   cards: Colophon[];
@@ -2082,6 +2177,7 @@ function HomeScreen({
   onGallery: () => void;
   onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
   onDetail: (c: Colophon) => void;
+  lang?: Language;
 }) {
   const progressPercent = totalCards > 0 ? Math.round((uniqueOwned / totalCards) * 100) : 0;
   const remaining = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
@@ -2096,15 +2192,7 @@ function HomeScreen({
   }, [cards, state.collection]);
 
   const scriptoriaWithCards = useMemo(() => {
-    return SCRIPTORIA_PLACES.map((place) => {
-      const placeCards = cards.filter((c) => getScriptoriumForCard(c).id === place.id);
-      const owned = placeCards.filter((c) => Boolean(state.collection[c.id]));
-      return {
-        place,
-        cards: placeCards,
-        owned,
-      };
-    });
+    return getScriptoriaWithCards(cards, state.collection);
   }, [cards, state.collection]);
 
   const [selectedHomePlace, setSelectedHomePlace] = useState<ScriptoriumPlace>(() => {
@@ -2238,17 +2326,18 @@ function HomeScreen({
         <div className="showcase-grid">
           {showcaseCards.map(card => {
             const count = state.collection[card.id] || 0;
+            const title = count ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
             return (
               <button
                 key={card.id}
                 className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`}
                 onClick={() => count ? onDetail(card) : onPacks()}
-                aria-label={count ? `Otevřít detail ${card.title}` : "Neobjevená karta, otevřete balíček"}
+                aria-label={count ? `Otevřít detail ${title}` : (lang === "en" ? "Undiscovered card, open pack" : "Neobjevená karta, otevřete balíček")}
               >
-                <span className="rarity-label">{count ? card.rarity : "K objevení"}</span>
+                <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "To Discover" : "K objevení")}</span>
                 <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
-                <strong>{count ? card.title : "Tajemný kodex"}</strong>
-                <small>{count ? `${card.place} · ${card.year}` : "Získejte v balíčcích"}</small>
+                <strong>{title}</strong>
+                <small>{count ? `${card.place} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
                 {count > 1 && <b className="duplicate">×{count}</b>}
               </button>
             );
@@ -2311,13 +2400,17 @@ function HomeScreen({
         <section className="home-panel-card home-map-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
             <div>
-              <h3 style={{ margin: "0 0 2px" }}>Historická mapa skriptorií a archivů</h3>
+              <h3 style={{ margin: "0 0 2px" }}>
+                {lang === "en" ? "Historical Map of Scriptoria & Archives" : "Historická mapa skriptorií a archivů"}
+              </h3>
               <p style={{ margin: 0, fontSize: "11px", color: "#735028" }}>
-                Kde jsou dochované středověké kodexy a kolofony dnes uloženy.
+                {lang === "en"
+                  ? "Where surviving medieval codices and colophons are housed today."
+                  : "Kde jsou dochované středověké kodexy a kolofony dnes uloženy."}
               </p>
             </div>
             <button className="icon-label" onClick={onMap} style={{ padding: "4px 8px", fontSize: "11px" }}>
-              Celá mapa ({uniqueOwned}/{totalCards}) →
+              {lang === "en" ? `Full Map (${uniqueOwned}/${totalCards}) →` : `Celá mapa (${uniqueOwned}/${totalCards}) →`}
             </button>
           </div>
 
@@ -2333,10 +2426,10 @@ function HomeScreen({
 
           <div className="home-map-bottom">
             <div className="home-map-storage-pill">
-              🏛️ <strong>Uložení kodexů:</strong> Národní knihovna ČR (Praha), Zemský archiv v Opavě (Olomouc), Klášter Vyšší Brod, MZK Brno, Rajhrad, Krakov, Zittau, Bologna, Florencie.
+              🏛️ <strong>{lang === "en" ? "Custody of Codices:" : "Uložení kodexů:"}</strong> {lang === "en" ? "National Library of the CR (Prague), Opava Land Archive (Olomouc), Vyšší Brod Monastery, Moravian Library Brno, Rajhrad, Krakow, Zittau, Bologna, Florence." : "Národní knihovna ČR (Praha), Zemský archiv v Opavě (Olomouc), Klášter Vyšší Brod, MZK Brno, Rajhrad, Krakov, Zittau, Bologna, Florencie."}
             </div>
             <button className="illuminated-button" onClick={onMap} style={{ width: "100%", justifyContent: "center" }}>
-              Otevřít velkou mapu s detaily kodexů ({uniqueOwned}/{totalCards}) <span>→</span>
+              {lang === "en" ? `Open full map with manuscript details (${uniqueOwned}/${totalCards})` : `Otevřít velkou mapu s detaily kodexů (${uniqueOwned}/${totalCards})`} <span>→</span>
             </button>
           </div>
         </section>
@@ -2713,7 +2806,7 @@ function PacksScreen({
   );
 }
 
-function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state: GameState; cards: Colophon[]; filter: Rarity | "All"; setFilter: (f: Rarity | "All") => void; onDetail: (c: Colophon) => void }) {
+function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "cs" }: { state: GameState; cards: Colophon[]; filter: Rarity | "All"; setFilter: (f: Rarity | "All") => void; onDetail: (c: Colophon) => void; lang?: Language }) {
   const [search, setSearch] = useState("");
   const [onlyOwned, setOnlyOwned] = useState(false);
   const rarities: (Rarity | "All")[] = ["All", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Unique"];
@@ -2724,7 +2817,8 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
     if (filter !== "All" && c.rarity !== filter) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
-      const match = c.title.toLowerCase().includes(q) ||
+      const match = getCardTitle(c, lang).toLowerCase().includes(q) ||
+                    c.title.toLowerCase().includes(q) ||
                     c.scribe.toLowerCase().includes(q) ||
                     c.place.toLowerCase().includes(q) ||
                     c.quote.toLowerCase().includes(q) ||
@@ -2735,11 +2829,13 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
   });
 
   return <div className="screen collection-screen">
-    <PageTitle kicker="Iluminovaný archiv">Sbírka kolofonů</PageTitle>
+    <PageTitle kicker={lang === "en" ? "Illuminated Archive" : "Iluminovaný archiv"}>
+      {lang === "en" ? "Colophon Collection" : "Sbírka kolofonů"}
+    </PageTitle>
     <div className="collection-summary">
-      <div><strong>{Object.keys(state.collection).length}</strong><span>objeveno</span></div>
-      <div><strong>{Object.values(state.collection).reduce((a, b) => a + b, 0)}</strong><span>karet celkem</span></div>
-      <div><strong>{Object.values(state.collection).filter(n => n > 1).length}</strong><span>duplikátů</span></div>
+      <div><strong>{Object.keys(state.collection).length}</strong><span>{lang === "en" ? "discovered" : "objeveno"}</span></div>
+      <div><strong>{Object.values(state.collection).reduce((a, b) => a + b, 0)}</strong><span>{lang === "en" ? "total cards" : "karet celkem"}</span></div>
+      <div><strong>{Object.values(state.collection).filter(n => n > 1).length}</strong><span>{lang === "en" ? "duplicates" : "duplikátů"}</span></div>
     </div>
 
     <div className="collection-controls">
@@ -2747,12 +2843,12 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
         <input
           type="text"
           className="collection-search-input"
-          placeholder="Hledat písaře, město, text kolofonu nebo rok..."
+          placeholder={lang === "en" ? "Search scribe, place, colophon text or year..." : "Hledat písaře, město, text kolofonu nebo rok..."}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         {search && (
-          <button className="collection-search-clear" onClick={() => setSearch("")} title="Vymazat hledání">
+          <button className="collection-search-clear" onClick={() => setSearch("")} title={lang === "en" ? "Clear search" : "Vymazat hledání"}>
             ×
           </button>
         )}
@@ -2760,33 +2856,36 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail }: { state
       <button
         className={`owned-toggle-btn ${onlyOwned ? "active" : ""}`}
         onClick={() => setOnlyOwned(!onlyOwned)}
-        title="Filtrovat pouze již objevené kodexy"
+        title={lang === "en" ? "Filter only owned codices" : "Filtrovat pouze již objevené kodexy"}
       >
-        <span>{onlyOwned ? "✓" : "○"}</span> Pouze vlastněné
+        <span>{onlyOwned ? "✓" : "○"}</span> {lang === "en" ? "Owned only" : "Pouze vlastněné"}
       </button>
     </div>
 
     <div className="filter-row" aria-label="Filtrovat karty dle rarity">
       {rarities.map(r => (
         <button key={r} className={filter === r ? "active" : ""} onClick={() => setFilter(r)}>
-          {r === "All" ? "Všechny" : r}
+          {r === "All" ? (lang === "en" ? "All" : "Všechny") : r}
         </button>
       ))}
     </div>
 
     {displayedCards.length === 0 ? (
       <div style={{ textAlign: "center", padding: "40px 10px", color: "var(--brown)" }}>
-        <p style={{ fontStyle: "italic", fontSize: "14px" }}>Žádný kolofon neodpovídá zadanému hledání nebo filtru.</p>
+        <p style={{ fontStyle: "italic", fontSize: "14px" }}>
+          {lang === "en" ? "No colophon matches your search or filter." : "Žádný kolofon neodpovídá zadanému hledání nebo filtru."}
+        </p>
       </div>
     ) : (
       <div className="card-grid">
         {displayedCards.map(card => {
           const count = state.collection[card.id] || 0;
-          return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Otevřít ${card.title}` : "Neobjevená karta"}>
-            <span className="rarity-label">{count ? card.rarity : "Neobjeveno"}</span>
+          const title = count ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
+          return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Otevřít ${title}` : (lang === "en" ? "Undiscovered card" : "Neobjevená karta")}>
+            <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
             <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
-            <strong>{count ? card.title : "Tajemný kodex"}</strong>
-            <small>{count ? `${card.place} · ${card.year}` : "Získejte v balíčcích"}</small>
+            <strong>{title}</strong>
+            <small>{count ? `${card.place} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
             {count > 1 && <b className="duplicate">×{count}</b>}
           </button>;
         })}
@@ -3047,6 +3146,8 @@ function ProfileScreen({
   onSetAvatar,
   onDeleteAccount,
   onOpenTutorial,
+  lang = "cs",
+  onSetLang,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -3071,6 +3172,8 @@ function ProfileScreen({
   onSetAvatar: (id: string) => void;
   onDeleteAccount?: () => void;
   onOpenTutorial?: () => void;
+  lang?: Language;
+  onSetLang?: (l: Language) => void;
 }) {
   const [colleagueQuery, setColleagueQuery] = useState("");
   const filteredColleagues = useMemo(() => {
@@ -3085,11 +3188,71 @@ function ProfileScreen({
 
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
-  const title = level >= 10 ? "Mistr iluminátor" : level >= 6 ? "Písařský tovaryš" : "Učedník ve skriptoriu";
-  const scribeName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || (currentUser ? currentUser.email?.split("@")[0] : "Mistr písař");
+  const title = level >= 10 ? (lang === "en" ? "Master Illuminator" : "Mistr iluminátor") : level >= 6 ? (lang === "en" ? "Journeyman Scribe" : "Písařský tovaryš") : (lang === "en" ? "Scriptorium Apprentice" : "Učedník ve skriptoriu");
+  const scribeName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || (currentUser ? currentUser.email?.split("@")[0] : (lang === "en" ? "Master Scribe" : "Mistr písař"));
 
   return <div className="screen profile-screen">
-    <PageTitle kicker="Vaše místo na okrajích kodexu">Profil písaře</PageTitle>
+    <PageTitle kicker={lang === "en" ? "Your place in the margins of the codex" : "Vaše místo na okrajích kodexu"}>
+      {lang === "en" ? "Scribe Profile" : "Profil písaře"}
+    </PageTitle>
+
+    {/* Volba jazyka hry / Language Switcher */}
+    <div style={{ marginTop: 12, marginBottom: 16, padding: "12px 14px", background: "linear-gradient(135deg, #fffdf8 0%, #f7eed8 100%)", borderRadius: 10, border: "1px solid #d8c29d", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <strong style={{ color: "#4a2d04", fontSize: "13px" }}>
+          🌐 {lang === "en" ? "Game & Colophon Language" : "Jazyk hry a kolofonů"}
+        </strong>
+        <small style={{ color: "#785324", fontSize: "11px", fontStyle: "italic" }}>
+          {lang === "en" ? "Bilingual database" : "Dvojjazyčná databáze"}
+        </small>
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => onSetLang?.("cs")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: lang === "cs" ? "2px solid #8b2500" : "1px solid #c8b99d",
+            background: lang === "cs" ? "#fff" : "rgba(255,255,255,0.6)",
+            color: lang === "cs" ? "#8b2500" : "#554",
+            fontWeight: lang === "cs" ? 700 : 500,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            fontSize: "12px",
+            boxShadow: lang === "cs" ? "0 2px 5px rgba(139,37,0,0.12)" : "none",
+          }}
+        >
+          <span style={{ fontSize: 16 }}>🇨🇿</span> Čeština
+        </button>
+        <button
+          type="button"
+          onClick={() => onSetLang?.("en")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: lang === "en" ? "2px solid #8b2500" : "1px solid #c8b99d",
+            background: lang === "en" ? "#fff" : "rgba(255,255,255,0.6)",
+            color: lang === "en" ? "#8b2500" : "#554",
+            fontWeight: lang === "en" ? 700 : 500,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            fontSize: "12px",
+            boxShadow: lang === "en" ? "0 2px 5px rgba(139,37,0,0.12)" : "none",
+          }}
+        >
+          <span style={{ fontSize: 16 }}>🇬🇧</span> English
+        </button>
+      </div>
+    </div>
 
     {/* Karta účtu a synchronizace */}
     {currentUser ? (
@@ -4271,6 +4434,8 @@ function AuthModal({
   onLogin,
   onRegister,
   onGoogle,
+  lang = "cs",
+  onSetLang,
 }: {
   mode: "login" | "register";
   setMode: (m: "login" | "register") => void;
@@ -4286,15 +4451,73 @@ function AuthModal({
   onLogin: (e: React.FormEvent) => void;
   onRegister: (e: React.FormEvent) => void;
   onGoogle: () => void;
+  lang?: Language;
+  onSetLang?: (l: Language) => void;
 }) {
   return (
     <div className="auth-overlay">
       <section className="auth-box" role="dialog" aria-modal="true">
         <div style={{ fontSize: 32, marginBottom: 6 }}>🪶</div>
-        <h2>Vstup do Quilldrop</h2>
+        <h2>{lang === "en" ? "Enter Quilldrop" : "Vstup do Quilldrop"}</h2>
         <p>
-          Přihlaste se nebo si vytvořte bezplatný písařský účet pro přístup k denním kodexům, plnění výzev a ukládání sbírky do cloudu.
+          {lang === "en"
+            ? "Sign in or create a free scribe account to access daily codices, complete challenges, and save your collection to the cloud."
+            : "Přihlaste se nebo si vytvořte bezplatný písařský účet pro přístup k denním kodexům, plnění výzev a ukládání sbírky do cloudu."}
         </p>
+
+        {/* Výběr jazyka / Language picker */}
+        <div style={{ margin: "12px 0 16px", padding: "10px 12px", background: "rgba(216, 194, 157, 0.25)", borderRadius: 8, border: "1px solid #d8c29d", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#54380e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+            {lang === "en" ? "Select Language · Zvolte jazyk" : "Zvolte jazyk · Select Language"}
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button
+              type="button"
+              onClick={() => onSetLang?.("cs")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: lang === "cs" ? "2px solid #8b2500" : "1px solid #c8b99d",
+                background: lang === "cs" ? "#fffdf5" : "transparent",
+                fontWeight: lang === "cs" ? 700 : 500,
+                color: lang === "cs" ? "#8b2500" : "#665",
+                cursor: "pointer",
+                boxShadow: lang === "cs" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+                fontSize: "12px",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>🇨🇿</span> Čeština
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetLang?.("en")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 6,
+                border: lang === "en" ? "2px solid #8b2500" : "1px solid #c8b99d",
+                background: lang === "en" ? "#fffdf5" : "transparent",
+                fontWeight: lang === "en" ? 700 : 500,
+                color: lang === "en" ? "#8b2500" : "#665",
+                cursor: "pointer",
+                boxShadow: lang === "en" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+                fontSize: "12px",
+              }}
+            >
+              <span style={{ fontSize: 16 }}>🇬🇧</span> English
+            </button>
+          </div>
+          <div style={{ fontSize: "10.5px", color: "#7a6244", marginTop: 6, fontStyle: "italic" }}>
+            {lang === "en"
+              ? "You can change your language anytime later in profile settings."
+              : "Jazyk lze kdykoliv později změnit v nastavení profilu."}
+          </div>
+        </div>
 
         <div className="auth-tabs">
           <button
@@ -4302,14 +4525,14 @@ function AuthModal({
             className={`auth-tab-btn ${mode === "login" ? "active" : ""}`}
             onClick={() => setMode("login")}
           >
-            Přihlášení
+            {lang === "en" ? "Sign In" : "Přihlášení"}
           </button>
           <button
             type="button"
             className={`auth-tab-btn ${mode === "register" ? "active" : ""}`}
             onClick={() => setMode("register")}
           >
-            Nová registrace
+            {lang === "en" ? "New Registration" : "Nová registrace"}
           </button>
         </div>
 
@@ -4330,11 +4553,11 @@ function AuthModal({
         <form className="auth-form" onSubmit={mode === "login" ? onLogin : onRegister}>
           {mode === "register" && (
             <div>
-              <label>Přezdívka / Jméno písaře</label>
+              <label>{lang === "en" ? "Scribe Display Name" : "Přezdívka / Jméno písaře"}</label>
               <input
                 type="text"
                 className="auth-input"
-                placeholder="např. Bratr Václav"
+                placeholder={lang === "en" ? "e.g. Brother Venceslaus" : "např. Bratr Václav"}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 required
@@ -4343,7 +4566,7 @@ function AuthModal({
           )}
 
           <div>
-            <label>E-mailová adresa</label>
+            <label>{lang === "en" ? "Email Address" : "E-mailová adresa"}</label>
             <input
               type="email"
               className="auth-input"
@@ -4355,11 +4578,11 @@ function AuthModal({
           </div>
 
           <div>
-            <label>Heslo</label>
+            <label>{lang === "en" ? "Password" : "Heslo"}</label>
             <input
               type="password"
               className="auth-input"
-              placeholder="Alespoň 6 znaků"
+              placeholder={lang === "en" ? "At least 6 characters" : "Alespoň 6 znaků"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={6}
@@ -4368,12 +4591,16 @@ function AuthModal({
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? "Ověřuji pečeť..." : mode === "login" ? "Vstoupit do Quilldrop" : "Vytvořit písařský účet"}
+            {loading
+              ? (lang === "en" ? "Verifying seal..." : "Ověřuji pečeť...")
+              : mode === "login"
+              ? (lang === "en" ? "Enter Quilldrop" : "Vstoupit do Quilldrop")
+              : (lang === "en" ? "Create Scribe Account" : "Vytvořit písařský účet")}
           </button>
         </form>
 
         <div className="auth-divider">
-          <span>nebo</span>
+          <span>{lang === "en" ? "or" : "nebo"}</span>
         </div>
 
         <button type="button" className="google-oauth-btn" onClick={onGoogle} disabled={loading}>
@@ -4395,7 +4622,7 @@ function AuthModal({
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
             />
           </svg>
-          Pokračovat přes Google
+          {lang === "en" ? "Continue with Google" : "Pokračovat přes Google"}
         </button>
       </section>
     </div>
@@ -4406,10 +4633,12 @@ function OnboardingTutorialModal({
   isOpen,
   onClose,
   onFinish,
+  lang = "cs",
 }: {
   isOpen: boolean;
   onClose: () => void;
   onFinish: () => void;
+  lang?: Language;
 }) {
   const [step, setStep] = useState(0);
 
@@ -4417,49 +4646,65 @@ function OnboardingTutorialModal({
 
   const steps = [
     {
-      badge: "KROK 1 ZE 5 · HISTORICKÝ KONTEXT",
+      badge: lang === "en" ? "STEP 1 OF 5 · HISTORICAL CONTEXT" : "KROK 1 ZE 5 · HISTORICKÝ KONTEXT",
       icon: "🪶",
-      title: "Vítejte ve Skriptoriu Karlovy univerzity",
-      lead: "Vstupujete do světa středověkých rukopisů, písařských dílen a zapomenutých podpisů 14. a 15. století.",
+      title: lang === "en" ? "Welcome to the Charles University Scriptorium" : "Vítejte ve Skriptoriu Karlovy univerzity",
+      lead: lang === "en" ? "Step into the world of medieval manuscripts, scribal workshops, and forgotten colophons of the 14th and 15th centuries." : "Vstupujete do světa středověkých rukopisů, písařských dílen a zapomenutých podpisů 14. a 15. století.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
-            V písařských dílnách pražské univerzity a českých klášterů vznikaly kodexy, které dodnes udivují svou krásou. Každý řádek byl psán husím brkem při svitu svíček za mrazivých zimních rán.
+            {lang === "en"
+              ? "In the scriptoria of Prague University and Central European monasteries, codices were created that continue to astonish with their beauty. Every line was inscribed with a quill pen by candlelight on frosty winter mornings."
+              : "V písařských dílnách pražské univerzity a středoevropských klášterů vznikaly kodexy, které dodnes udivují svou krásou. Každý řádek byl psán husím brkem při svitu svíček za mrazivých zimních rán."}
           </p>
           <div style={{ padding: "10px 14px", background: "rgba(184, 134, 11, 0.1)", borderRadius: 8, borderLeft: "4px solid #b8860b" }}>
-            Quilldrop propojuje herní sběratelský zážitek s reálným výzkumem rukopisů Filozofické fakulty UK vedeným <strong>prof. PhDr. Lucií Doležalovou, Ph.D.</strong>
+            {lang === "en" ? (
+              <>Quilldrop connects a collectible card game experience with scientific research into medieval manuscripts led by the <strong>team of Prof. Lucie Doležalová</strong>.</>
+            ) : (
+              <>Quilldrop propojuje herní sběratelský zážitek s vědeckým výzkumem středověkých rukopisů, který vede <strong>tým prof. Lucie Doležalové</strong>.</>
+            )}
           </div>
         </div>
       ),
     },
     {
-      badge: "KROK 2 ZE 5 · SBĚRATELSKÉ KARTY",
+      badge: lang === "en" ? "STEP 2 OF 5 · COLLECTIBLE CARDS" : "KROK 2 ZE 5 · SBĚRATELSKÉ KARTY",
       icon: "📜",
-      title: "Co je to kolofon a jak karty fungují?",
-      lead: "Kolofon je osobní vzkaz, který písař vepsal na samý konec dokončeného rukopisu.",
+      title: lang === "en" ? "What is a colophon and how do cards work?" : "Co je to kolofon a jak karty fungují?",
+      lead: lang === "en" ? "A colophon is a personal note that a medieval scribe inscribed at the very end of a completed codex." : "Kolofon je osobní vzkaz, který písař vepsal na samý konec dokončeného rukopisu.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
-            Středověcí písaři v kolofonech děkovali Bohu, stěžovali si na bolavá záda a ztuhlé prsty, prosili o pohár vína, nebo varovali zloděje knih před pekelným ohněm.
+            {lang === "en"
+              ? "Medieval scribes in colophons thanked God, complained of sore backs and stiff fingers, asked for a cup of wine, or warned book thieves against hellfire."
+              : "Středověcí písaři v kolofonech děkovali Bohu, stěžovali si na bolavá záda a ztuhlé prsty, prosili o pohár vína, nebo varovali zloděje knih před pekelným ohněm."}
           </p>
           <div style={{ padding: "10px 14px", background: "#fcf8ee", borderRadius: 8, border: "1px solid #d8c29d", fontStyle: "italic" }}>
-            „Explicit expliceat, ludere scriptor eat.“ (Dopsáno jest, nechť si jde písař hrát!)
+            „Explicit expliceat, ludere scriptor eat.“ ({lang === "en" ? "The book is finished, let the scribe go play!" : "Dopsáno jest, nechť si jde písař hrát!"})
           </div>
           <p>
-            Každá karta v Quilldropu představuje <strong>skutečný historický kodex</strong> z fakultní databáze Heurist s přesným 4:3 výřezem originálního písma a českým překladem.
+            {lang === "en" ? (
+              <>Each card in Quilldrop represents a <strong>real historical codex</strong> from a long-standing scientific manuscript database, with an authentic 4:3 crop of the original script and translation.</>
+            ) : (
+              <>Každá karta v Quilldropu představuje <strong>skutečný historický kodex</strong> z dlouholeté vědecké databáze rukopisů s přesným 4:3 výřezem originálního písma a českým i anglickým překladem.</>
+            )}
           </p>
         </div>
       ),
     },
     {
-      badge: "KROK 3 ZE 5 · DENNÍ PŘÍDĚL KARET",
+      badge: lang === "en" ? "STEP 3 OF 5 · DAILY PACKS" : "KROK 3 ZE 5 · DENNÍ PŘÍDĚL KARET",
       icon: "📦",
-      title: "3 denní balíčky a cesta písaře",
-      lead: "Vyzvedněte si každý kalendářní den 15 nových kolofonů zdarma.",
+      title: lang === "en" ? "3 Daily Packs & Scribe's Journey" : "3 denní balíčky a cesta písaře",
+      lead: lang === "en" ? "Claim 15 new authentic colophons every single day for free." : "Vyzvedněte si každý kalendářní den 15 nových kolofonů zdarma.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
-            Každý den na vás ve skriptoriu čekají <strong>3 bezplatné zapečetěné balíčky</strong>. V každém balíčku naleznete 5 karet v šesti stupních vzácnosti:
+            {lang === "en" ? (
+              <>Every day, <strong>3 free sealed packs</strong> await you in the scriptorium. Each pack contains 5 cards in six rarity tiers:</>
+            ) : (
+              <>Každý den na vás ve skriptoriu čekají <strong>3 bezplatné zapečetěné balíčky</strong>. V každém balíčku naleznete 5 karet v šesti stupních vzácnosti:</>
+            )}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, textAlign: "center", fontSize: "11px", fontWeight: 700 }}>
             <span style={{ padding: "4px", background: "#e8e5df", borderRadius: 4, color: "#555" }}>Common</span>
@@ -4470,50 +4715,87 @@ function OnboardingTutorialModal({
             <span style={{ padding: "4px", background: "linear-gradient(135deg, #ffe082, #ffb300)", borderRadius: 4, color: "#4e342e" }}>Unique ★</span>
           </div>
           <p>
-            Za každou denní návštěvu navíc odhalíte dílek v 16denní iluminované mozaice <strong>Cesta písaře</strong>!
+            {lang === "en" ? (
+              <>With each daily visit, you also reveal a tile in the 16-day illuminated mosaic <strong>Scribe's Journey</strong>!</>
+            ) : (
+              <>Za každou denní návštěvu navíc odhalíte dílek v 16denní iluminované mozaice <strong>Cesta písaře</strong>!</>
+            )}
           </p>
         </div>
       ),
     },
     {
-      badge: "KROK 4 ZE 5 · PALEOGRAFIE A MINIHRY",
+      badge: lang === "en" ? "STEP 4 OF 5 · PALAEOGRAPHY & CHALLENGES" : "KROK 4 ZE 5 · PALEOGRAFIE A MINIHRY",
       icon: "⚔️",
-      title: "5 denních výzev pro bystrý zrak",
-      lead: "Trénujte čtení gotických liter a dešifrování středověkých zkratek.",
+      title: lang === "en" ? "5 Daily Scribal Challenges" : "5 denních výzev pro bystrý zrak",
+      lead: lang === "en" ? "Train your eye to decipher Gothic letters, script styles, and medieval abbreviations." : "Trénujte čtení gotických liter, duktů písma a dešifrování středověkých zkratek.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
-            V záložce <strong>Výzvy</strong> máte denně k dispozici <strong>5 písařských aktivit</strong>:
+            {lang === "en" ? (
+              <>In the <strong>Challenges</strong> tab, you have <strong>5 daily activities</strong> across 4 disciplines:</>
+            ) : (
+              <>V záložce <strong>Výzvy</strong> máte denně k dispozici <strong>5 písařských aktivit</strong> ve 4 disciplínách:</>
+            )}
           </p>
           <ul style={{ margin: "0 0 0 18px", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-            <li><strong>Nálada písaře:</strong> Odhadněte duševní rozpoložení autora kolofonu.</li>
-            <li><strong>Rozlušti šifru:</strong> Dešifrujte latinské kryptogramy a anagramy.</li>
-            <li><strong>Paleografický přepis:</strong> Přečtěte originální gotické písmo přímo z rukopisu.</li>
+            <li>
+              <strong>{lang === "en" ? "Scribe's Mood:" : "Nálada písaře:"}</strong> {lang === "en" ? "Determine the emotional state and tone of the colophon's author." : "Odhadněte duševní rozpoložení a emoci autora kolofonu."}
+            </li>
+            <li>
+              <strong>{lang === "en" ? "Decipher Cipher:" : "Rozlušti šifru:"}</strong> {lang === "en" ? "Decode Latin cryptograms, anagrams, and scribal riddles." : "Dešifrujte latinské kryptogramy a anagramy."}
+            </li>
+            <li>
+              <strong>{lang === "en" ? "Script & Century:" : "Písmo a století:"}</strong> {lang === "en" ? "Identify the script style (bastarda, rotunda, textura) and dating of the codex." : "Určete gotický či humanistický typ písma a století vzniku kodexu."}
+            </li>
+            <li>
+              <strong>{lang === "en" ? "Palaeographical Master:" : "Paleografický přepis:"}</strong> {lang === "en" ? "Transcribe authentic medieval lines directly from the manuscript under the magnifying lens." : "Přečtěte originální gotické písmo přímo z rukopisu s paleografickou lupou."}
+            </li>
           </ul>
           <p>
-            Za úspěšné odpovědi získáváte <strong>XP</strong> pro postup na vyšší písařské hodnosti a bonusové <strong>Mistrovské balíčky</strong>.
+            {lang === "en" ? (
+              <>Successful answers award <strong>XP</strong> to advance your scribe rank and earn bonus <strong>Masterwork Packs</strong>.</>
+            ) : (
+              <>Za úspěšné odpovědi získáváte <strong>XP</strong> pro postup na vyšší písařské hodnosti a bonusové <strong>Mistrovské balíčky</strong>.</>
+            )}
           </p>
         </div>
       ),
     },
     {
-      badge: "KROK 5 ZE 5 · SPOLUŽÁCI A OBCHODOVÁNÍ",
+      badge: lang === "en" ? "STEP 5 OF 5 · COLLEAGUES & TRADING" : "KROK 5 ZE 5 · SPOLUŽÁCI A OBCHODOVÁNÍ",
       icon: "⚖️",
-      title: "Písařská směna a smlouvy se spolužáky",
-      lead: "Vyměňujte duplikáty, posílejte protinabídky a darujte karty přátelům.",
+      title: lang === "en" ? "Scribe's Trade & Exchange Agreements" : "Písařská směna a smlouvy se spolužáky",
+      lead: lang === "en" ? "Exchange duplicates, propose counter-offers, and gift cards to friends." : "Vyměňujte duplikáty, posílejte protinabídky a darujte karty přátelům.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
-            V záložce <strong>Profil</strong> naleznete seznam svých kolegů ze semináře i vyučujících (včetně mistra skriptoria <em>benysek.vojta</em>).
+            {lang === "en" ? (
+              <>In the <strong>Profile</strong> tab, you will find a list of fellow scribes and researchers with whom you can establish contact.</>
+            ) : (
+              <>V záložce <strong>Profil</strong> naleznete seznam dalších písařů a badatelů, se kterými můžete navázat kontakt.</>
+            )}
           </p>
           <p>
-            Můžete zahájit <strong>Písařskou směnu</strong> – navrhnout své přebytečné duplikáty a vybrat kolofony, které vám chybí. Příjemce může smlouvu zpečetit, nebo poslat protinabídku.
+            {lang === "en" ? (
+              <>You can initiate a <strong>Scribe's Trade</strong> – offer surplus duplicates and pick codices you are missing. The recipient can seal the contract or propose a counter-offer.</>
+            ) : (
+              <>Můžete zahájit <strong>Písařskou směnu</strong> – navrhnout své přebytečné duplikáty a vybrat kolofony, které vám chybí. Příjemce může smlouvu zpečetit, nebo poslat protinabídku.</>
+            )}
           </p>
           <div style={{ padding: "12px 14px", background: "linear-gradient(135deg, #fff3cd 0%, #fae69e 100%)", borderRadius: 8, border: "1px solid #d4af37", marginTop: 4, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 24 }}>🎁</span>
             <div>
-              <strong style={{ color: "#54380e", display: "block" }}>Uvítací dar nového tovaryše:</strong>
-              <span style={{ color: "#6b4916", fontSize: "12px" }}>Získáváte <strong>+50 XP</strong> do začátku! Vaše 3 zapečetěné balíčky již čekají.</span>
+              <strong style={{ color: "#54380e", display: "block" }}>
+                {lang === "en" ? "Initiate Welcome Gift:" : "Uvítací dar nového tovaryše:"}
+              </strong>
+              <span style={{ color: "#6b4916", fontSize: "12px" }}>
+                {lang === "en" ? (
+                  <>You receive <strong>+50 XP</strong> to start! Your 3 sealed packs are already waiting in the scriptorium.</>
+                ) : (
+                  <>Získáváte <strong>+50 XP</strong> do začátku! Vaše 3 zapečetěné balíčky již čekají.</>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -4546,7 +4828,7 @@ function OnboardingTutorialModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Úvodní zasvěcení do skriptoria"
+        aria-label={lang === "en" ? "Introduction to scriptorium" : "Úvodní zasvěcení do skriptoria"}
         style={{
           maxWidth: 540,
           width: "92vw",
@@ -4557,7 +4839,7 @@ function OnboardingTutorialModal({
           borderRadius: 14,
         }}
       >
-        <button className="close" onClick={onClose} title="Zavřít průvodce">×</button>
+        <button className="close" onClick={onClose} title={lang === "en" ? "Close guide" : "Zavřít průvodce"}>×</button>
 
         {/* Hlavička s ikonou a odznakem kroku */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -4614,7 +4896,7 @@ function OnboardingTutorialModal({
                   transition: "all 0.2s ease",
                   padding: 0,
                 }}
-                aria-label={`Přejít na krok ${idx + 1}`}
+                aria-label={lang === "en" ? `Go to step ${idx + 1}` : `Přejít na krok ${idx + 1}`}
               />
             ))}
           </div>
@@ -4635,7 +4917,7 @@ function OnboardingTutorialModal({
                   cursor: "pointer",
                 }}
               >
-                Předchozí
+                {lang === "en" ? "Previous" : "Předchozí"}
               </button>
             )}
 
@@ -4660,9 +4942,9 @@ function OnboardingTutorialModal({
               }}
             >
               {step === steps.length - 1 ? (
-                <>Zahájit písařskou pouť (+50 XP) ➔</>
+                <>{lang === "en" ? "Begin Scribe's Journey (+50 XP) ➔" : "Zahájit písařskou pouť (+50 XP) ➔"}</>
               ) : (
-                <>Další krok ➔</>
+                <>{lang === "en" ? "Next step ➔" : "Další krok ➔"}</>
               )}
             </button>
           </div>
@@ -4672,35 +4954,39 @@ function OnboardingTutorialModal({
   );
 }
 
-function CardDetail({ card, count, onClose }: { card: Colophon; count: number; onClose: () => void }) {
+function CardDetail({ card, count, onClose, lang = "cs" }: { card: Colophon; count: number; onClose: () => void; lang?: Language }) {
+  const title = getCardTitle(card, lang);
+  const translation = getCardTranslation(card, lang);
+  const rarityReason = getCardRarityReason(card, lang);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <section className={`modal card-detail rarity-${card.rarity.toLowerCase()}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={card.title}>
+      <section className={`modal card-detail rarity-${card.rarity.toLowerCase()}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <button className="close" onClick={onClose}>×</button>
         <div className="card-detail-left">
           <span className="rarity-label">{card.rarity}</span>
           <div className="large-illustration">
-            <ColophonImage card={card} alt={`Snímek rukopisu ${card.title}`} />
+            <ColophonImage card={card} alt={`Snímek rukopisu ${title}`} />
           </div>
           <a className="source-link" href={card.sourceUrl} target="_blank" rel="noreferrer">
-            Otevřít digitální sken rukopisu ↗
+            {lang === "en" ? "Open digital manuscript scan ↗" : "Otevřít digitální sken rukopisu ↗"}
           </a>
         </div>
         <div className="card-detail-right">
-          <h2>{card.title}</h2>
+          <h2>{title}</h2>
           <p className="latin">“{card.quote}”</p>
-          {card.translation && card.translation !== "Translation pending" && (
+          {translation && translation !== "Translation pending" && (
             <p style={{ fontStyle: "normal", background: "#ecd4a7", padding: "8px 10px", borderLeft: "3px solid var(--brown)", borderRadius: "0 4px 4px 0", fontSize: "12px", margin: "8px 0" }}>
-              {card.translation}
+              {translation}
             </p>
           )}
           <dl>
-            <div><dt>Písař</dt><dd>{card.scribe}</dd></div>
-            <div><dt>Místo & rok</dt><dd>{card.place}, {card.year}</dd></div>
-            <div><dt>Rukopis / signatura</dt><dd>{card.manuscript}</dd></div>
-            <div><dt>Folium</dt><dd>{card.locus}</dd></div>
-            {card.rarityReason && <div><dt>Důvod rarity</dt><dd>{card.rarityReason}</dd></div>}
-            <div><dt>Vlastněných kopií</dt><dd><b>×{count}</b></dd></div>
+            <div><dt>{lang === "en" ? "Scribe" : "Písař"}</dt><dd>{card.scribe}</dd></div>
+            <div><dt>{lang === "en" ? "Place & Year" : "Místo & rok"}</dt><dd>{card.place}, {card.year}</dd></div>
+            <div><dt>{lang === "en" ? "Manuscript / Shelfmark" : "Rukopis / signatura"}</dt><dd>{card.manuscript}</dd></div>
+            <div><dt>{lang === "en" ? "Folio" : "Folium"}</dt><dd>{card.locus}</dd></div>
+            {rarityReason && <div><dt>{lang === "en" ? "Rarity Note" : "Důvod rarity"}</dt><dd>{rarityReason}</dd></div>}
+            <div><dt>{lang === "en" ? "Copies Owned" : "Vlastněných kopií"}</dt><dd><b>×{count}</b></dd></div>
           </dl>
         </div>
       </section>
@@ -4708,10 +4994,12 @@ function CardDetail({ card, count, onClose }: { card: Colophon; count: number; o
   );
 }
 
-function PackReveal({ card, position, total, quality, shown, onReveal, onNext }: { card: Colophon; position: number; total: number; quality: PackQuality; shown: boolean; onReveal: () => void; onNext: () => void }) {
+function PackReveal({ card, position, total, quality, shown, onReveal, onNext, lang = "cs" }: { card: Colophon; position: number; total: number; quality: PackQuality; shown: boolean; onReveal: () => void; onNext: () => void; lang?: Language }) {
   const glitterCount = card.rarity === "Unique" ? 64 : card.rarity === "Legendary" ? 48 : card.rarity === "Epic" ? 36 : card.rarity === "Rare" ? 22 : 14;
   const [tension, setTension] = useState(false);
   const isMonumental = card.rarity === "Legendary" || card.rarity === "Unique";
+  const title = getCardTitle(card, lang);
+
   const beginReveal = () => {
     if (tension) return;
     playParchmentFlip(0.28);
@@ -4729,11 +5017,11 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
   return <div className={`modal-backdrop reveal-bg aura-${card.rarity.toLowerCase()} ${shown ? "is-revealed" : "is-sealed"} ${tension ? "is-tension" : ""}`}>
     <div className="particle-field" aria-hidden="true">{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ "--i": i } as React.CSSProperties}>✦</i>)}</div>
     {!shown ? <>
-      <div className="reveal-kicker"><span>Balíček: {quality}</span><b>Karta {position} z {total}</b></div>
-      <button className="card-back" onClick={beginReveal} disabled={tension} aria-label={`Odhalit kartu ${position} z ${total}`}>
-        <div className="card-back-frame"><span>Q</span><small>{tension ? "Pečeť klade odpor…" : "Klepnutím odhalit"}</small></div>
+      <div className="reveal-kicker"><span>{lang === "en" ? "Pack:" : "Balíček:"} {quality}</span><b>{lang === "en" ? `Card ${position} of ${total}` : `Karta ${position} z ${total}`}</b></div>
+      <button className="card-back" onClick={beginReveal} disabled={tension} aria-label={lang === "en" ? `Reveal card ${position} of ${total}` : `Odhalit kartu ${position} z ${total}`}>
+        <div className="card-back-frame"><span>Q</span><small>{tension ? (lang === "en" ? "The wax resists…" : "Pečeť klade odpor…") : (lang === "en" ? "Tap to reveal" : "Klepnutím odhalit")}</small></div>
       </button>
-      <p className="reveal-whisper">{tension ? "Něco prastarého se probouzí pod pergamenem…" : "Inkoust se hýbe pod voskem…"}</p>
+      <p className="reveal-whisper">{tension ? (lang === "en" ? "Something ancient stirs beneath the parchment…" : "Něco prastarého se probouzí pod pergamenem…") : (lang === "en" ? "Ink moves beneath the wax…" : "Inkoust se hýbe pod voskem…")}</p>
     </> : <>
       <div className="reveal-flash" aria-hidden="true" />
       <div className="light-shafts" aria-hidden="true"><i /><i /><i /><i /><i /></div>
@@ -4743,9 +5031,9 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext }:
       <section className={`reveal-card rarity-${card.rarity.toLowerCase()}`}>
         <div className="card-crown">✦ {card.rarity} ✦</div>
         <div className="large-illustration"><ColophonImage card={card} /><b>{card.year}</b></div>
-        <h2>{card.title}</h2><p>“{card.quote}”</p><small>{card.scribe} · {card.place}</small>
+        <h2>{title}</h2><p>“{card.quote}”</p><small>{card.scribe} · {card.place}</small>
       </section>
-      <div className="reveal-actions"><span>{position === total ? "Poslední karta balíčku" : `Ještě zbývá ${total - position} karet`}</span><button onClick={() => { playParchmentFlip(0.28); onNext(); }}>{position === total ? "Uložit do sbírky" : "Táhnout další kartu"} →</button></div>
+      <div className="reveal-actions"><span>{position === total ? (lang === "en" ? "Final card of the pack" : "Poslední karta balíčku") : (lang === "en" ? `${total - position} cards remaining` : `Ještě zbývá ${total - position} karet`)}</span><button onClick={() => { playParchmentFlip(0.28); onNext(); }}>{position === total ? (lang === "en" ? "Save to collection" : "Uložit do sbírky") : (lang === "en" ? "Draw next card" : "Táhnout další kartu")} →</button></div>
     </>}
   </div>;
 }
@@ -5092,22 +5380,16 @@ function MapModal({
   cards,
   onClose,
   onDetail,
+  lang = "cs",
 }: {
   state: GameState;
   cards: Colophon[];
   onClose: () => void;
   onDetail: (card: Colophon) => void;
+  lang?: Language;
 }) {
   const scriptoriaWithCards = useMemo(() => {
-    return SCRIPTORIA_PLACES.map((place) => {
-      const placeCards = cards.filter((c) => getScriptoriumForCard(c).id === place.id);
-      const owned = placeCards.filter((c) => Boolean(state.collection[c.id]));
-      return {
-        place,
-        cards: placeCards,
-        owned,
-      };
-    });
+    return getScriptoriaWithCards(cards, state.collection);
   }, [cards, state.collection]);
 
   const [selectedPlace, setSelectedPlace] = useState<ScriptoriumPlace>(() => {
@@ -5128,7 +5410,7 @@ function MapModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Historická mapa skriptorií"
+        aria-label={lang === "en" ? "Historical map of scriptoria" : "Historická mapa skriptorií"}
       >
         <button className="close" onClick={onClose}>
           ×
@@ -5143,8 +5425,8 @@ function MapModal({
           }}
         >
           <div>
-            <p className="eyebrow">Písařská a univerzitní centra středověké Evropy</p>
-            <h2>Historická mapa skriptorií</h2>
+            <p className="eyebrow">{lang === "en" ? "Scribal and university centers of medieval Europe" : "Písařská a univerzitní centra středověké Evropy"}</p>
+            <h2>{lang === "en" ? "Historical Map of Scriptoria" : "Historická mapa skriptorií"}</h2>
           </div>
           <div
             style={{
@@ -5157,7 +5439,7 @@ function MapModal({
               border: "1px solid #ba8e55",
             }}
           >
-            Objeveno celkem: <b>{totalMapOwned} / {totalMapCards}</b>
+            {lang === "en" ? "Discovered total:" : "Objeveno celkem:"} <b>{totalMapOwned} / {totalMapCards}</b>
           </div>
         </div>
 
@@ -5205,14 +5487,14 @@ function MapModal({
             <p className="map-panel-desc">{currentSelection.place.description}</p>
 
             <div className="map-panel-repo-box">
-              🏛️ <strong>Uložení dochovaných fondů:</strong>
+              🏛️ <strong>{lang === "en" ? "Custody of surviving holdings:" : "Uložení dochovaných fondů:"}</strong>
               <div>{currentSelection.place.modernRepository}</div>
             </div>
 
             <div className="map-panel-stats">
-              <span>Dochované kodexy v archivu</span>
+              <span>{lang === "en" ? "Surviving codices in archive" : "Dochované kodexy v archivu"}</span>
               <span>
-                {currentSelection.owned.length} z {currentSelection.cards.length} objeveno
+                {currentSelection.owned.length} {lang === "en" ? "of" : "z"} {currentSelection.cards.length} {lang === "en" ? "discovered" : "objeveno"}
               </span>
             </div>
             <div className="map-panel-bar">
@@ -5229,11 +5511,12 @@ function MapModal({
 
             <div className="map-cards-scroll">
               {currentSelection.cards.length === 0 ? (
-                <p className="map-empty-state">V této lokalitě zatím nemáte katalogizovány žádné kodexy.</p>
+                <p className="map-empty-state">{lang === "en" ? "No codices are catalogued for this locality yet." : "V této lokalitě zatím nemáte katalogizovány žádné kodexy."}</p>
               ) : (
                 currentSelection.cards.map((card) => {
                   const count = state.collection[card.id] || 0;
                   const isOwned = count > 0;
+                  const title = isOwned ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
                   return (
                     <div key={card.id} className={`map-card-item ${isOwned ? "" : "locked"}`}>
                       <div className="map-card-thumb">
@@ -5255,9 +5538,9 @@ function MapModal({
                         )}
                       </div>
                       <div className="map-card-info">
-                        <strong>{isOwned ? card.title : "Tajemný kodex"}</strong>
+                        <strong>{title}</strong>
                         <small>
-                          {isOwned ? `${card.scribe} (${card.year})` : "Získejte v balíčcích"}
+                          {isOwned ? `${card.scribe} (${card.year})` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}
                         </small>
                         {isOwned && card.manuscript && (
                           <div className="map-card-repo" title={card.manuscript}>
@@ -5269,13 +5552,13 @@ function MapModal({
                         <button
                           className="map-card-action"
                           onClick={() => onDetail(card)}
-                          title="Prohlédnout detail kolofonu"
+                          title={lang === "en" ? "View colophon details" : "Prohlédnout detail kolofonu"}
                         >
                           Detail →
                         </button>
                       ) : (
                         <span style={{ fontSize: "10px", color: "#8a6534", padding: "4px" }}>
-                          Zamčeno
+                          {lang === "en" ? "Locked" : "Zamčeno"}
                         </span>
                       )}
                     </div>

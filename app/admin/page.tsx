@@ -70,8 +70,10 @@ type CardData = {
   colophon_id: string;
   slug: string;
   title: string;
+  title_en?: string;
   rarity: Rarity;
   rarity_reason: string;
+  rarity_reason_en?: string;
   mood: string;
   sigil: string;
   status: "draft" | "review" | "published" | "archived";
@@ -91,6 +93,7 @@ type CardData = {
     heurist_id: number;
     quote: string;
     translation_cs: string | null;
+    translation_en?: string | null;
     scribe: string;
     place: string;
     year: number;
@@ -213,11 +216,14 @@ export default function AdminPage() {
   const [lockRatio, setLockRatio] = useState(true);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Formulář karty
+  // Formulář karty (dvojjazyčný: CZ / EN)
   const [editTitle, setEditTitle] = useState("");
+  const [editTitleEn, setEditTitleEn] = useState("");
   const [editRarity, setEditRarity] = useState<Rarity>("Common");
   const [editRarityReason, setEditRarityReason] = useState("");
+  const [editRarityReasonEn, setEditRarityReasonEn] = useState("");
   const [editTranslation, setEditTranslation] = useState("");
+  const [editTranslationEn, setEditTranslationEn] = useState("");
   const [editStatus, setEditStatus] = useState<"draft" | "review" | "published">("published");
 
   // Minihry: Tvůrce výzev pro tým (4 herní režimy)
@@ -922,9 +928,12 @@ export default function AdminPage() {
   function selectCard(card: CardData) {
     setSelectedCard(card);
     setEditTitle(card.title || "");
+    setEditTitleEn(card.title_en || "");
     setEditRarity(card.rarity || "Common");
     setEditRarityReason(card.rarity_reason || "");
+    setEditRarityReasonEn(card.rarity_reason_en || "");
     setEditTranslation(card.colophons?.translation_cs || "");
+    setEditTranslationEn(card.colophons?.translation_en || "");
     setEditStatus(card.status === "archived" ? "draft" : card.status);
 
     if (card.crop_w && Number(card.crop_w) > 5 && Number(card.crop_w) < 99) {
@@ -1190,8 +1199,10 @@ export default function AdminPage() {
 
     const updatePayload: any = {
       title: editTitle,
+      title_en: editTitleEn || null,
       rarity: editRarity,
       rarity_reason: editRarityReason,
+      rarity_reason_en: editRarityReasonEn || null,
       status: editStatus,
       crop_x: pctX,
       crop_y: pctY,
@@ -1207,9 +1218,11 @@ export default function AdminPage() {
       .eq("id", selectedCard.id);
 
     // Pokud ještě sloupce v Supabase nebyly přidány migrací, zopakujeme bez nich
-    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("updated_by"))) {
+    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("updated_by") || cardErr.message?.includes("title_en") || cardErr.message?.includes("rarity_reason_en"))) {
       delete updatePayload.updated_by;
       delete updatePayload.updated_by_name;
+      delete updatePayload.title_en;
+      delete updatePayload.rarity_reason_en;
       const retry = await supabase
         .from("cards")
         .update(updatePayload)
@@ -1218,10 +1231,18 @@ export default function AdminPage() {
     }
 
     if (selectedCard.colophon_id) {
-      await supabase
+      const colPayload: any = { translation_cs: editTranslation };
+      if (editTranslationEn) colPayload.translation_en = editTranslationEn;
+      const { error: colErr } = await supabase
         .from("colophons")
-        .update({ translation_cs: editTranslation })
+        .update(colPayload)
         .eq("id", selectedCard.colophon_id);
+      if (colErr && (colErr.code === "PGRST204" || colErr.message?.includes("translation_en"))) {
+        await supabase
+          .from("colophons")
+          .update({ translation_cs: editTranslation })
+          .eq("id", selectedCard.colophon_id);
+      }
     }
 
     setSaving(false);
@@ -2295,14 +2316,31 @@ export default function AdminPage() {
                   <PenTool size={13} /> Texty a klasifikace
                 </h3>
 
-                <div>
-                  <label className="text-[11px] text-[#9c8976] block mb-1">Název karty</label>
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇨🇿</span> Název karty (Česky)
+                    </label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="např. Sepsáno na Pražském hradě"
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇬🇧</span> Card Title (English)
+                    </label>
+                    <input
+                      type="text"
+                      value={editTitleEn}
+                      onChange={(e) => setEditTitleEn(e.target.value)}
+                      placeholder="e.g. Written in Prague Castle"
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -2336,30 +2374,58 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-[#9c8976] block mb-1">
-                    Odůvodnění rarity (pro hráče)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editRarityReason}
-                    onChange={(e) => setEditRarityReason(e.target.value)}
-                    placeholder="Např. Výrazná rubrikace, neobvyklá stížnost písaře..."
-                    className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇨🇿</span> Český překlad kolofonu
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editTranslation}
+                      onChange={(e) => setEditTranslation(e.target.value)}
+                      placeholder="Doplňte český překlad..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇬🇧</span> English translation
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editTranslationEn}
+                      onChange={(e) => setEditTranslationEn(e.target.value)}
+                      placeholder="Provide English translation..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-[#9c8976] block mb-1">
-                    Český překlad kolofonu
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={editTranslation}
-                    onChange={(e) => setEditTranslation(e.target.value)}
-                    placeholder="Doplňte překlad pro studenty a veřejnost..."
-                    className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇨🇿</span> Odůvodnění rarity (Česky)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editRarityReason}
+                      onChange={(e) => setEditRarityReason(e.target.value)}
+                      placeholder="Např. Výrazná rubrikace, stížnost..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇬🇧</span> Rarity reason (English)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editRarityReasonEn}
+                      onChange={(e) => setEditRarityReasonEn(e.target.value)}
+                      placeholder="e.g. Rare rubrication, scribal complaint..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
                 </div>
 
                 {/* Informace o autorovi a historii úprav */}
