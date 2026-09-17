@@ -96,6 +96,7 @@ type GameState = {
   lastPlayed: string;
   gamesPlayed: number;
   completedQuestionsToday?: string[];
+  dailyTradedPartners?: string[];
   bonusPacks: PackQuality[];
   lastLoginDate: string;
   gallery: string[];
@@ -117,6 +118,7 @@ const INITIAL_STATE: GameState = {
   lastPlayed: "",
   gamesPlayed: 0,
   completedQuestionsToday: [],
+  dailyTradedPartners: [],
   bonusPacks: [],
   lastLoginDate: "",
   gallery: [],
@@ -130,6 +132,9 @@ const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "trophies", label: "Výzvy", icon: Trophy },
   { id: "profile", label: "Profil", icon: UserRound },
 ];
+
+export const MAX_DAILY_PACKS = 3;
+export const MAX_DAILY_GAMES = 5;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const XP_PER_LEVEL = 100;
@@ -186,6 +191,7 @@ function loadState(userId?: string): GameState {
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
       completedQuestionsToday: saved?.completedQuestionsToday || [],
+      dailyTradedPartners: saved?.dailyTradedPartners || [],
     };
     const hasCurrentCards = Object.keys(base.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
     if (!hasCurrentCards) base.collection = { ...INITIAL_STATE.collection };
@@ -193,7 +199,7 @@ function loadState(userId?: string): GameState {
     const todayStr = today();
     const isNewDay = base.lastPlayed !== todayStr;
     const dailyReset: GameState = isNewDay
-      ? { ...base, packsOpened: 0, gamesPlayed: 0, completedQuestionsToday: [], bonusPacks: [], lastPlayed: todayStr }
+      ? { ...base, packsOpened: 0, gamesPlayed: 0, completedQuestionsToday: [], dailyTradedPartners: [], bonusPacks: [], lastPlayed: todayStr }
       : base;
 
     // Pokud se uživatel již dnes přihlásil, streak byl pro dnešek započten
@@ -901,7 +907,7 @@ export default function Home() {
     let isDaily = false;
     let bonusIndexToRemove = -1;
 
-    const dailyRemaining = Math.max(0, 10 - state.packsOpened);
+    const dailyRemaining = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
 
     if (tierToOpen === "masterwork") {
       bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "masterwork");
@@ -928,7 +934,7 @@ export default function Home() {
           if (state.bonusPacks.length > 0) {
             setToast("Denní balíčky jsou vyčerpány. Zvolte Scholar Pack nebo Masterwork Pack z vaší pokladnice!");
           } else {
-            setToast(state.gamesPlayed >= 10 ? "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy.");
+            setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy.");
           }
           return;
         }
@@ -975,8 +981,8 @@ export default function Home() {
   };
 
   const startGame = (questType: "mood" | "cipher" | "script" | "paleo") => {
-    if (state.gamesPlayed >= 10) {
-      setToast("Dnešních 10 výzev jste již dokončili. Vraťte se zítra za svítání.");
+    if (state.gamesPlayed >= MAX_DAILY_GAMES) {
+      setToast(`Dnešních ${MAX_DAILY_GAMES} výzev jste již dokončili. Vraťte se zítra za svítání.`);
       return;
     }
     let pool: QuestionData[] = [];
@@ -1062,7 +1068,7 @@ export default function Home() {
         completedQuestionsToday: nextCompleted,
         trophies: nextTrophies,
       }));
-      setToast(`Pokus využit — dnes zbývá ${Math.max(0, 9 - state.gamesPlayed)} výzev.`);
+      setToast(`Pokus využit — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
     }
     const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
     setTimeout(() => {
@@ -1112,6 +1118,10 @@ export default function Home() {
         xp: nextXp,
         gallery: nextGallery,
         bonusPacks: nextBonusPacks,
+        packsOpened: 0,
+        gamesPlayed: 0,
+        completedQuestionsToday: [],
+        dailyTradedPartners: [],
         lastLoginDate: today(),
       };
     });
@@ -1157,7 +1167,15 @@ export default function Home() {
     nextCollection[card.id] = (nextCollection[card.id] || 1) - 1;
     if (nextCollection[card.id] <= 0) delete nextCollection[card.id];
 
-    // Odemknout trofej Štědrý tovaryš a připsat +30 XP
+    // Kontrola denního limitu XP pro tohoto kolegu (ochrana proti zneužití a farmení)
+    const partnerKey = String(giftModalTarget.id || giftModalTarget.display_name || "kolega");
+    const canEarnSocialXp = !state.dailyTradedPartners?.includes(partnerKey);
+    const earnedXp = canEarnSocialXp ? 30 : 0;
+    const nextTraded = canEarnSocialXp
+      ? [...(state.dailyTradedPartners || []), partnerKey]
+      : (state.dailyTradedPartners || []);
+
+    // Odemknout trofej Štědrý tovaryš a připsat XP pokud je k dispozici
     const nextTrophies = state.trophies.includes("philanthropist")
       ? state.trophies
       : [...state.trophies, "philanthropist"];
@@ -1166,7 +1184,8 @@ export default function Home() {
       ...s,
       collection: nextCollection,
       trophies: nextTrophies,
-      xp: s.xp + 30,
+      dailyTradedPartners: nextTraded,
+      xp: s.xp + earnedXp,
     }));
 
     const senderName =
@@ -1194,12 +1213,23 @@ export default function Home() {
 
     setIsSendingGift(false);
     setGiftModalTarget(null);
-    setToast(`Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (+30 XP za štědrost)`);
+    setToast(
+      canEarnSocialXp
+        ? `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (+30 XP za štědrost)`
+        : `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (Dnes již bez dalších XP)`
+    );
   };
 
   const handleAcceptGift = async (gift: any) => {
     playTriumphFanfare((gift.card_rarity as any) || "Rare");
     const cardId = gift.card_id;
+
+    const partnerKey = String(gift.sender_id || gift.sender_name || "kolega");
+    const canEarnSocialXp = !state.dailyTradedPartners?.includes(partnerKey);
+    const earnedXp = canEarnSocialXp ? 50 : 0;
+    const nextTraded = canEarnSocialXp
+      ? [...(state.dailyTradedPartners || []), partnerKey]
+      : (state.dailyTradedPartners || []);
 
     setState((s) => ({
       ...s,
@@ -1207,11 +1237,16 @@ export default function Home() {
         ...s.collection,
         [cardId]: (s.collection[cardId] || 0) + 1,
       },
-      xp: s.xp + 50,
+      dailyTradedPartners: nextTraded,
+      xp: s.xp + earnedXp,
     }));
 
     setPendingGifts((prev) => prev.filter((g) => g.id !== gift.id));
-    setToast(`Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (+50 XP)`);
+    setToast(
+      canEarnSocialXp
+        ? `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (+50 XP)`
+        : `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (Dnes již bez dalších XP)`
+    );
 
     try {
       if (currentUser) {
@@ -1295,14 +1330,27 @@ export default function Home() {
       }
     } catch {}
 
-    // Připsat XP za diplomatické vyjednávání
+    // Kontrola denního limitu XP pro tohoto kolegu
+    const partnerKey = String(target.id || target.display_name || target.username || "kolega");
+    const canEarnSocialXp = !state.dailyTradedPartners?.includes(partnerKey);
+    const earnedXp = canEarnSocialXp ? 15 : 0;
+    const nextTraded = canEarnSocialXp
+      ? [...(state.dailyTradedPartners || []), partnerKey]
+      : (state.dailyTradedPartners || []);
+
+    // Připsat XP za diplomatické vyjednávání (max 1x denně na partnera)
     setState((s) => ({
       ...s,
-      xp: s.xp + 15,
+      dailyTradedPartners: nextTraded,
+      xp: s.xp + earnedXp,
     }));
 
     setActiveTradeModal(null);
-    setToast(`Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (+15 XP)`);
+    setToast(
+      canEarnSocialXp
+        ? `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (+15 XP za diplomacii)`
+        : `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (Dnes již bez dalších XP)`
+    );
   };
 
   const handleAcceptTrade = async (trade: CardTrade) => {
@@ -1334,6 +1382,14 @@ export default function Home() {
       nextCollection[off.card_id] = (nextCollection[off.card_id] || 0) + off.count;
     }
 
+    // Kontrola denního limitu XP pro tohoto kolegu
+    const partnerKey = String(trade.sender_id || trade.sender_name || "kolega");
+    const canEarnSocialXp = !state.dailyTradedPartners?.includes(partnerKey);
+    const earnedXp = canEarnSocialXp ? 60 : 0;
+    const nextTraded = canEarnSocialXp
+      ? [...(state.dailyTradedPartners || []), partnerKey]
+      : (state.dailyTradedPartners || []);
+
     // Odemknout trofej Štědrý tovaryš pokud ještě nemá
     const nextTrophies = state.trophies.includes("philanthropist")
       ? state.trophies
@@ -1343,12 +1399,17 @@ export default function Home() {
       ...s,
       collection: nextCollection,
       trophies: nextTrophies,
-      xp: s.xp + 60,
+      dailyTradedPartners: nextTraded,
+      xp: s.xp + earnedXp,
     }));
 
     setPendingTrades((prev) => prev.filter((t) => t.id !== trade.id));
     setReviewTradeModal(null);
-    setToast(`Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (+60 XP).`);
+    setToast(
+      canEarnSocialXp
+        ? `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (+60 XP za dnešní směnu).`
+        : `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (denní limit XP s tímto kolegou byl již vyčerpán).`
+    );
 
     try {
       if (currentUser && !trade.id.startsWith("demo-")) {
@@ -1624,6 +1685,7 @@ export default function Home() {
             trade={reviewTradeModal}
             cards={cards}
             userCollection={state.collection}
+            isXpAvailable={!state.dailyTradedPartners?.includes(String(reviewTradeModal.sender_id || reviewTradeModal.sender_name || "kolega"))}
             onAccept={handleAcceptTrade}
             onCounter={handleCounterTrade}
             onDecline={handleDeclineTrade}
@@ -1656,22 +1718,23 @@ export default function Home() {
 
 function StatusBar({
   state,
-  tab,
-  setTab,
+  isLive,
   uniqueOwned,
   totalCards,
-  soundOn,
+  tab,
+  setTab,
+  soundOn = true,
   onToggleSound,
   currentUser,
   currentProfile,
   onOpenAuth,
 }: {
   state: GameState;
-  isLive?: boolean;
-  tab: Tab;
-  setTab: (t: Tab) => void;
+  isLive: boolean;
   uniqueOwned: number;
   totalCards: number;
+  tab: Tab;
+  setTab: (t: Tab) => void;
   soundOn?: boolean;
   onToggleSound?: () => void;
   currentUser?: any;
@@ -1704,8 +1767,8 @@ function StatusBar({
               {item.id === "collection" && (
                 <span className="nav-count">{uniqueOwned}/{totalCards}</span>
               )}
-              {item.id === "packs" && state.packsOpened < 10 && (
-                <span className="nav-badge">{10 - state.packsOpened}</span>
+              {item.id === "packs" && state.packsOpened < MAX_DAILY_PACKS && (
+                <span className="nav-badge">{MAX_DAILY_PACKS - state.packsOpened}</span>
               )}
             </button>
           );
@@ -1933,9 +1996,9 @@ function HomeScreen({
   onDetail: (c: Colophon) => void;
 }) {
   const progressPercent = totalCards > 0 ? Math.round((uniqueOwned / totalCards) * 100) : 0;
-  const remaining = Math.max(0, 10 - state.packsOpened);
+  const remaining = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
   const hasBonus = state.bonusPacks.length > 0;
-  const gamesLeft = Math.max(0, 10 - state.gamesPlayed);
+  const gamesLeft = Math.max(0, MAX_DAILY_GAMES - state.gamesPlayed);
 
   const showcaseCards = useMemo(() => {
     const owned = cards.filter(c => state.collection[c.id]);
@@ -2036,7 +2099,7 @@ function HomeScreen({
         <section className="home-quests-box">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <h3 style={{ margin: 0 }}>Písařské výzvy dne</h3>
-            <span className="quests-counter-badge">{gamesLeft}/10 k dispozici</span>
+            <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} k dispozici</span>
           </div>
           <p>Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice.</p>
           <div className="home-quests-list">
@@ -2207,7 +2270,7 @@ function PacksScreen({
 }) {
   const [selectedTier, setSelectedTier] = useState<PackQuality>("standard");
 
-  const dailyRemaining = Math.max(0, 10 - state.packsOpened);
+  const dailyRemaining = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
   const bonusStandard = state.bonusPacks.filter((p) => p === "standard").length;
   const standardCount = dailyRemaining + bonusStandard;
   const scholarCount = state.bonusPacks.filter((p) => p === "refined").length;
@@ -2220,7 +2283,7 @@ function PacksScreen({
       ? scholarCount
       : standardCount;
 
-  const gamesLeft = Math.max(0, 10 - state.gamesPlayed);
+  const gamesLeft = Math.max(0, MAX_DAILY_GAMES - state.gamesPlayed);
 
   return (
     <div className="screen packs-screen">
@@ -2232,10 +2295,10 @@ function PacksScreen({
           <span>Denní balíčky</span>
           <strong>
             {state.packsOpened}
-            <small>/10</small>
+            <small>/{MAX_DAILY_PACKS}</small>
           </strong>
           <div className="ten-dots">
-            {Array.from({ length: 10 }).map((_, i) => (
+            {Array.from({ length: MAX_DAILY_PACKS }).map((_, i) => (
               <i key={i} className={i < state.packsOpened ? "used" : ""} />
             ))}
           </div>
@@ -2244,10 +2307,10 @@ function PacksScreen({
           <span>Písařské výzvy</span>
           <strong>
             {state.gamesPlayed}
-            <small>/10</small>
+            <small>/{MAX_DAILY_GAMES}</small>
           </strong>
           <div className="ten-dots games">
-            {Array.from({ length: 10 }).map((_, i) => (
+            {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => (
               <i key={i} className={i < state.gamesPlayed ? "used" : ""} />
             ))}
           </div>
@@ -2400,7 +2463,7 @@ function PacksScreen({
             Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček.
           </small>
         </div>
-        <span className="quests-counter-badge">{gamesLeft}/10 výzev k dispozici</span>
+        <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} výzev k dispozici</span>
       </div>
 
       <div className="game-grid-4">
@@ -3730,6 +3793,7 @@ function TradeReviewModal({
   trade,
   cards,
   userCollection,
+  isXpAvailable = true,
   onAccept,
   onCounter,
   onDecline,
@@ -3738,6 +3802,7 @@ function TradeReviewModal({
   trade: CardTrade;
   cards: Colophon[];
   userCollection: Record<string | number, number>;
+  isXpAvailable?: boolean;
   onAccept: (trade: CardTrade) => void;
   onCounter: (trade: CardTrade) => void;
   onDecline: (trade: CardTrade) => void;
@@ -3889,6 +3954,12 @@ function TradeReviewModal({
           </div>
         )}
 
+        {!isXpAvailable && (
+          <div style={{ padding: "6px 10px", background: "#fdf8ee", border: "1px solid #d4c09b", borderRadius: 6, color: "#784f1d", fontSize: "11px", marginBottom: 10 }}>
+            ℹ️ S tímto kolegou jste dnes již získali zkušenostní body. Kolofony se při přijetí řádně vymění, ale další XP se dnes nepřipíšou.
+          </div>
+        )}
+
         {/* Tlačítka akcí: Přijmout / Protinabídka / Odmítnout */}
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
           <button
@@ -3938,7 +4009,7 @@ function TradeReviewModal({
                 opacity: canAccept ? 1 : 0.6,
               }}
             >
-              <CheckCircle2 size={13} /> Přijmout směnu (+60 XP)
+              <CheckCircle2 size={13} /> {isXpAvailable ? "Přijmout směnu (+60 XP)" : "Přijmout směnu (0 XP)"}
             </button>
           </div>
         </div>

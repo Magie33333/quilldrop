@@ -385,6 +385,18 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
     * Vytvořena migrace `db/migrations/05_add_card_trades.sql` a začleněna do `db/migrations/ALL_PENDING_MIGRATIONS.sql`.
     * Tabulka `card_trades` uchovává `sender_offer` a `recipient_request` jako JSONB pole, včetně řetězení protinabídek pomocí `parent_trade_id`.
 
+### [2026-09-17] Regulace XP u obchodování (Anti-Spam 1x denně) & Úprava ekonomiky balíčků (3 balíčky, 5 výzev)
+* **Ochrana proti XP spamu a farmení u obchodování a darování:**
+  * Implementována striktní denní regulace: Zkušenostní body (XP) za obchodování a darování (`+15 XP` za nabídku, `+60 XP` za přijetí směny, `+30 XP` za darování, `+50 XP` za přijetí daru) lze s každým jednotlivým spolužákem/kolegou získat **pouze jednou za kalendářní den** (`dailyTradedPartners`).
+  * Pokud dva hráči provedou v tentýž den více směn či darů, samotná směna karet se řádně a bezpečně uskuteční (karty se vymění), ale systém již nepřipisuje další XP.
+  * Do rozhraní posouzení směny (`TradeReviewModal`) byl přidán transparentní indikátor a dynamické tlačítko: pokud byl denní limit XP s tímto kolegou vyčerpán, tlačítko zobrazuje *„Přijmout směnu (0 XP)“* spolu s vysvětlujícím pergamenovým oznámením.
+  * Denní seznam zobchodovaných kolegů se automaticky resetuje každou půlnoc (`isNewDay`) nebo při simulaci dalšího dne.
+* **Úprava ekonomiky karet a denních přídělů (Card Inflation Control):**
+  * **Denní volné balíčky sníženy z 10 na 3 (`MAX_DAILY_PACKS = 3`):** Hráč denně odhalí 15 karet ze skriptoria namísto původních 50, což výrazně zvyšuje sběratelskou hodnotu každé karty a zabraňuje přesycení trhu duplikáty.
+  * **Písařské výzvy / aktivity sníženy z 10 na 5 (`MAX_DAILY_GAMES = 5`):** Denní kvóta minihier je nastavena na 5 pokusů.
+  * Denní počítadlo a tečkový LED indikátor (`daily-ledger`) byly přizpůsobeny novým hodnotám (`/3` a 3 tečky pro balíčky, `/5` a 5 teček pro výzvy).
+  * Upraveny všechny související texty, toast hlášky a navigační odznaky v celé aplikaci.
+
 ---
 
 ### Následující kroky:
