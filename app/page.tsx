@@ -1199,7 +1199,16 @@ export default function Home() {
         completedQuestionsToday: nextCompleted,
         trophies: nextTrophies,
       }));
-      setToast(lang === "en" ? `Challenge failed — ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} challenges remaining today.` : `Výzva zmařena — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
+      const remChallenges = Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed);
+      setToast(
+        lang === "en"
+          ? `Challenge failed — ${remChallenges} challenge${remChallenges === 1 ? "" : "s"} remaining today.`
+          : remChallenges === 1
+          ? "Výzva zmařena — dnes zbývá 1 výzva."
+          : remChallenges >= 2 && remChallenges <= 4
+          ? `Výzva zmařena — dnes zbývají ${remChallenges} výzvy.`
+          : `Výzva zmařena — dnes zbývá ${remChallenges} výzev.`
+      );
     }
     const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
     setTimeout(() => {
@@ -2388,7 +2397,7 @@ function HomeScreen({
         <div className="progress">
           <i style={{ width: `${progressPercent}%` }} />
         </div>
-        <button onClick={onCollection}>{lang === "en" ? `Open full collection (${uniqueOwned} cards)` : `Otevřít celou sbírku (${uniqueOwned} karet)`}</button>
+        <button onClick={onCollection}>{lang === "en" ? `Open full collection (${uniqueOwned} card${uniqueOwned === 1 ? "" : "s"})` : `Otevřít celou sbírku (${uniqueOwned} ${uniqueOwned === 1 ? "karta" : uniqueOwned >= 2 && uniqueOwned <= 4 ? "karty" : "karet"})`}</button>
       </div>
 
       <div className="home-secondary-grid">
@@ -2421,7 +2430,13 @@ function HomeScreen({
               </div>
               <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px" }}>
                 {state.puzzle < 16
-                  ? (lang === "en" ? `Remaining: ${16 - state.puzzle} daily logins in a row to complete the illumination.` : `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do dokončení celého díla.`)
+                  ? (() => {
+                      const remLogins = 16 - state.puzzle;
+                      if (lang === "en") return `Remaining: ${remLogins} daily login${remLogins === 1 ? "" : "s"} in a row to complete the illumination.`;
+                      if (remLogins === 1) return "Zbývá 1 denní přihlášení do dokončení celého díla.";
+                      if (remLogins >= 2 && remLogins <= 4) return `Zbývají ${remLogins} denní přihlášení v řadě do dokončení celého díla.`;
+                      return `Zbývá ${remLogins} denních přihlášení v řadě do dokončení celého díla.`;
+                    })()
                   : (lang === "en" ? `🎉 Cycle ${activeIllumination.cycle} complete! Reward +${activeIllumination.rewardXp} XP and pack added to profile.` : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu.`)}
               </small>
             </div>
@@ -3544,7 +3559,13 @@ function ProfileScreen({
         </small>
         <div style={{ marginTop: 6, fontSize: "11px", color: "#684824" }}>
           {state.puzzle < 16
-            ? (lang === "en" ? `Remaining: ${16 - state.puzzle} daily logins in a row to complete the illumination.` : `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do složení celého díla.`)
+            ? (() => {
+                const remLogins = 16 - state.puzzle;
+                if (lang === "en") return `Remaining: ${remLogins} daily login${remLogins === 1 ? "" : "s"} in a row to complete the illumination.`;
+                if (remLogins === 1) return "Zbývá 1 denní přihlášení do složení celého díla.";
+                if (remLogins >= 2 && remLogins <= 4) return `Zbývají ${remLogins} denní přihlášení v řadě do složení celého díla.`;
+                return `Zbývá ${remLogins} denních přihlášení v řadě do složení celého díla.`;
+              })()
             : (lang === "en" ? "🎉 Illumination complete! Portrait unlocked in gallery below." : "🎉 Dílo je kompletní! Portrét byl odemčen v galerii níže.")}
         </div>
       </div>
@@ -5208,7 +5229,13 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
         <div className="large-illustration"><ColophonImage card={card} /><b>{card.year}</b></div>
         <h2>{title}</h2><p>“{card.quote}”</p><small>{card.scribe} · {card.place}</small>
       </section>
-      <div className="reveal-actions"><span>{position === total ? (lang === "en" ? "Final card of the pack" : "Poslední karta balíčku") : (lang === "en" ? `${total - position} cards remaining` : `Ještě zbývá ${total - position} karet`)}</span><button onClick={() => { playParchmentFlip(0.28); onNext(); }}>{position === total ? (lang === "en" ? "Save to collection" : "Uložit do sbírky") : (lang === "en" ? "Draw next card" : "Táhnout další kartu")} →</button></div>
+      <div className="reveal-actions"><span>{position === total ? (lang === "en" ? "Final card of the pack" : "Poslední karta balíčku") : (() => {
+        const rem = total - position;
+        if (lang === "en") return rem === 1 ? "1 card remaining" : `${rem} cards remaining`;
+        if (rem === 1) return "Ještě zbývá 1 karta";
+        if (rem >= 2 && rem <= 4) return `Ještě zbývají ${rem} karty`;
+        return `Ještě zbývá ${rem} karet`;
+      })()}</span><button onClick={() => { playParchmentFlip(0.28); onNext(); }}>{position === total ? (lang === "en" ? "Save to collection" : "Uložit do sbírky") : (lang === "en" ? "Draw next card" : "Táhnout další kartu")} →</button></div>
     </>}
   </div>;
 }
