@@ -5,7 +5,16 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
+import {
+  DEFAULT_QUESTIONS,
+  type QuestionData,
+  getQuestionTitle,
+  getQuestionIntro,
+  getQuestionTranslation,
+  getQuestionOptions,
+  getQuestionExplanation,
+  getQuestionHint,
+} from "./data/questions.generated";
 import { DEFAULT_CURIOS, type Curio } from "./data/curios";
 import {
   SCRIPTORIA_PLACES,
@@ -188,10 +197,15 @@ export const MAX_DAILY_GAMES = 5;
 const today = () => new Date().toISOString().slice(0, 10);
 const XP_PER_LEVEL = 100;
 const levelForXp = (xp: number) => Math.floor(xp / XP_PER_LEVEL) + 1;
-const qualityLabel = (quality: PackQuality) => {
-  if (quality === "masterwork") return "Masterwork Pack";
-  if (quality === "refined") return "Scholar Pack";
-  return "Standard Pack";
+const qualityLabel = (quality: PackQuality, lang?: Language) => {
+  if (lang === "en") {
+    if (quality === "masterwork") return "Masterwork Pack";
+    if (quality === "refined") return "Scholar Pack";
+    return "Standard Pack";
+  }
+  if (quality === "masterwork") return "Královský balíček";
+  if (quality === "refined") return "Učencův balíček";
+  return "Běžný balíček";
 };
 
 const formatPacksCount = (n: number): string => {
@@ -779,6 +793,7 @@ export default function Home() {
         if (!qError && qData && qData.length > 0) {
           const loadedQuestions: QuestionData[] = qData.map((q: any) => {
             let choices: [string, string][] = [];
+            let choicesEn: [string, string][] | undefined = undefined;
             let mode = q.game_kind;
             let highlightRegions = q.highlight_regions;
             let targetTranscription = q.target_transcription;
@@ -788,10 +803,15 @@ export default function Home() {
               choices = q.options;
             } else if (q.options && typeof q.options === "object") {
               if (Array.isArray(q.options.choices)) choices = q.options.choices;
+              if (Array.isArray(q.options.choices_en)) choicesEn = q.options.choices_en;
               if (q.options.mode) mode = q.options.mode;
               if (q.options.highlight_regions) highlightRegions = q.options.highlight_regions;
               if (q.options.target_transcription) targetTranscription = q.options.target_transcription;
               if (q.options.accepted_variants) acceptedVariants = q.options.accepted_variants;
+            }
+
+            if (Array.isArray(q.options_en)) {
+              choicesEn = q.options_en;
             }
 
             if (!mode) {
@@ -806,13 +826,19 @@ export default function Home() {
               game_kind: q.game_kind,
               mode: mode as any,
               title: q.title,
+              title_en: q.title_en || q.options?.title_en,
               intro: q.intro,
+              intro_en: q.intro_en || q.options?.intro_en,
               quote: q.quote,
               translation_cs: q.translation_cs || q.options?.translation_cs,
+              translation_en: q.translation_en || q.options?.translation_en,
               options: choices,
+              options_en: choicesEn,
               correct_index: Number(q.correct_index) || 0,
-              explanation: q.explanation || undefined,
-              hint: q.hint || undefined,
+              explanation: q.explanation || q.options?.explanation || undefined,
+              explanation_en: q.explanation_en || q.options?.explanation_en || undefined,
+              hint: q.hint || q.options?.hint || undefined,
+              hint_en: q.hint_en || q.options?.hint_en || undefined,
               difficulty: q.difficulty || "medium",
               is_active: q.is_active,
               highlight_regions: highlightRegions,
@@ -1015,14 +1041,14 @@ export default function Home() {
     if (tierToOpen === "masterwork") {
       bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "masterwork");
       if (bonusIndexToRemove === -1) {
-        setToast("Nemáte žádný Masterwork Pack. Splňte paleografickou výzvu pro jeho získání!");
+        setToast(lang === "en" ? "You have no Masterwork Packs. Complete a palaeographical challenge to earn one!" : "Nemáte žádný Královský balíček. Splňte paleografickou výzvu pro jeho získání!");
         return;
       }
       chosenTier = "masterwork";
     } else if (tierToOpen === "refined") {
       bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "refined");
       if (bonusIndexToRemove === -1) {
-        setToast("Nemáte žádný Scholar Pack. Splňte šifru nebo typologii písma pro jeho získání!");
+        setToast(lang === "en" ? "You have no Scholar Packs. Crack a cipher or script challenge to earn one!" : "Nemáte žádný Učencův balíček. Splňte šifru nebo typologii písma pro jeho získání!");
         return;
       }
       chosenTier = "refined";
@@ -1035,9 +1061,9 @@ export default function Home() {
         bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "standard");
         if (bonusIndexToRemove === -1) {
           if (state.bonusPacks.length > 0) {
-            setToast("Denní balíčky jsou vyčerpány. Zvolte Scholar Pack nebo Masterwork Pack z vaší pokladnice!");
+            setToast(lang === "en" ? "Daily packs exhausted. Choose a Scholar Pack or Masterwork Pack from your vault!" : "Denní balíčky jsou vyčerpány. Zvolte Učencův balíček nebo Královský balíček z vaší pokladnice!");
           } else {
-            setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy.");
+            setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? (lang === "en" ? "All today's packs and mini-games are exhausted. Return tomorrow!" : "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra.") : (lang === "en" ? "Daily packs exhausted – earn more by completing a scribal challenge." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy."));
           }
           return;
         }
@@ -1162,7 +1188,7 @@ export default function Home() {
       if (nextLevel > levelForXp(state.xp)) {
         window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
       } else {
-        setToast(`Správně! ${qualityLabel(quality)} byl uložen do vaší pokladnice.`);
+        setToast(lang === "en" ? `Correct! ${qualityLabel(quality, lang)} was stored in your vault.` : `Správně! ${qualityLabel(quality, lang)} byl uložen do vaší pokladnice.`);
       }
     } else {
       playParchmentFlip(0.2);
@@ -1173,7 +1199,7 @@ export default function Home() {
         completedQuestionsToday: nextCompleted,
         trophies: nextTrophies,
       }));
-      setToast(`Výzva zmařena — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
+      setToast(lang === "en" ? `Challenge failed — ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} challenges remaining today.` : `Výzva zmařena — dnes zbývá ${Math.max(0, MAX_DAILY_GAMES - 1 - state.gamesPlayed)} výzev.`);
     }
     const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
     setTimeout(() => {
@@ -1212,7 +1238,9 @@ export default function Home() {
         if (completedArt.rewardPack) {
           nextBonusPacks.push(completedArt.rewardPack);
         }
-        msg = `🎉 Cyklus ${completedArt.cycle} dokončen: „${completedArt.title}“! Získáváte +${completedArt.rewardXp} XP a ${qualityLabel(completedArt.rewardPack)}!`;
+        msg = lang === "en"
+          ? `🎉 Cycle ${completedArt.cycle} completed: “${completedArt.title}”! You gain +${completedArt.rewardXp} XP and ${qualityLabel(completedArt.rewardPack, lang)}!`
+          : `🎉 Cyklus ${completedArt.cycle} dokončen: „${completedArt.title}“! Získáváte +${completedArt.rewardXp} XP a ${qualityLabel(completedArt.rewardPack, lang)}!`;
       }
 
       setToast(msg);
@@ -2235,7 +2263,7 @@ function HomeScreen({
             <div className="home-pack-body">
               <div className="home-pack-seal" aria-hidden="true">Q</div>
               <div className="home-pack-info">
-                <h2>{remaining ? (lang === "en" ? "Scriptorium Pack" : "Balíček ze skriptoria") : hasBonus ? `${qualityLabel(state.bonusPacks[0])} ${lang === "en" ? "Pack" : "balíček"}` : (lang === "en" ? "Scriptorium at Rest" : "Skriptorium odpočívá")}</h2>
+                <h2>{remaining ? (lang === "en" ? "Scriptorium Pack" : "Balíček ze skriptoria") : hasBonus ? qualityLabel(state.bonusPacks[0], lang) : (lang === "en" ? "Scriptorium at Rest" : "Skriptorium odpočívá")}</h2>
                 <p>
                   {remaining
                     ? (lang === "en" ? "Five concealed scribal voices await under the wax seal." : "Pět skrytých hlasů písařů čeká pod voskovou pečetí.")
@@ -2288,7 +2316,7 @@ function HomeScreen({
                 <strong>{lang === "en" ? "Scribe's Mood" : "Nálada písaře"}</strong>
                 <small>{lang === "en" ? "Emotion choice · 4 options · Easy" : "Výběr emoce · 4 možnosti · Snadná"}</small>
               </div>
-              <span className="home-quest-reward reward-standard">📜 Standard Pack →</span>
+              <span className="home-quest-reward reward-standard">{lang === "en" ? "📜 Standard Pack →" : "📜 Běžný balíček →"}</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
               <span className="home-quest-icon icon-cipher"><KeyRound size={19} /></span>
@@ -2296,7 +2324,7 @@ function HomeScreen({
                 <strong>{lang === "en" ? "Crack the Cipher" : "Rozlušti šifru"}</strong>
                 <small>{lang === "en" ? "Cryptograms & wordplay · Medium" : "Kryptogramy a hříčky · Střední"}</small>
               </div>
-              <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
+              <span className="home-quest-reward reward-scholar">{lang === "en" ? "✨ Scholar Pack →" : "✨ Učencův balíček →"}</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
               <span className="home-quest-icon icon-script"><ScrollText size={19} /></span>
@@ -2304,7 +2332,7 @@ function HomeScreen({
                 <strong>{lang === "en" ? "Script & Century" : "Poznej písmo a století"}</strong>
                 <small>{lang === "en" ? "Typology & dating · Advanced" : "Typologie & datace kodexu · Pokročilá"}</small>
               </div>
-              <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
+              <span className="home-quest-reward reward-scholar">{lang === "en" ? "✨ Scholar Pack →" : "✨ Učencův balíček →"}</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
               <span className="home-quest-icon icon-paleo"><PenTool size={19} /></span>
@@ -2312,7 +2340,7 @@ function HomeScreen({
                 <strong>{lang === "en" ? "Palaeographical Master" : "Paleografický mistr"}</strong>
                 <small>{lang === "en" ? "Transcription with magnifier · Expert" : "Přepis autentického textu s lupou · Expertní"}</small>
               </div>
-              <span className="home-quest-reward reward-masterwork">💎 Masterwork Pack →</span>
+              <span className="home-quest-reward reward-masterwork">{lang === "en" ? "💎 Masterwork Pack →" : "💎 Královský balíček →"}</span>
             </button>
           </div>
         </section>
@@ -2576,7 +2604,7 @@ function PacksScreen({
           onClick={() => setSelectedTier("standard")}
         >
           {standardCount > 0 && <span className="tier-count-pill">{standardCount}</span>}
-          <strong>Standard Pack</strong>
+          <strong>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</strong>
           <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "Exhausted" : "Vyčerpáno")}</span>
         </button>
 
@@ -2588,7 +2616,7 @@ function PacksScreen({
           onClick={() => setSelectedTier("refined")}
         >
           {scholarCount > 0 && <span className="tier-count-pill">{scholarCount}</span>}
-          <strong>Scholar Pack</strong>
+          <strong>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</strong>
           <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} in vault` : `${scholarCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
         </button>
 
@@ -2600,7 +2628,7 @@ function PacksScreen({
           onClick={() => setSelectedTier("masterwork")}
         >
           {masterworkCount > 0 && <span className="tier-count-pill">{masterworkCount}</span>}
-          <strong>Masterwork Pack</strong>
+          <strong>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</strong>
           <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} in vault` : `${masterworkCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
         </button>
       </div>
@@ -2636,7 +2664,7 @@ function PacksScreen({
 
         <h2>
           <span className={`pack-quality-title quality-${selectedTier}`}>
-            {qualityLabel(selectedTier)}
+            {qualityLabel(selectedTier, lang)}
           </span>
         </h2>
 
@@ -2655,7 +2683,7 @@ function PacksScreen({
             : selectedTier === "refined"
             ? (lang === "en"
                 ? "Scholar pack with boosted chances for Rare and Epic colophons for dedicated researchers."
-                : "Učenecký balíček s výrazně posílenou šancí na Rare a Epic kolofony pro pokročilé badatele.")
+                : "Učencův balíček se zvýšenou šancí na vzácné a epické kolofony pro badatele.")
             : dailyRemaining > 0
             ? (lang === "en"
                 ? "Daily scriptorium pack containing 5 cards of all rarities including a chance for Legendary and Unique treasures."
@@ -2671,16 +2699,16 @@ function PacksScreen({
             onClick={() => onOpen(selectedTier)}
             style={{ width: "100%", maxWidth: "340px", justifyContent: "center" }}
           >
-            {lang === "en" ? `Unseal ${qualityLabel(selectedTier)} (5 cards)` : `Otevřít ${qualityLabel(selectedTier)} (5 karet)`} <span>→</span>
+            {lang === "en" ? `Unseal ${qualityLabel(selectedTier, lang)} (5 cards)` : `Otevřít ${qualityLabel(selectedTier, lang)} (5 karet)`} <span>→</span>
           </button>
         ) : (
           <div className="empty-pack-prompt">
             <span>
               {selectedTier === "masterwork"
-                ? (lang === "en" ? "Earn a Masterwork Pack by transcribing lines in Palaeographical Master." : "Masterwork Pack získáte úspěšným přepisem v Paleografickém mistrovi.")
+                ? (lang === "en" ? "Earn a Masterwork Pack by transcribing lines in Palaeographical Master." : "Královský balíček získáte úspěšným přepisem v Paleografickém mistrovi.")
                 : selectedTier === "refined"
-                ? (lang === "en" ? "Earn a Scholar Pack by cracking ciphers or identifying script & dating." : "Scholar Pack získáte vyřešením šifry nebo určením písma a století.")
-                : (lang === "en" ? "Standard packs replenish tomorrow at dawn, or complete a challenge below." : "Standardní balíčky se obnoví zítra za svítání, nebo splňte výzvu níže.")}
+                ? (lang === "en" ? "Earn a Scholar Pack by cracking ciphers or identifying script & dating." : "Učencův balíček získáte vyřešením šifry nebo určením písma a století.")
+                : (lang === "en" ? "Standard packs replenish tomorrow at dawn, or complete a challenge below." : "Běžné balíčky se obnoví zítra za svítání, nebo splňte výzvu níže.")}
             </span>
             {selectedTier === "masterwork" && (
               <button
@@ -2748,7 +2776,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-standard">
-              📜 Standard Pack
+              📜 {lang === "en" ? "Standard Pack" : "Běžný balíček"}
             </span>
             <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
@@ -2772,7 +2800,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
-              ✨ Scholar Pack
+              ✨ {lang === "en" ? "Scholar Pack" : "Učencův balíček"}
             </span>
             <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
@@ -2796,7 +2824,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
-              ✨ Scholar Pack
+              ✨ {lang === "en" ? "Scholar Pack" : "Učencův balíček"}
             </span>
             <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
@@ -2820,7 +2848,7 @@ function PacksScreen({
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-masterwork">
-              💎 Masterwork Pack
+              💎 {lang === "en" ? "Masterwork Pack" : "Královský balíček"}
             </span>
             <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
@@ -4558,8 +4586,8 @@ function LevelUpModal({ level, onClose, lang = "cs" }: { level: number; onClose:
     <Sparkles size={28} aria-hidden="true" />
     <p>{lang === "en" ? "Scribal Enlightenment" : "Písařské osvícení"}</p><h2>{lang === "en" ? "Level" : "Úroveň"} {level}</h2>
     <div className="level-seal"><span>{level}</span></div>
-    <strong>{lang === "en" ? "Masterwork Reward Unlocked" : "Odemčena mistrovská odměna"}</strong>
-    <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons has been deposited into your vault." : "Do vaší pokladnice byl vložen jeden Masterwork Pack s vysokou šancí na vzácné kolofony."}</small>
+    <strong>{lang === "en" ? "Masterwork Reward Unlocked" : "Odemčena královská odměna"}</strong>
+    <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons has been deposited into your vault." : "Do vaší pokladnice byl vložen jeden Královský balíček s vysokou šancí na vzácné kolofony."}</small>
     <button onClick={onClose}>{lang === "en" ? "Claim Reward" : "Převzít odměnu"}</button>
   </section></div>;
 }
@@ -4901,7 +4929,7 @@ function OnboardingTutorialModal({
             {lang === "en" ? (
               <>Successful answers award <strong>XP</strong> to advance your scribe rank and earn bonus <strong>Masterwork Packs</strong>.</>
             ) : (
-              <>Za úspěšné odpovědi získáváte <strong>XP</strong> pro postup na vyšší písařské hodnosti a bonusové <strong>Mistrovské balíčky</strong>.</>
+              <>Za úspěšné odpovědi získáváte <strong>XP</strong> pro postup na vyšší písařské hodnosti a bonusové <strong>Královské balíčky</strong>.</>
             )}
           </p>
         </div>
@@ -5261,21 +5289,28 @@ function GameModal({
     pass: boolean;
   } | null>(null);
 
+  const qTitle = getQuestionTitle(question, lang);
+  const qIntro = getQuestionIntro(question, lang);
+  const qTranslation = getQuestionTranslation(question, lang);
+  const qOptions = getQuestionOptions(question, lang);
+  const qExplanation = getQuestionExplanation(question, lang);
+  const qHint = getQuestionHint(question, lang);
+
   const reward = isTranscription
     ? (lang === "en"
         ? "Masterwork Pack · Guarantees Rare+ with chance of Legendary (+120 XP)"
-        : "Masterwork Pack · Garantuje Rare+ s šancí na Legendary (+120 XP)")
+        : "Královský balíček · Garantuje Rare+ s šancí na Legendary (+120 XP)")
     : question.mode === "script" || kind === "paleo"
     ? (lang === "en"
         ? "Scholar Pack · Rarer codices and illuminations (+75 XP)"
-        : "Scholar Pack · Vzácnější kodexy a iluminace (+75 XP)")
+        : "Učencův balíček · Vzácnější kodexy a iluminace (+75 XP)")
     : kind === "cipher"
     ? (lang === "en"
         ? "Scholar Pack · Rarer codices and illuminations (+60 XP)"
-        : "Scholar Pack · Vzácnější kodexy a iluminace (+60 XP)")
+        : "Učencův balíček · Vzácnější kodexy a iluminace (+60 XP)")
     : (lang === "en"
         ? "Standard Pack (+35 XP)"
-        : "Standard Pack (+35 XP)");
+        : "Běžný balíček (+35 XP)");
 
   const handleCheckTranscription = () => {
     if (!userText.trim()) return;
@@ -5328,18 +5363,18 @@ function GameModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={question.title}
+        aria-label={qTitle}
       >
         <button className="close" onClick={onClose} aria-label={lang === "en" ? "Close challenge" : "Zavřít výzvu"}>
           ×
         </button>
         <p className="eyebrow">{lang === "en" ? "Bonus Pack Challenge" : "Výzva o bonusový balíček"}</p>
-        <h2>{question.title}</h2>
+        <h2>{qTitle}</h2>
         <div className="reward-banner">
           <span>{lang === "en" ? "Reward" : "Odměna"}</span>
           <strong>{reward}</strong>
         </div>
-        <div className="game-rule">{question.intro}</div>
+        <div className="game-rule">{qIntro}</div>
 
         {isTranscription ? (
           <div className="transcription-mode">
@@ -5480,15 +5515,15 @@ function GameModal({
               {question.quote}
             </blockquote>
 
-            {question.translation_cs && (
+            {qTranslation && (
               <div className="translation-box">
                 <b>{lang === "en" ? "Translation" : "Překlad"}</b>
-                <span>„{question.translation_cs}“</span>
+                <span>„{qTranslation}“</span>
               </div>
             )}
 
             <div className="game-options grid-2x2">
-              {question.options.map((o, i) => {
+              {qOptions.map((o, i) => {
                 const icon = Array.isArray(o) ? o[0] : ["A", "B", "C", "D"][i] || "•";
                 const text = Array.isArray(o) ? o[1] : String(o);
                 return (
@@ -5520,12 +5555,12 @@ function GameModal({
                 „{question.target_transcription || question.quote}“
               </p>
             )}
-            {question.translation_cs && (
+            {qTranslation && (
               <p className="text-xs text-[#dcd3c7] mb-1">
-                <b>{lang === "en" ? "Translation:" : "Překlad:"}</b> „{question.translation_cs}“
+                <b>{lang === "en" ? "Translation:" : "Překlad:"}</b> „{qTranslation}“
               </p>
             )}
-            {question.explanation && <p>{question.explanation}</p>}
+            {qExplanation && <p>{qExplanation}</p>}
           </div>
         )}
 
@@ -5533,12 +5568,12 @@ function GameModal({
           <p className="wrong-answer">{lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}</p>
         )}
 
-        {step === 0 && !answer && question.hint && (
+        {step === 0 && !answer && qHint && (
           <button className="hint" onClick={() => setStep(1)}>
             {lang === "en" ? "Need a hint?" : "Potřebujete nápovědu?"}
           </button>
         )}
-        {step === 1 && question.hint && <p className="hint-copy">{question.hint}</p>}
+        {step === 1 && qHint && <p className="hint-copy">{qHint}</p>}
       </section>
     </div>
   );

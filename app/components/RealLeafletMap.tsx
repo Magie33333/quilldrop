@@ -3,13 +3,50 @@
 import { useEffect, useRef, useState } from "react";
 import { type ScriptoriumPlace, getPlaceName, getPlaceCountry } from "../data/scriptoria";
 import type { Language } from "../data/translations";
-import { MODERN_COUNTRIES, MEDIEVAL_RIVERS } from "../data/medievalMapData";
+import {
+  MODERN_COUNTRIES,
+  MEDIEVAL_RIVERS,
+  type ModernCountryInfo,
+  type MedievalRiver,
+  getCountryName,
+  getCountryRepositories,
+  getCountryNote,
+  getRiverName,
+} from "../data/medievalMapData";
 
 type ScriptoriaData = {
   place: ScriptoriumPlace;
   cards: any[];
   owned: any[];
 };
+
+function buildCountryTooltip(name: string, info: ModernCountryInfo | undefined, currentLang: Language): string {
+  const title = getCountryName(info, name, currentLang);
+  const repos = getCountryRepositories(info, currentLang);
+  const note = getCountryNote(info, currentLang);
+
+  let tooltipContent = `<div class="map-country-tooltip">
+    <strong>📍 ${title}</strong>`;
+
+  if (info?.hasManuscripts) {
+    const label = currentLang === "en" ? "Archives & libraries holding codices:" : "Archivy a knihovny s kodexy:";
+    tooltipContent += `<div class="tooltip-storage-label">${label}</div>
+      <ul class="tooltip-repo-list">
+        ${repos.map((r) => `<li>• ${r}</li>`).join("")}
+      </ul>
+      ${note ? `<small>${note}</small>` : ""}`;
+  } else {
+    const noCodices = currentLang === "en"
+      ? (info?.note_en || "No documented codices in the current collection.")
+      : (info?.note || "Bez evidovaných kodexů v aktuální sbírce.");
+    tooltipContent += `<div style="font-size: 10px; color: #7a5a3a; margin-top: 3px;">
+      ${noCodices}
+    </div>`;
+  }
+
+  tooltipContent += `</div>`;
+  return tooltipContent;
+}
 
 export default function RealLeafletMap({
   scriptoria,
@@ -30,6 +67,7 @@ export default function RealLeafletMap({
   const mapInstanceRef = useRef<any>(null);
   const markersMapRef = useRef<Map<string, any>>(new Map());
   const geoJsonLayerRef = useRef<any>(null);
+  const riverLayersRef = useRef<{ line: any; river: MedievalRiver }[]>([]);
   const [mapReady, setMapReady] = useState(false);
 
   // Inicializace Leaflet mapy
@@ -44,29 +82,32 @@ export default function RealLeafletMap({
 
         // Pokud již mapa existuje, bezpečně ji odstraníme
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.remove();
+          try {
+            mapInstanceRef.current.remove();
+          } catch {}
           mapInstanceRef.current = null;
         }
 
-        // Vytvoření mapy vycentrované na střední Evropu (Česko, Polsko, Rakousko, Německo, Itálie)
-        const initialCenter: [number, number] = compact ? [49.3, 15.2] : [49.2, 15.2];
-        const initialZoom = compact ? 5.2 : 6;
-
+        // Vytvoření mapy
         const map = L.map(mapContainerRef.current, {
-          center: initialCenter,
-          zoom: initialZoom,
+          center: [49.8, 15.5],
+          zoom: compact ? 5 : 6,
           minZoom: 4,
-          maxZoom: 13,
+          maxZoom: 9,
           zoomControl: false,
           attributionControl: false,
-          preferCanvas: true,
+          maxBounds: [
+            [35.0, -12.0],
+            [62.0, 38.0],
+          ],
+          maxBoundsViscosity: 0.85,
         });
 
-        // 1. Podkladové dlaždice bez vodoznaku a bez nutnosti API klíče
-        // Standardní čistá OpenStreetMap vrstva
+        // 1. Podkladová vrstva: Středověce laděná kartografie
         const tileLayer = L.tileLayer(
-          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
           {
+            subdomains: "abcd",
             maxZoom: 18,
             opacity: 0.7,
             attribution: '&copy; OpenStreetMap contributors',
@@ -98,26 +139,8 @@ export default function RealLeafletMap({
                 onEachFeature: (feature, layer) => {
                   const name = feature?.properties?.NAME || "";
                   const info = MODERN_COUNTRIES[name];
-                  const title = info?.name || name;
 
-                  let tooltipContent = `<div class="map-country-tooltip">
-                    <strong>📍 ${title}</strong>`;
-
-                  if (info?.hasManuscripts) {
-                    tooltipContent += `<div class="tooltip-storage-label">Archivy a knihovny s kodexy:</div>
-                      <ul class="tooltip-repo-list">
-                        ${info.repositories.map((r) => `<li>• ${r}</li>`).join("")}
-                      </ul>
-                      ${info.note ? `<small>${info.note}</small>` : ""}`;
-                  } else {
-                    tooltipContent += `<div style="font-size: 10px; color: #7a5a3a; margin-top: 3px;">
-                      Bez evidovaných kodexů v aktuální sbírce.
-                    </div>`;
-                  }
-
-                  tooltipContent += `</div>`;
-
-                  layer.bindTooltip(tooltipContent, { sticky: true, opacity: 0.95 });
+                  layer.bindTooltip(buildCountryTooltip(name, info, lang), { sticky: true, opacity: 0.95 });
 
                   layer.on({
                     mouseover: (e) => {
@@ -151,6 +174,7 @@ export default function RealLeafletMap({
         }
 
         // 3. Středověké říční toky (přirozené geografické koridory písemnictví)
+        riverLayersRef.current = [];
         if (!isCancelled && mapInstanceRef.current && mapInstanceRef.current._container) {
           MEDIEVAL_RIVERS.forEach((river) => {
             const riverLine = L.polyline(river.coords, {
@@ -161,9 +185,10 @@ export default function RealLeafletMap({
             }).addTo(map);
 
             riverLine.bindTooltip(
-              `<div class="medieval-river-tooltip">🌊 <strong>${river.name}</strong></div>`,
+              `<div class="medieval-river-tooltip">🌊 <strong>${getRiverName(river, lang)}</strong> (${river.latin})</div>`,
               { sticky: true }
             );
+            riverLayersRef.current.push({ line: riverLine, river });
           });
         }
 
@@ -210,6 +235,25 @@ export default function RealLeafletMap({
       }
     };
   }, [compact]);
+
+  // Dynamická aktualizace tooltipů států a řek při změně jazyka (CS / EN)
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    if (geoJsonLayerRef.current) {
+      geoJsonLayerRef.current.eachLayer((layer: any) => {
+        const name = layer.feature?.properties?.NAME || "";
+        const info = MODERN_COUNTRIES[name];
+        layer.setTooltipContent(buildCountryTooltip(name, info, lang));
+      });
+    }
+
+    riverLayersRef.current.forEach(({ line, river }) => {
+      line.setTooltipContent(
+        `<div class="medieval-river-tooltip">🌊 <strong>${getRiverName(river, lang)}</strong> (${river.latin})</div>`
+      );
+    });
+  }, [lang, mapReady]);
 
   // Vykreslení a aktualizace markerů skriptorií
   useEffect(() => {

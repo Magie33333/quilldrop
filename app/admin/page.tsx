@@ -108,15 +108,21 @@ type GameQuestion = {
   card_id?: string;
   game_kind: "mood" | "cipher" | "paleo";
   title: string;
+  title_en?: string;
   intro: string;
+  intro_en?: string;
   quote: string;
   options: any;
+  options_en?: any;
   correct_index: number;
   explanation: string;
+  explanation_en?: string;
   hint: string;
+  hint_en?: string;
   difficulty: "easy" | "medium" | "expert";
   mode?: "mood" | "cipher" | "script" | "century" | "transcription";
   translation_cs?: string;
+  translation_en?: string;
   target_transcription?: string;
   accepted_variants?: string[];
   highlight_regions?: { x: number; y: number; w: number; h: number; line_number?: number }[];
@@ -231,18 +237,30 @@ export default function AdminPage() {
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [showGameForm, setShowGameForm] = useState(false);
   const [builderMode, setBuilderMode] = useState<GameBuilderMode>("mood");
+  const [builderLang, setBuilderLang] = useState<"cs" | "en">("cs");
   const [builderTitle, setBuilderTitle] = useState("Nálada písaře");
+  const [builderTitleEn, setBuilderTitleEn] = useState("Scribe's Disposition");
   const [builderIntro, setBuilderIntro] = useState("Jak se písař cítil při psaní tohoto kolofonu?");
+  const [builderIntroEn, setBuilderIntroEn] = useState("What was the scribe's state of mind when penning this colophon?");
   const [builderQuote, setBuilderQuote] = useState("");
   const [builderTranslation, setBuilderTranslation] = useState("");
+  const [builderTranslationEn, setBuilderTranslationEn] = useState("");
   const [builderExplanation, setBuilderExplanation] = useState("");
+  const [builderExplanationEn, setBuilderExplanationEn] = useState("");
   const [builderHint, setBuilderHint] = useState("");
+  const [builderHintEn, setBuilderHintEn] = useState("");
   const [builderDifficulty, setBuilderDifficulty] = useState<"easy" | "medium" | "expert">("easy");
   const [builderOptions, setBuilderOptions] = useState<[string, string][]>([
     ["😌", "Úleva a vděčnost za dokončení díla"],
     ["🍺", "Touha po dobrém vínu či pivu a odpočinku"],
     ["✍️", "Bolest ruky a tělesná únava"],
     ["😡", "Rozladění a hněv na nekvalitní pergamen"],
+  ]);
+  const [builderOptionsEn, setBuilderOptionsEn] = useState<[string, string][]>([
+    ["😌", "Relief and gratitude upon completing the task"],
+    ["🍺", "Craving a draught of good wine or ale and rest"],
+    ["✍️", "Aching fingers and physical exhaustion"],
+    ["😡", "Frustration and wrath over flawed parchment"],
   ]);
   const [builderCorrectIndex, setBuilderCorrectIndex] = useState(0);
   const [builderTargetTranscription, setBuilderTargetTranscription] = useState("");
@@ -979,19 +997,31 @@ export default function AdminPage() {
     if (data) {
       const parsed = data.map((q: any) => {
         let choices = q.options;
+        let choicesEn = q.options_en;
         let mode = q.game_kind;
         let highlightRegions = undefined;
         let targetTranscription = undefined;
         let acceptedVariants = undefined;
         let translationCs = q.translation_cs;
+        let translationEn = q.translation_en;
+        let titleEn = q.title_en;
+        let introEn = q.intro_en;
+        let explanationEn = q.explanation_en;
+        let hintEn = q.hint_en;
 
         if (q.options && typeof q.options === "object" && !Array.isArray(q.options)) {
           if (q.options.choices) choices = q.options.choices;
+          if (q.options.choices_en) choicesEn = q.options.choices_en;
           if (q.options.mode) mode = q.options.mode;
           if (q.options.highlight_regions) highlightRegions = q.options.highlight_regions;
           if (q.options.target_transcription) targetTranscription = q.options.target_transcription;
           if (q.options.accepted_variants) acceptedVariants = q.options.accepted_variants;
           if (q.options.translation_cs) translationCs = q.options.translation_cs;
+          if (q.options.translation_en) translationEn = q.options.translation_en;
+          if (q.options.title_en) titleEn = q.options.title_en;
+          if (q.options.intro_en) introEn = q.options.intro_en;
+          if (q.options.explanation_en) explanationEn = q.options.explanation_en;
+          if (q.options.hint_en) hintEn = q.options.hint_en;
         }
 
         if (!mode) {
@@ -1003,11 +1033,17 @@ export default function AdminPage() {
         return {
           ...q,
           mode,
+          title_en: titleEn,
+          intro_en: introEn,
+          explanation_en: explanationEn,
+          hint_en: hintEn,
           options: choices || [],
+          options_en: choicesEn || [],
           highlight_regions: highlightRegions,
           target_transcription: targetTranscription,
           accepted_variants: acceptedVariants,
           translation_cs: translationCs,
+          translation_en: translationEn,
         };
       });
       setQuestions(parsed as GameQuestion[]);
@@ -1019,58 +1055,95 @@ export default function AdminPage() {
     if (!card) return;
     const qText = card.colophons?.quote || "";
     const trText = card.colophons?.translation_cs || "";
+    const trEnText = card.colophons?.translation_en || "";
 
     if (mode === "mood") {
       setBuilderTitle("Nálada písaře");
+      setBuilderTitleEn("Scribe's Disposition");
       setBuilderIntro("Jak se písař cítil při psaní tohoto kolofonu?");
+      setBuilderIntroEn("What was the scribe's state of mind when penning this colophon?");
       setBuilderDifficulty("easy");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
+      setBuilderTranslationEn(trEnText);
       setBuilderOptions([
         ["😌", "Úleva a vděčnost za dokončení díla"],
         ["🍺", "Touha po dobrém vínu či pivu a odpočinku"],
         ["✍️", "Bolest ruky a tělesná únava"],
         ["😡", "Rozladění a hněv na nekvalitní pergamen"],
       ]);
+      setBuilderOptionsEn([
+        ["😌", "Relief and gratitude upon completing the task"],
+        ["🍺", "Craving a draught of good wine or ale and rest"],
+        ["✍️", "Aching fingers and physical exhaustion"],
+        ["😡", "Frustration and wrath over flawed parchment"],
+      ]);
       setBuilderCorrectIndex(0);
       setBuilderExplanation("Písař vyjadřuje úlevu a radost z dokončení celého kodexu.");
+      setBuilderExplanationEn("The scribe expresses relief and rejoicing upon bringing the codex to completion.");
       setBuilderHint("Sledujte zmínky o radosti z konce, či naopak o bolavých prstech a únavě.");
+      setBuilderHintEn("Observe remarks celebrating the end, or laments over cramped fingers and weariness.");
     } else if (mode === "cipher") {
       setBuilderTitle("Rozlušti šifru");
+      setBuilderTitleEn("Decipher the Enigma");
       setBuilderIntro("Odhalte zašifrovaný text nebo skryté jméno písaře:");
+      setBuilderIntroEn("Reveal the encrypted passage or the scribe's concealed name:");
       setBuilderDifficulty("medium");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
+      setBuilderTranslationEn(trEnText);
       setBuilderOptions([
         ["🔑", "Skryté jméno písaře v kryptogramu"],
         ["📜", "Zašifrovaný letopočet dokončení"],
         ["🏛️", "Tajné místo sepsání kodexu"],
         ["✝️", "Kletba na zloděje rukopisu"],
       ]);
+      setBuilderOptionsEn([
+        ["🔑", "The scribe's name hidden in a cryptogram"],
+        ["📜", "An encrypted year of completion"],
+        ["🏛️", "A secret scriptorium location"],
+        ["✝️", "A protective curse against book thieves"],
+      ]);
       setBuilderCorrectIndex(0);
       setBuilderExplanation("Písař použil kryptografickou substituci nebo slovní hříčku.");
+      setBuilderExplanationEn("The scribe employed cryptographic substitution or wordplay.");
       setBuilderHint("Všímejte si neobvyklých znaků nebo vynechaných samohlásek.");
+      setBuilderHintEn("Pay heed to unusual symbols or omitted vowels.");
     } else if (mode === "script") {
       setBuilderTitle("Poznej středověké písmo");
+      setBuilderTitleEn("Identify the Medieval Script");
       setBuilderIntro("Určete, jakým typem písma je tento kolofon zapsán:");
+      setBuilderIntroEn("Determine which historical bookhand or script was employed:");
       setBuilderDifficulty("medium");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
+      setBuilderTranslationEn(trEnText);
       setBuilderOptions([
         ["📜", "Gotická textura (formalis)"],
         ["✒️", "Gotická bastarda"],
         ["🖋️", "Gotická kurzíva (notula)"],
         ["🏛️", "Humanistická antikva"],
       ]);
+      setBuilderOptionsEn([
+        ["📜", "Gothic Textura (formata)"],
+        ["✒️", "Gothic Bastarda"],
+        ["🖋️", "Gothic Cursive (notula)"],
+        ["🏛️", "Humanist Antiqua"],
+      ]);
       setBuilderCorrectIndex(1);
       setBuilderExplanation("Charakteristické lámání dříků a duktus odpovídají gotické bastardě.");
+      setBuilderExplanationEn("The characteristic ductus and broken minims point to Gothic bastarda.");
       setBuilderHint("Zaměřte se na ostrost lomení písmen a přítomnost smyček.");
+      setBuilderHintEn("Focus on sharp angles, loops, and ductus flow.");
     } else if (mode === "transcription") {
       setBuilderTitle("Paleografický mistr");
+      setBuilderTitleEn("Palaeographical Master");
       setBuilderIntro("Přepište označené řádky rukopisu s lupou přesně podle originálu:");
+      setBuilderIntroEn("Transcribe the highlighted manuscript lines faithfully using the magnifying lens:");
       setBuilderDifficulty("expert");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
+      setBuilderTranslationEn(trEnText);
       setBuilderTargetTranscription(qText.split("\n")[0] || qText);
       setBuilderAcceptedVariants("");
       setBuilderStrips([
@@ -1079,7 +1152,9 @@ export default function AdminPage() {
       setCenterMode("strips");
       setActiveStripIdx(0);
       setBuilderExplanation("Správný latinský přepis včetně rozvedených zkratek a ligatur.");
+      setBuilderExplanationEn("Faithful Latin transcription resolving abbreviations and ligatures.");
       setBuilderHint("Pozor na záměnu písmen u/v, dlouhé 's' a zkracovací vlnovky.");
+      setBuilderHintEn("Mind u/v interchanges, long 's', and scribal suspension marks.");
     }
   }
 
@@ -1268,6 +1343,7 @@ export default function AdminPage() {
 
     const optionsPayload = {
       choices: builderOptions,
+      choices_en: builderOptionsEn,
       mode: builderMode,
       highlight_regions: builderMode === "transcription" ? builderStrips : undefined,
       target_transcription: builderMode === "transcription" ? builderTargetTranscription.trim() : undefined,
@@ -1276,6 +1352,11 @@ export default function AdminPage() {
           ? builderAcceptedVariants.split(",").map((s) => s.trim()).filter(Boolean)
           : undefined,
       translation_cs: builderTranslation.trim() || undefined,
+      translation_en: builderTranslationEn.trim() || undefined,
+      title_en: builderTitleEn.trim() || undefined,
+      intro_en: builderIntroEn.trim() || undefined,
+      explanation_en: builderExplanationEn.trim() || undefined,
+      hint_en: builderHintEn.trim() || undefined,
     };
 
     const toInsert = {
@@ -1299,11 +1380,17 @@ export default function AdminPage() {
         {
           ...data,
           mode: builderMode,
+          title_en: optionsPayload.title_en,
+          intro_en: optionsPayload.intro_en,
+          explanation_en: optionsPayload.explanation_en,
+          hint_en: optionsPayload.hint_en,
           highlight_regions: optionsPayload.highlight_regions,
           target_transcription: optionsPayload.target_transcription,
           accepted_variants: optionsPayload.accepted_variants,
           translation_cs: optionsPayload.translation_cs,
+          translation_en: optionsPayload.translation_en,
           options: builderOptions,
+          options_en: builderOptionsEn,
         } as any,
       ]);
       setShowGameForm(false);
@@ -2571,6 +2658,16 @@ export default function AdminPage() {
                           <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#2e241b] text-[#c9a96e] uppercase font-semibold">
                             {qMode}
                           </span>
+                          <span
+                            className={`text-[9.5px] px-1.5 py-0.5 rounded font-semibold ${
+                              q.title_en
+                                ? "bg-amber-950/60 text-amber-200 border border-amber-800/40"
+                                : "bg-[#241d17] text-[#8c7b6d] border border-[#382d22]"
+                            }`}
+                            title={q.title_en ? "Dvojjazyčná výzva (CZ + EN)" : "Pouze česky (CZ)"}
+                          >
+                            {q.title_en ? "CZ · EN" : "CZ"}
+                          </span>
                           {q.difficulty && (
                             <span
                               className={`text-[9.5px] px-1.5 py-0.5 rounded font-semibold ${
@@ -2803,25 +2900,75 @@ export default function AdminPage() {
                       </div>
                     )}
 
+                    {/* Jazyková verze výzvy: Čeština / Angličtina */}
+                    <div className="flex items-center gap-1.5 p-1 bg-[#14100d] border border-[#382d22] rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setBuilderLang("cs")}
+                        className={`flex-1 py-1.5 px-2 rounded text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          builderLang === "cs"
+                            ? "bg-[#332213] text-[#ffd580] border border-[#d4af37]/60 shadow"
+                            : "text-[#8c7b6d] hover:text-[#e8ded1]"
+                        }`}
+                      >
+                        <span>🇨🇿</span> Čeština
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBuilderLang("en")}
+                        className={`flex-1 py-1.5 px-2 rounded text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          builderLang === "en"
+                            ? "bg-[#332213] text-[#ffd580] border border-[#d4af37]/60 shadow"
+                            : "text-[#8c7b6d] hover:text-[#e8ded1]"
+                        }`}
+                      >
+                        <span>🇬🇧</span> English
+                      </button>
+                    </div>
+
                     {/* Název & Zadání */}
                     <div className="space-y-1.5">
                       <div>
-                        <label className="text-[10px] text-[#9c8976]">Název výzvy</label>
-                        <input
-                          type="text"
-                          value={builderTitle}
-                          onChange={(e) => setBuilderTitle(e.target.value)}
-                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
-                        />
+                        <label className="text-[10px] text-[#9c8976]">
+                          {builderLang === "cs" ? "🇨🇿 Název výzvy (Česky)" : "🇬🇧 Challenge Title (English)"}
+                        </label>
+                        {builderLang === "cs" ? (
+                          <input
+                            type="text"
+                            value={builderTitle}
+                            onChange={(e) => setBuilderTitle(e.target.value)}
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={builderTitleEn}
+                            onChange={(e) => setBuilderTitleEn(e.target.value)}
+                            placeholder="e.g. Scribe's Disposition"
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        )}
                       </div>
                       <div>
-                        <label className="text-[10px] text-[#9c8976]">Otázka pro hráče (intro)</label>
-                        <input
-                          type="text"
-                          value={builderIntro}
-                          onChange={(e) => setBuilderIntro(e.target.value)}
-                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
-                        />
+                        <label className="text-[10px] text-[#9c8976]">
+                          {builderLang === "cs" ? "🇨🇿 Otázka pro hráče (intro)" : "🇬🇧 Question for players (intro)"}
+                        </label>
+                        {builderLang === "cs" ? (
+                          <input
+                            type="text"
+                            value={builderIntro}
+                            onChange={(e) => setBuilderIntro(e.target.value)}
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={builderIntroEn}
+                            onChange={(e) => setBuilderIntroEn(e.target.value)}
+                            placeholder="e.g. What was the scribe's state of mind when penning this colophon?"
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -2829,7 +2976,7 @@ export default function AdminPage() {
                     <div className="space-y-1.5">
                       <div>
                         <div className="flex justify-between items-center">
-                          <label className="text-[10px] text-[#9c8976]">Citát z kolofonu</label>
+                          <label className="text-[10px] text-[#9c8976]">Citát z kolofonu (latinský originál)</label>
                           {builderMode === "cipher" && (
                             <button
                               type="button"
@@ -2858,15 +3005,27 @@ export default function AdminPage() {
 
                       <div>
                         <label className="text-[10px] text-[#9c8976]">
-                          Český překlad (zobrazí se v bublině pod latinským textem)
+                          {builderLang === "cs"
+                            ? "🇨🇿 Český překlad (zobrazí se v bublině pod latinským textem)"
+                            : "🇬🇧 English Translation (shown beneath the Latin text)"}
                         </label>
-                        <input
-                          type="text"
-                          value={builderTranslation}
-                          onChange={(e) => setBuilderTranslation(e.target.value)}
-                          placeholder="Doplňte překlad pro hráče..."
-                          className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
-                        />
+                        {builderLang === "cs" ? (
+                          <input
+                            type="text"
+                            value={builderTranslation}
+                            onChange={(e) => setBuilderTranslation(e.target.value)}
+                            placeholder="Doplňte překlad pro hráče..."
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={builderTranslationEn}
+                            onChange={(e) => setBuilderTranslationEn(e.target.value)}
+                            placeholder="Provide English translation for players..."
+                            className="w-full bg-[#14110f] border border-[#332921] rounded p-1.5 text-xs text-[#e8ded1]"
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -3008,7 +3167,7 @@ export default function AdminPage() {
                       <div className="space-y-2 pt-2 border-t border-[#2e2620]">
                         <div className="flex justify-between items-center">
                           <label className="text-[10px] uppercase font-bold text-[#c9a96e]">
-                            4 Možnosti a správná volba (Radio)
+                            {builderLang === "cs" ? "4 Možnosti (Česky)" : "4 Choices (English)"}
                           </label>
 
                           {/* Šablony a rychlé generátory pro pedagogy */}
@@ -3023,6 +3182,12 @@ export default function AdminPage() {
                                       ["🍺", "Touha po doušku dobrého vína či piva"],
                                       ["✍️", "Bolest ruky a tělesná únava"],
                                       ["😡", "Rozladění a hněv na nekvalitní pergamen"],
+                                    ]);
+                                    setBuilderOptionsEn([
+                                      ["😌", "Relief and gratitude upon completing the task"],
+                                      ["🍺", "Craving a draught of good wine or ale"],
+                                      ["✍️", "Aching fingers and physical exhaustion"],
+                                      ["😡", "Frustration and wrath over flawed parchment"],
                                     ]);
                                     setBuilderCorrectIndex(0);
                                   }}
@@ -3039,6 +3204,12 @@ export default function AdminPage() {
                                       ["💀", "Kletba na případného zloděje knihy"],
                                       ["⏳", "Netrpělivost a radost, že je práce u konce"],
                                     ]);
+                                    setBuilderOptionsEn([
+                                      ["👑", "Pride in masterfully completing the codex"],
+                                      ["🙏", "Humble plea for the salvation of the scribe's soul"],
+                                      ["💀", "Curse upon any thief of the book"],
+                                      ["⏳", "Impatience and joy that the labor is ended"],
+                                    ]);
                                     setBuilderCorrectIndex(0);
                                   }}
                                   className="text-[10px] bg-[#231b14] hover:bg-[#33271d] text-[#ffd580] px-1.5 py-0.5 rounded border border-[#4a3a29] cursor-pointer"
@@ -3054,12 +3225,20 @@ export default function AdminPage() {
                                   type="button"
                                   onClick={() => {
                                     setBuilderTitle("Poznej středověké písmo");
+                                    setBuilderTitleEn("Identify the Medieval Script");
                                     setBuilderIntro("Určete, jakým typem písma je tento kolofon zapsán:");
+                                    setBuilderIntroEn("Determine which historical bookhand or script was employed:");
                                     setBuilderOptions([
                                       ["📜", "Gotická textura (formalis)"],
                                       ["✒️", "Gotická bastarda"],
                                       ["🖋️", "Gotická kurzíva (notula)"],
                                       ["🏛️", "Humanistická antikva"],
+                                    ]);
+                                    setBuilderOptionsEn([
+                                      ["📜", "Gothic Textura (formata)"],
+                                      ["✒️", "Gothic Bastarda"],
+                                      ["🖋️", "Gothic Cursive (notula)"],
+                                      ["🏛️", "Humanist Antiqua"],
                                     ]);
                                     setBuilderCorrectIndex(1);
                                   }}
@@ -3074,12 +3253,20 @@ export default function AdminPage() {
                                     const century = Math.ceil(year / 100);
                                     const isFirstHalf = year % 100 <= 50;
                                     setBuilderTitle("Datace rukopisu");
+                                    setBuilderTitleEn("Manuscript Dating");
                                     setBuilderIntro(`Do kterého období spadá sepsání tohoto kodexu (rok ${year})?`);
+                                    setBuilderIntroEn(`To which era does the completion of this codex belong (year ${year})?`);
                                     setBuilderOptions([
                                       ["⏳", `${isFirstHalf ? "1." : "2."} polovina ${century}. století`],
                                       ["⏳", `${isFirstHalf ? "2." : "1."} polovina ${century}. století`],
                                       ["⏳", `${isFirstHalf ? "2." : "1."} polovina ${century - 1}. století`],
                                       ["⏳", `${isFirstHalf ? "1." : "2."} polovina ${century + 1}. století`],
+                                    ]);
+                                    setBuilderOptionsEn([
+                                      ["⏳", `${isFirstHalf ? "1st" : "2nd"} half of the ${century}th century`],
+                                      ["⏳", `${isFirstHalf ? "2nd" : "1st"} half of the ${century}th century`],
+                                      ["⏳", `${isFirstHalf ? "2nd" : "1st"} half of the ${century - 1}th century`],
+                                      ["⏳", `${isFirstHalf ? "1st" : "2nd"} half of the ${century + 1}th century`],
                                     ]);
                                     setBuilderCorrectIndex(0);
                                   }}
@@ -3093,7 +3280,7 @@ export default function AdminPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                          {builderOptions.map((opt, i) => (
+                          {(builderLang === "cs" ? builderOptions : builderOptionsEn).map((opt, i) => (
                             <div
                               key={i}
                               className={`flex items-center gap-2 p-1.5 rounded border ${
@@ -3113,9 +3300,13 @@ export default function AdminPage() {
                                 type="text"
                                 value={opt[0]}
                                 onChange={(e) => {
-                                  const next = [...builderOptions];
-                                  next[i] = [e.target.value, opt[1]];
-                                  setBuilderOptions(next as [string, string][]);
+                                  const newIcon = e.target.value;
+                                  const nextCs = [...builderOptions];
+                                  nextCs[i] = [newIcon, nextCs[i]?.[1] || ""];
+                                  setBuilderOptions(nextCs as [string, string][]);
+                                  const nextEn = [...builderOptionsEn];
+                                  nextEn[i] = [newIcon, nextEn[i]?.[1] || ""];
+                                  setBuilderOptionsEn(nextEn as [string, string][]);
                                 }}
                                 className="w-8 text-center bg-[#1c1713] border border-[#382d22] rounded p-1 text-xs"
                                 title="Ikona nebo emoji volby"
@@ -3124,15 +3315,23 @@ export default function AdminPage() {
                                 type="text"
                                 value={opt[1]}
                                 onChange={(e) => {
-                                  const next = [...builderOptions];
-                                  next[i] = [opt[0], e.target.value];
-                                  setBuilderOptions(next as [string, string][]);
+                                  if (builderLang === "cs") {
+                                    const next = [...builderOptions];
+                                    next[i] = [opt[0], e.target.value];
+                                    setBuilderOptions(next as [string, string][]);
+                                  } else {
+                                    const next = [...builderOptionsEn];
+                                    next[i] = [opt[0], e.target.value];
+                                    setBuilderOptionsEn(next as [string, string][]);
+                                  }
                                 }}
                                 className="flex-1 bg-[#1c1713] border border-[#382d22] rounded p-1 text-xs text-[#e8ded1]"
-                                placeholder={`Možnost ${i + 1}`}
+                                placeholder={builderLang === "cs" ? `Možnost ${i + 1} (česky)` : `Option ${i + 1} (English)`}
                               />
                               {builderCorrectIndex === i && (
-                                <span className="text-[10px] text-[#73d13d] font-bold shrink-0">Správná</span>
+                                <span className="text-[10px] text-[#73d13d] font-bold shrink-0">
+                                  {builderLang === "cs" ? "Správná" : "Correct"}
+                                </span>
                               )}
                             </div>
                           ))}
@@ -3156,12 +3355,12 @@ export default function AdminPage() {
                               onClick={() => setBuilderDifficulty(diff)}
                               className={`py-1 rounded text-xs font-semibold border transition cursor-pointer ${
                                 isSel
-                                  ? diff === "easy"
-                                    ? "bg-emerald-950 text-emerald-300 border-emerald-500 shadow"
-                                    : diff === "expert"
-                                    ? "bg-rose-950 text-rose-300 border-rose-500 shadow"
-                                    : "bg-amber-950 text-amber-300 border-amber-500 shadow"
-                                  : "bg-[#14110f] text-[#8c7b6d] border-[#2e2620] hover:text-[#ffd580] hover:bg-[#1e1813]"
+                                    ? diff === "easy"
+                                      ? "bg-emerald-950 text-emerald-300 border-emerald-500 shadow"
+                                      : diff === "expert"
+                                      ? "bg-rose-950 text-rose-300 border-rose-500 shadow"
+                                      : "bg-amber-950 text-amber-300 border-amber-500 shadow"
+                                    : "bg-[#14110f] text-[#8c7b6d] border-[#2e2620] hover:text-[#ffd580] hover:bg-[#1e1813]"
                               }`}
                             >
                               {labels[diff]}
@@ -3175,29 +3374,57 @@ export default function AdminPage() {
                     <div className="space-y-2.5 pt-1">
                       <div>
                         <label className="text-[10.5px] font-semibold text-[#ffd580] flex items-center justify-between mb-1">
-                          <span className="flex items-center gap-1">💡 Nápověda pro hráče (Hint)</span>
-                          <span className="text-[10px] text-[#8c7b6d] font-normal">Hráč si ji může odkrýt ve hře</span>
+                          <span className="flex items-center gap-1">
+                            💡 {builderLang === "cs" ? "🇨🇿 Nápověda pro hráče (Hint)" : "🇬🇧 Player Hint (English)"}
+                          </span>
+                          <span className="text-[10px] text-[#8c7b6d] font-normal">
+                            {builderLang === "cs" ? "Hráč si ji může odkrýt ve hře" : "Players can uncover it during play"}
+                          </span>
                         </label>
-                        <textarea
-                          rows={2}
-                          value={builderHint}
-                          onChange={(e) => setBuilderHint(e.target.value)}
-                          placeholder="Např. Všímejte si neobvyklých znaků, vynechaných samohlásek nebo narážek na konec práce..."
-                          className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
-                        />
+                        {builderLang === "cs" ? (
+                          <textarea
+                            rows={2}
+                            value={builderHint}
+                            onChange={(e) => setBuilderHint(e.target.value)}
+                            placeholder="Např. Všímejte si neobvyklých znaků, vynechaných samohlásek nebo narážek na konec práce..."
+                            className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
+                          />
+                        ) : (
+                          <textarea
+                            rows={2}
+                            value={builderHintEn}
+                            onChange={(e) => setBuilderHintEn(e.target.value)}
+                            placeholder="e.g. Look closely at unusual characters, omitted vowels, or weariness..."
+                            className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
+                          />
+                        )}
                       </div>
                       <div>
                         <label className="text-[10.5px] font-semibold text-[#ffd580] flex items-center justify-between mb-1">
-                          <span className="flex items-center gap-1">📖 Odborné vysvětlení / paleografický vhled</span>
-                          <span className="text-[10px] text-[#8c7b6d] font-normal">Zobrazí se po vyřešení výzvy</span>
+                          <span className="flex items-center gap-1">
+                            📖 {builderLang === "cs" ? "🇨🇿 Odborné vysvětlení / paleografický vhled" : "🇬🇧 Scholarly explanation / scribal insight"}
+                          </span>
+                          <span className="text-[10px] text-[#8c7b6d] font-normal">
+                            {builderLang === "cs" ? "Zobrazí se po vyřešení výzvy" : "Revealed upon solving the challenge"}
+                          </span>
                         </label>
-                        <textarea
-                          rows={3}
-                          value={builderExplanation}
-                          onChange={(e) => setBuilderExplanation(e.target.value)}
-                          placeholder="Např. Písař vyjadřuje úlevu a radost z dokončení celého kodexu. Použitá forma textu svědčí o..."
-                          className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
-                        />
+                        {builderLang === "cs" ? (
+                          <textarea
+                            rows={3}
+                            value={builderExplanation}
+                            onChange={(e) => setBuilderExplanation(e.target.value)}
+                            placeholder="Např. Písař vyjadřuje úlevu a radost z dokončení celého kodexu. Použitá forma textu svědčí o..."
+                            className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
+                          />
+                        ) : (
+                          <textarea
+                            rows={3}
+                            value={builderExplanationEn}
+                            onChange={(e) => setBuilderExplanationEn(e.target.value)}
+                            placeholder="e.g. The scribe rejoices upon completing the work. The textual formula indicates..."
+                            className="w-full bg-[#14110f] border border-[#382d22] rounded p-2 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37] resize-y leading-relaxed"
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -4066,9 +4293,9 @@ export default function AdminPage() {
                         onChange={(e) => setMosaicForm({ ...mosaicForm, rewardPack: e.target.value as any })}
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       >
-                        <option value="standard">Standard Pack (5 karet)</option>
-                        <option value="refined">Scholar Pack (vyšší šance na Rare)</option>
-                        <option value="masterwork">Masterwork Pack (garance vzácností)</option>
+                        <option value="standard">Běžný balíček / Standard Pack (5 karet)</option>
+                        <option value="refined">Učencův balíček / Scholar Pack (vyšší šance na Rare)</option>
+                        <option value="masterwork">Královský balíček / Masterwork Pack (garance vzácností)</option>
                       </select>
                     </div>
                   </div>

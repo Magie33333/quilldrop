@@ -2,17 +2,23 @@
 
 export interface ModernCountryInfo {
   name: string;
+  name_en?: string;
   hasManuscripts: boolean;
   repositories: string[];
+  repositories_en?: string[];
   cities: string[];
+  cities_en?: string[];
   note?: string;
+  note_en?: string;
 }
 
 export const MODERN_COUNTRIES: Record<string, ModernCountryInfo> = {
   "Czech Republic": {
     name: "Česká republika",
+    name_en: "Czech Republic",
     hasManuscripts: true,
     cities: ["Praha", "Olomouc", "Vyšší Brod", "Brno", "Rajhrad"],
+    cities_en: ["Prague", "Olomouc", "Vyšší Brod", "Brno", "Rajhrad"],
     repositories: [
       "Národní knihovna ČR (Klementinum), Praha",
       "Zemský archiv v Opavě – pobočka Olomouc (Metropolitní kapitula)",
@@ -20,98 +26,162 @@ export const MODERN_COUNTRIES: Record<string, ModernCountryInfo> = {
       "Moravská zemská knihovna v Brně",
       "Památník písemnictví na Moravě (Rajhrad)",
     ],
+    repositories_en: [
+      "National Library of the Czech Republic (Klementinum), Prague",
+      "Regional Archives in Opava – Olomouc Branch (Metropolitan Chapter)",
+      "Library of the Cistercian Abbey at Vyšší Brod",
+      "Moravian Library in Brno",
+      "Monument of Literature in Moravia (Rajhrad)",
+    ],
     note: "Hlavní centrum dochovaných rukopisů a kolofonů projektu.",
+    note_en: "Primary center of preserved manuscripts and colophons in the project.",
   },
   "Poland": {
     name: "Polsko",
+    name_en: "Poland",
     hasManuscripts: true,
     cities: ["Krakov"],
+    cities_en: ["Kraków"],
     repositories: [
       "Biblioteka Jagiellońska, Uniwersytet Jagielloński w Krakowie",
     ],
+    repositories_en: [
+      "Jagiellonian Library, Jagiellonian University in Kraków",
+    ],
     note: "Rukopisy spojené s Jagellonskou univerzitou a krakovskými písaři.",
+    note_en: "Manuscripts connected with the Jagiellonian University and Kraków scribes.",
   },
   "Germany": {
     name: "Německo",
+    name_en: "Germany",
     hasManuscripts: true,
     cities: ["Žitava (Zittau)", "Lipsko", "Norimberk", "Kostnice"],
+    cities_en: ["Zittau", "Leipzig", "Nuremberg", "Constance"],
     repositories: [
       "Christian-Weise-Bibliothek Zittau",
       "Universitätsbibliothek Leipzig",
       "Stadtbibliothek Nürnberg",
       "Stadtarchiv Konstanz / Karlsruhe",
     ],
+    repositories_en: [
+      "Christian-Weise-Bibliothek Zittau",
+      "Leipzig University Library",
+      "Nuremberg City Library",
+      "Constance City Archives / Karlsruhe",
+    ],
     note: "Hornolužické, saské a koncilní rukopisy a městské knihy.",
+    note_en: "Upper Lusatian, Saxon, and Council manuscripts and municipal books.",
   },
   "Italy": {
     name: "Itálie",
+    name_en: "Italy",
     hasManuscripts: true,
     cities: ["Bologna", "Florencie"],
+    cities_en: ["Bologna", "Florence"],
     repositories: [
       "Biblioteca Universitaria di Bologna",
       "Biblioteca Medicea Laurenziana, Florencie",
     ],
+    repositories_en: [
+      "University Library of Bologna",
+      "Laurentian Medicean Library, Florence",
+    ],
     note: "Univerzitní a humanistické kodexy s kolofony českých písařů.",
+    note_en: "University and humanist codices bearing colophons by Bohemian scribes.",
   },
   "Austria": {
     name: "Rakousko",
+    name_en: "Austria",
     hasManuscripts: true,
     cities: ["Vídeň", "Melk", "Klosterneuburg"],
+    cities_en: ["Vienna", "Melk", "Klosterneuburg"],
     repositories: [
       "Österreichische Nationalbibliothek (ÖNB), Vídeň",
       "Stiftsbibliothek Melk",
     ],
+    repositories_en: [
+      "Austrian National Library (ÖNB), Vienna",
+      "Melk Abbey Library",
+    ],
     note: "Podunajské klášterní fondy a vídeňská dvorská knihovna.",
+    note_en: "Danubian monastic collections and the Vienna court library.",
   },
   "Hungary": {
     name: "Maďarsko",
+    name_en: "Hungary",
     hasManuscripts: true,
     cities: ["Ostřihom (Esztergom)"],
+    cities_en: ["Esztergom"],
     repositories: [
       "Főszékesegyházi Könyvtár (Katedrální knihovna Ostřihom)",
     ],
+    repositories_en: [
+      "Cathedral Library of Esztergom (Főszékesegyházi Könyvtár)",
+    ],
     note: "Katedrální knihovna a liturgické rukopisy na Dunaji.",
+    note_en: "Cathedral library and liturgical manuscripts along the Danube.",
   },
   "Slovakia": {
     name: "Slovensko",
+    name_en: "Slovakia",
     hasManuscripts: false,
     cities: ["Bratislava", "Spiš"],
+    cities_en: ["Bratislava", "Spiš"],
     repositories: ["Slovenská národná knižnica"],
+    repositories_en: ["Slovak National Library"],
     note: "Bez evidovaných kodexů v aktuálním výběru.",
+    note_en: "No documented codices in the current selection.",
   },
   "France": {
     name: "Francie",
+    name_en: "France",
     hasManuscripts: false,
     cities: ["Paříž", "Avignon"],
+    cities_en: ["Paris", "Avignon"],
     repositories: ["Bibliothèque nationale de France (BnF)"],
+    repositories_en: ["National Library of France (BnF)"],
     note: "Bez evidovaných kodexů v aktuálním výběru.",
+    note_en: "No documented codices in the current selection.",
   },
   "United Kingdom": {
     name: "Velká Británie",
+    name_en: "United Kingdom",
     hasManuscripts: false,
     cities: ["Londýn", "Oxford"],
+    cities_en: ["London", "Oxford"],
     repositories: ["British Library", "Bodleian Library"],
+    repositories_en: ["British Library", "Bodleian Library"],
     note: "Bez evidovaných kodexů v aktuálním výběru.",
+    note_en: "No documented codices in the current selection.",
   },
   "Switzerland": {
     name: "Švýcarsko",
+    name_en: "Switzerland",
     hasManuscripts: false,
     cities: ["Basilej", "St. Gallen"],
+    cities_en: ["Basel", "St. Gallen"],
     repositories: ["Stiftsbibliothek St. Gallen"],
+    repositories_en: ["Abbey Library of St. Gall"],
     note: "Bez evidovaných kodexů v aktuálním výběru.",
+    note_en: "No documented codices in the current selection.",
   },
   "Spain": {
     name: "Španělsko",
+    name_en: "Spain",
     hasManuscripts: false,
     cities: ["Madrid", "Salamanca"],
+    cities_en: ["Madrid", "Salamanca"],
     repositories: ["Biblioteca Nacional de España"],
+    repositories_en: ["National Library of Spain"],
     note: "Bez evidovaných kodexů v aktuálním výběru.",
+    note_en: "No documented codices in the current selection.",
   },
 };
 
 export interface MedievalRiver {
   id: string;
   name: string;
+  name_en?: string;
   latin: string;
   coords: [number, number][]; // [lat, lng]
 }
@@ -120,6 +190,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "vltava",
     name: "Vltava",
+    name_en: "Vltava River",
     latin: "Moldau",
     coords: [
       [48.58, 14.28], // Šumava pramen
@@ -140,6 +211,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "labe",
     name: "Labe",
+    name_en: "Elbe River",
     latin: "Elbe",
     coords: [
       [50.77, 15.54], // Krkonoše
@@ -167,6 +239,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "morava",
     name: "Morava & Svratka",
+    name_en: "Morava & Svratka Rivers",
     latin: "March",
     coords: [
       [50.20, 16.85], // Kralický Sněžník
@@ -181,6 +254,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "danube",
     name: "Dunaj",
+    name_en: "Danube River",
     latin: "Danube",
     coords: [
       [48.00, 8.20],  // Donaueschingen
@@ -204,6 +278,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "rhine",
     name: "Rýn",
+    name_en: "Rhine River",
     latin: "Rhein",
     coords: [
       [46.63, 8.67],  // Alpy
@@ -224,6 +299,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "vistula",
     name: "Visla",
+    name_en: "Vistula River",
     latin: "Wisła",
     coords: [
       [49.65, 18.96], // Beskydy
@@ -240,6 +316,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "po",
     name: "Pád",
+    name_en: "Po River",
     latin: "Po",
     coords: [
       [44.70, 7.18],  // Monviso
@@ -254,6 +331,7 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
   {
     id: "arno",
     name: "Arno",
+    name_en: "Arno River",
     latin: "Arno",
     coords: [
       [43.88, 11.66], // Apeniny
@@ -263,3 +341,24 @@ export const MEDIEVAL_RIVERS: MedievalRiver[] = [
     ],
   },
 ];
+
+export function getCountryName(info?: ModernCountryInfo, fallbackName?: string, lang?: "cs" | "en"): string {
+  if (!info) return fallbackName || "";
+  return (lang === "en" && info.name_en) ? info.name_en : info.name;
+}
+
+export function getCountryRepositories(info?: ModernCountryInfo, lang?: "cs" | "en"): string[] {
+  if (!info) return [];
+  return (lang === "en" && info.repositories_en && info.repositories_en.length > 0)
+    ? info.repositories_en
+    : info.repositories;
+}
+
+export function getCountryNote(info?: ModernCountryInfo, lang?: "cs" | "en"): string | undefined {
+  if (!info) return undefined;
+  return (lang === "en" && info.note_en) ? info.note_en : info.note;
+}
+
+export function getRiverName(river: MedievalRiver, lang?: "cs" | "en"): string {
+  return (lang === "en" && river.name_en) ? river.name_en : river.name;
+}
