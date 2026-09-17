@@ -2364,6 +2364,7 @@ function PacksScreen({
       ? scholarCount
       : standardCount;
 
+  const packsLeft = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
   const gamesLeft = Math.max(0, MAX_DAILY_GAMES - state.gamesPlayed);
 
   return (
@@ -2372,28 +2373,65 @@ function PacksScreen({
 
       {/* Denní přehled */}
       <div className="daily-ledger">
-        <div>
-          <span>Denní balíčky</span>
-          <strong>
-            {state.packsOpened}
-            <small>/{MAX_DAILY_PACKS}</small>
-          </strong>
-          <div className="ten-dots">
-            {Array.from({ length: MAX_DAILY_PACKS }).map((_, i) => (
-              <i key={i} className={i < state.packsOpened ? "used" : ""} />
-            ))}
+        <div className="daily-ledger-col">
+          <div className="daily-ledger-header">
+            <ScrollText size={13} />
+            <span>Denní balíčky</span>
+          </div>
+          <div className="daily-ledger-counter">
+            <strong>{packsLeft}</strong>
+            <span>ze {MAX_DAILY_PACKS} k dispozici</span>
+          </div>
+          <div className="ledger-pack-seals">
+            {Array.from({ length: MAX_DAILY_PACKS }).map((_, i) => {
+              const isOpened = i < state.packsOpened;
+              const roman = ["I", "II", "III"][i];
+              return (
+                <div
+                  key={i}
+                  className="ledger-pack-seal"
+                  title={`Denní balíček ${roman}: ${isOpened ? "Dnes již otevřen" : "Připraven k otevření"}`}
+                >
+                  <div className={`ledger-pack-seal-pip ${isOpened ? "opened" : "ready"}`}>
+                    {isOpened ? <CheckCircle2 size={15} /> : "Q"}
+                  </div>
+                  <span className={`ledger-pack-seal-label ${isOpened ? "opened" : ""}`}>
+                    {isOpened ? "Otevřen" : `Balíček ${roman}`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div>
-          <span>Písařské výzvy</span>
-          <strong>
-            {state.gamesPlayed}
-            <small>/{MAX_DAILY_GAMES}</small>
-          </strong>
-          <div className="ten-dots games">
-            {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => (
-              <i key={i} className={i < state.gamesPlayed ? "used" : ""} />
-            ))}
+
+        <div className="daily-ledger-col">
+          <div className="daily-ledger-header games">
+            <Trophy size={13} />
+            <span>Písařské výzvy</span>
+          </div>
+          <div className="daily-ledger-counter games">
+            <strong>{gamesLeft}</strong>
+            <span>z {MAX_DAILY_GAMES} k dispozici</span>
+          </div>
+          <div className="ledger-game-tokens">
+            {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => {
+              const isPlayed = i < state.gamesPlayed;
+              const roman = ["I", "II", "III", "IV", "V"][i];
+              return (
+                <div
+                  key={i}
+                  className="ledger-game-token"
+                  title={`Písařská výzva ${roman}: ${isPlayed ? "Dnes již splněno" : "K dispozici"}`}
+                >
+                  <div className={`ledger-game-token-pip ${isPlayed ? "used" : "ready"}`}>
+                    {isPlayed ? <CheckCircle2 size={13} /> : "✦"}
+                  </div>
+                  <span className={`ledger-game-token-label ${isPlayed ? "used" : ""}`}>
+                    {isPlayed ? "Hotovo" : `Výzva ${roman}`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

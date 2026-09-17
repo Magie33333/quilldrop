@@ -418,6 +418,11 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Spolužáci ze semináře jsou označeni odznakem *„✦ Kolega ze semináře“*.
   * Do rozhraní profilu bylo integrováno okamžité **vyhledávání v kolezích** podle jména i přezdívky.
   * Hráči mohou přímo kliknout na *„⚖️ Směna“* nebo *„Darovat“* a zahájit reálnou bilaterální výměnu ukládanou do tabulek `card_trades` a `card_gifts`.
+* **Vizuální redesign denního přehledu (`daily-ledger`) v otevírání balíčků:**
+  * Původní drobné a osamocené 7px tečky byly nahrazeny haptickými **středověkými pečetěmi a odznaky**:
+    * **Denní balíčky (3 ks):** Výrazné 32px rubínové pečetě z pečetního vosku se zlatým lemem, pečetním písmenem `Q`, jemným pulzujícím zářením a římským označením (*Balíček I, II, III*). Po otevření se pečeť zlomí na dobový pergamenový štítek s fajfkou `✓` a nápisem *Otevřen*.
+    * **Písařské výzvy (5 ks):** Lazuritové rytířské medailonky (27px) v královské modři se stříbrným lemem, hvězdicí `✦` a popisem (*Výzva I až V*). Po splnění přechází do archivního stavu s fajfkou `✓` a nápisem *Hotovo*.
+  * Celý pergamenový rám získal hřejivé vnitřní osvětlení, vyřezávaný sloupcový oddělovač a velká, důstojná čísla (*„3 ze 3 k dispozici“* a *„5 z 5 k dispozici“*).
 
 ---
 
