@@ -1061,7 +1061,7 @@ export default function Home() {
         bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "standard");
         if (bonusIndexToRemove === -1) {
           if (state.bonusPacks.length > 0) {
-            setToast(lang === "en" ? "Daily packs exhausted. Choose a Scholar Pack or Masterwork Pack from your vault!" : "Denní balíčky jsou vyčerpány. Zvolte Učencův balíček nebo Královský balíček z vaší pokladnice!");
+            setToast(lang === "en" ? "Daily packs exhausted. Choose an available Scholar Pack or Masterwork Pack!" : "Denní balíčky jsou vyčerpány. Zvolte Učencův balíček nebo Královský balíček!");
           } else {
             setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? (lang === "en" ? "All today's packs and mini-games are exhausted. Return tomorrow!" : "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra.") : (lang === "en" ? "Daily packs exhausted – earn more by completing a scribal challenge." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy."));
           }
@@ -1188,7 +1188,7 @@ export default function Home() {
       if (nextLevel > levelForXp(state.xp)) {
         window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
       } else {
-        setToast(lang === "en" ? `Correct! ${qualityLabel(quality, lang)} was stored in your vault.` : `Správně! ${qualityLabel(quality, lang)} byl uložen do vaší pokladnice.`);
+        setToast(lang === "en" ? `Correct! ${qualityLabel(quality, lang)} is ready to open.` : `Správně! ${qualityLabel(quality, lang)} je připraven k otevření.`);
       }
     } else {
       playParchmentFlip(0.2);
@@ -2254,9 +2254,9 @@ function HomeScreen({
                 }`}
               >
                 {remaining > 0
-                  ? (lang === "en" ? `📜 ${remaining} pack${remaining > 1 ? "s" : ""} available` : `📜 ${formatPacksCount(remaining)}`)
+                  ? (lang === "en" ? `📜 ${remaining} pack${remaining > 1 ? "s" : ""} available` : `📜 ${formatPacksCount(remaining)} k dispozici`)
                   : hasBonus
-                  ? (lang === "en" ? `✨ ${state.bonusPacks.length} in vault` : `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici`)
+                  ? (lang === "en" ? `✨ ${state.bonusPacks.length} pack${state.bonusPacks.length > 1 ? "s" : ""} available` : `✨ ${formatPacksCount(state.bonusPacks.length)} k dispozici`)
                   : (lang === "en" ? "Exhausted" : "Vyčerpáno")}
               </span>
             </div>
@@ -2299,7 +2299,7 @@ function HomeScreen({
             </div>
           </div>
           <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
-            {remaining || hasBonus ? (lang === "en" ? "Open Pack (5 cards)" : "Otevřít balíček (5 karet)") : (lang === "en" ? "Go to Vault" : "Přejít do pokladnice")} <span>→</span>
+            {remaining || hasBonus ? (lang === "en" ? "Open Pack (5 cards)" : "Otevřít balíček (5 karet)") : (lang === "en" ? "Pack Overview" : "Přehled balíčků")} <span>→</span>
           </button>
         </section>
 
@@ -2308,7 +2308,7 @@ function HomeScreen({
             <h3 style={{ margin: 0 }}>{lang === "en" ? "Daily Scribal Challenges" : "Písařské výzvy dne"}</h3>
             <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} {lang === "en" ? "available" : "k dispozici"}</span>
           </div>
-          <p>{lang === "en" ? "Complete a quick challenge and receive a bonus pack into your vault." : "Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice."}</p>
+          <p>{lang === "en" ? "Complete a quick challenge and receive a bonus pack of colophons." : "Splňte rychlou výzvu a získejte další bonusový balíček kolofonů."}</p>
           <div className="home-quests-list">
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("mood")}>
               <span className="home-quest-icon icon-mood"><Smile size={19} /></span>
@@ -2605,7 +2605,7 @@ function PacksScreen({
         >
           {standardCount > 0 && <span className="tier-count-pill">{standardCount}</span>}
           <strong>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</strong>
-          <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "Exhausted" : "Vyčerpáno")}</span>
+          <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
         </button>
 
         <button
@@ -2617,7 +2617,7 @@ function PacksScreen({
         >
           {scholarCount > 0 && <span className="tier-count-pill">{scholarCount}</span>}
           <strong>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</strong>
-          <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} in vault` : `${scholarCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
+          <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} available` : `${scholarCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
         </button>
 
         <button
@@ -2629,7 +2629,7 @@ function PacksScreen({
         >
           {masterworkCount > 0 && <span className="tier-count-pill">{masterworkCount}</span>}
           <strong>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</strong>
-          <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} in vault` : `${masterworkCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
+          <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} available` : `${masterworkCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
         </button>
       </div>
 
@@ -2639,11 +2639,13 @@ function PacksScreen({
       >
         <div className={`pack-ribbon quality-${selectedTier}`}>
           {countForSelected > 0
-            ? `${countForSelected} ${
-                lang === "en"
-                  ? (selectedTier === "standard" ? "remaining to open" : "in vault")
-                  : (selectedTier === "standard" ? "zbývá k otevření" : "v pokladnici")
-              }`
+            ? (lang === "en"
+                ? `${countForSelected} remaining to open`
+                : countForSelected === 1
+                ? "1 zbývá k otevření"
+                : countForSelected >= 2 && countForSelected <= 4
+                ? `${countForSelected} zbývají k otevření`
+                : `${countForSelected} zbývá k otevření`)
             : (lang === "en" ? "Pack unavailable" : "Balíček není k dispozici")}
         </div>
 
@@ -2747,7 +2749,7 @@ function PacksScreen({
       {/* Výzvy o další balíčky */}
       <div className="section-title">
         <div>
-          <h2>{lang === "en" ? "Earn Another Pack for Your Vault" : "Získejte další balíček do pokladnice"}</h2>
+          <h2>{lang === "en" ? "Earn Another Bonus Pack" : "Získejte další bonusový balíček"}</h2>
           <small style={{ color: "#765228", display: "block", marginTop: "2px", fontSize: "11px" }}>
             {lang === "en"
               ? "Master any of the four scribal disciplines to unlock an authentic bonus pack."
@@ -4587,7 +4589,7 @@ function LevelUpModal({ level, onClose, lang = "cs" }: { level: number; onClose:
     <p>{lang === "en" ? "Scribal Enlightenment" : "Písařské osvícení"}</p><h2>{lang === "en" ? "Level" : "Úroveň"} {level}</h2>
     <div className="level-seal"><span>{level}</span></div>
     <strong>{lang === "en" ? "Masterwork Reward Unlocked" : "Odemčena královská odměna"}</strong>
-    <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons has been deposited into your vault." : "Do vaší pokladnice byl vložen jeden Královský balíček s vysokou šancí na vzácné kolofony."}</small>
+    <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons is ready to open." : "Jeden Královský balíček s vysokou šancí na vzácné kolofony je připraven k otevření."}</small>
     <button onClick={onClose}>{lang === "en" ? "Claim Reward" : "Převzít odměnu"}</button>
   </section></div>;
 }
