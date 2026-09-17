@@ -397,6 +397,28 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
   * Denní počítadlo a tečkový LED indikátor (`daily-ledger`) byly přizpůsobeny novým hodnotám (`/3` a 3 tečky pro balíčky, `/5` a 5 teček pro výzvy).
   * Upraveny všechny související texty, toast hlášky a navigační odznaky v celé aplikaci.
 
+### [2026-09-17] Čistý štít pro nového hráče, 5krokový úvodní tutoriál & Adresář spoluhráčů
+* **Čistý štít pro nově registrované hráče (`EMPTY_PLAYER_STATE`):**
+  * Vyřešeno nežádoucí dědění demo dat: Registrující se hráč již nedědí předvyplněné karty, XP ani trofeje z lokálního úložiště anonymního návštěvníka.
+  * Nový hráč začíná s čistým štítem: `collection: {}` (0 karet), `xp: 0`, `trophies: []`, `coins: 50` a plným denním přídělem (3 zapečetěné balíčky k otevření a 5 písařských výzev k odehrání).
+  * Všechny karty získává hráč organicky z reálných fakultních kodexů přes rozbalování balíčků nebo směnu.
+* **Interaktivní úvodní tutoriál (*Zasvěcení do skriptoria*):**
+  * Vytvořena komponenta `OnboardingTutorialModal` s luxusním pergamenovým rozhraním a zvukovými efekty otáčení listů.
+  * 5 tematických kroků:
+    1. *Vítejte ve Skriptoriu Karlovy univerzity* (historický kontext a fakultní výzkum prof. PhDr. Lucie Doležalové, Ph.D.).
+    2. *Tajemství kolofonů* (význam kolofonů, 4:3 výřezy a digitalizáty).
+    3. *3 denní balíčky & Cesta písaře* (denní příděl 15 karet, 6 rarit, 16dílná iluminovaná mozaika).
+    4. *5 denních písařských výzev* (paleografické minihry: Nálada, Šifra a Přepis pro zisk XP a Mistrovských balíčků).
+    5. *Písařská směna se spolužáky* (P2P smlouvy, protinabídky a darování).
+  * Dokončení tutoriálu udělí uvítací bonus **+50 XP**, nastaví trvalý příznak `hasSeenTutorial: true` do profilu i databáze a automaticky přesměruje nováčka do záložky *Balíčky*, kde na něj čekají jeho 3 zapečetěné balíčky.
+  * Do profilu přidáno tlačítko *„📜 Průvodce skriptoriem (Tutoriál)“*, které umožňuje kdykoliv průvodce znovu projít.
+* **Živý adresář spoluhráčů a směna s mistrem skriptoria (`benysek.vojta`):**
+  * Seznam kolegů v profilu dynamicky načítá reálné registrované uživatele ze Supabase (`profiles`).
+  * Administrátoři a vyučující (např. účet `benysek.vojta`) jsou automaticky řazeni na **1. místo** se zlatým profilem a odznakem *„👑 Mistr skriptoria (Admin)“*.
+  * Spolužáci ze semináře jsou označeni odznakem *„✦ Kolega ze semináře“*.
+  * Do rozhraní profilu bylo integrováno okamžité **vyhledávání v kolezích** podle jména i přezdívky.
+  * Hráči mohou přímo kliknout na *„⚖️ Směna“* nebo *„Darovat“* a zahájit reálnou bilaterální výměnu ukládanou do tabulek `card_trades` a `card_gifts`.
+
 ---
 
 ### Následující kroky:

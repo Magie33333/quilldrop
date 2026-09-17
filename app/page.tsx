@@ -101,12 +101,14 @@ type GameState = {
   lastLoginDate: string;
   gallery: string[];
   avatarArt: string | null;
+  hasSeenTutorial?: boolean;
 };
 
 const ILLUMINATIONS = DEFAULT_ILLUMINATIONS;
 
 const COLOPHONS: Colophon[] = HEURIST_COLOPHONS.map(card => ({ ...card })) as Colophon[];
 
+// Výchozí demo stav pro neregistrovaného návštěvníka / hosta
 const INITIAL_STATE: GameState = {
   packsOpened: 0,
   collection: Object.fromEntries(COLOPHONS.slice(0, 4).map((card, index) => [card.id, index === 1 ? 2 : 1])),
@@ -123,6 +125,27 @@ const INITIAL_STATE: GameState = {
   lastLoginDate: "",
   gallery: [],
   avatarArt: null,
+  hasSeenTutorial: true,
+};
+
+// Čistý štít pro nově registrovaného hráče (0 karet, 0 XP, prázdné trofeje, tutoriál připraven)
+const EMPTY_PLAYER_STATE: GameState = {
+  packsOpened: 0,
+  collection: {},
+  xp: 0,
+  coins: 50,
+  streak: 1,
+  puzzle: 1,
+  trophies: [],
+  lastPlayed: "",
+  gamesPlayed: 0,
+  completedQuestionsToday: [],
+  dailyTradedPartners: [],
+  bonusPacks: [],
+  lastLoginDate: "",
+  gallery: [],
+  avatarArt: null,
+  hasSeenTutorial: false,
 };
 
 const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
@@ -178,23 +201,28 @@ function withXpReward(state: GameState, amount: number): GameState {
 }
 
 function loadState(userId?: string): GameState {
-  if (typeof window === "undefined") return INITIAL_STATE;
+  if (typeof window === "undefined") return userId ? EMPTY_PLAYER_STATE : INITIAL_STATE;
   try {
     const key = userId ? `quilldrop-state-${userId}` : "quilldrop-state";
-    let saved = JSON.parse(localStorage.getItem(key) || "null");
-    if (!saved && userId) {
-      saved = JSON.parse(localStorage.getItem("quilldrop-state") || "null");
-    }
+    const saved = JSON.parse(localStorage.getItem(key) || "null");
+
+    // Pro přihlášeného uživatele je základem čistý stav, pro anonymního návštěvníka demo stav
+    const baseTemplate = userId ? EMPTY_PLAYER_STATE : INITIAL_STATE;
     const base: GameState = {
-      ...INITIAL_STATE,
+      ...baseTemplate,
       ...(saved || {}),
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
       completedQuestionsToday: saved?.completedQuestionsToday || [],
       dailyTradedPartners: saved?.dailyTradedPartners || [],
+      hasSeenTutorial: saved?.hasSeenTutorial !== undefined ? saved.hasSeenTutorial : (userId ? false : true),
     };
-    const hasCurrentCards = Object.keys(base.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
-    if (!hasCurrentCards) base.collection = { ...INITIAL_STATE.collection };
+
+    // Pouze pro nepřihlášené návštěvníky doplňujeme ukázkové karty, pokud nemají žádné
+    if (!userId) {
+      const hasCurrentCards = Object.keys(base.collection).some(id => COLOPHONS.some(card => String(card.id) === String(id)));
+      if (!hasCurrentCards) base.collection = { ...INITIAL_STATE.collection };
+    }
 
     const todayStr = today();
     const isNewDay = base.lastPlayed !== todayStr;
@@ -334,6 +362,7 @@ export default function Home() {
     parentTradeId?: string;
   } | null>(null);
   const [reviewTradeModal, setReviewTradeModal] = useState<CardTrade | null>(null);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
 
   // 16dílné iluminace a denní streak (Cesta písaře)
   const [illuminations, setIlluminations] = useState<IlluminationMosaicItem[]>(DEFAULT_ILLUMINATIONS);
@@ -416,12 +445,12 @@ export default function Home() {
             username: defaultName,
             display_name: defaultName,
             role: "player",
-            xp: INITIAL_STATE.xp,
-            coins: INITIAL_STATE.coins,
-            streak: INITIAL_STATE.streak,
-            puzzle_progress: INITIAL_STATE.puzzle,
-            bonus_packs: INITIAL_STATE.bonusPacks,
-            trophies: INITIAL_STATE.trophies,
+            xp: EMPTY_PLAYER_STATE.xp,
+            coins: EMPTY_PLAYER_STATE.coins,
+            streak: EMPTY_PLAYER_STATE.streak,
+            puzzle_progress: EMPTY_PLAYER_STATE.puzzle,
+            bonus_packs: EMPTY_PLAYER_STATE.bonusPacks,
+            trophies: EMPTY_PLAYER_STATE.trophies,
             last_played_date: today(),
           })
           .select()
@@ -461,11 +490,17 @@ export default function Home() {
         trophies: Array.isArray(profile?.trophies) && profile.trophies.length > 0 ? Array.from(new Set([...local.trophies, ...profile.trophies])) : local.trophies,
         avatarArt: profile?.avatar_id || local.avatarArt,
         collection: mergedCollection,
+        hasSeenTutorial: local.hasSeenTutorial ?? false,
       };
 
       setState(mergedState);
       if (typeof window !== "undefined") {
         localStorage.setItem(`quilldrop-state-${user.id}`, JSON.stringify(mergedState));
+      }
+
+      // Pokud nový hráč ještě neviděl úvodní tutoriál, automaticky jej otevřeme
+      if (!mergedState.hasSeenTutorial) {
+        setShowTutorialModal(true);
       }
     } catch (err) {
       console.warn("Failed to load user data from Supabase:", err);
@@ -657,12 +692,28 @@ export default function Home() {
           try {
             const { data: profs } = await supabase
               .from("profiles")
-              .select("id, username, display_name, streak, xp, avatar_id")
+              .select("id, username, display_name, streak, xp, avatar_id, role")
               .order("streak", { ascending: false })
-              .limit(15);
+              .limit(30);
             if (profs && profs.length > 0) {
               const filtered = user ? profs.filter((p: any) => p.id !== user.id) : profs;
-              if (filtered.length > 0) setColleagues(filtered);
+              // Seřadit: mistři skriptoria (admini) nahoře, dále podle XP sestupně
+              filtered.sort((a: any, b: any) => {
+                if (a.role === "admin" && b.role !== "admin") return -1;
+                if (b.role === "admin" && a.role !== "admin") return 1;
+                return (b.xp || 0) - (a.xp || 0);
+              });
+              const realIds = new Set(filtered.map((p: any) => p.id));
+              const demoFallbacks = [
+                { id: "demo-1", display_name: "Lucie z Klementina", username: "lucie.d", streak: 14, xp: 850, avatar_id: "urban-v", role: "demo" },
+                { id: "demo-2", display_name: "Bratr Jan (Vyšší Brod)", username: "frater.iohannes", streak: 9, xp: 620, avatar_id: "codex-gigas", role: "demo" },
+                { id: "demo-3", display_name: "Matouš ze Skriptoria", username: "matheus.scribe", streak: 5, xp: 340, avatar_id: "rabbit-scribe", role: "demo" },
+              ];
+              const combined = [
+                ...filtered,
+                ...demoFallbacks.filter((d) => !realIds.has(d.id)),
+              ];
+              setColleagues(combined);
             }
           } catch {}
         }
@@ -1446,6 +1497,28 @@ export default function Home() {
     } catch {}
   };
 
+  const handleFinishTutorial = () => {
+    playTriumphFanfare("Common");
+    setState((prev) => {
+      // Pokud nový hráč začínal s 0 XP, udělíme mu do začátku +50 XP
+      const awarded = prev.xp === 0 ? withXpReward(prev, 50) : prev;
+      const updated: GameState = {
+        ...awarded,
+        hasSeenTutorial: true,
+      };
+      if (currentUser) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`quilldrop-state-${currentUser.id}`, JSON.stringify(updated));
+        }
+        syncToSupabase(currentUser.id, updated, cards);
+      }
+      return updated;
+    });
+    setShowTutorialModal(false);
+    setTab("packs");
+    setToast("Zasvěcení do skriptoria dokončeno (+50 XP)! Zde jsou vaše 3 denní zapečetěné balíčky.");
+  };
+
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
@@ -1510,6 +1583,7 @@ export default function Home() {
               onReviewTrade={(trade) => setReviewTradeModal(trade)}
               onSetAvatar={(id) => { setState(s => ({ ...s, avatarArt: id })); setToast("Portrét písaře byl aktualizován."); }}
               onDeleteAccount={handleDeleteAccount}
+              onOpenTutorial={() => setShowTutorialModal(true)}
             />
           )}
         </div>
@@ -1690,6 +1764,13 @@ export default function Home() {
             onCounter={handleCounterTrade}
             onDecline={handleDeclineTrade}
             onClose={() => setReviewTradeModal(null)}
+          />
+        )}
+        {showTutorialModal && (
+          <OnboardingTutorialModal
+            isOpen={showTutorialModal}
+            onClose={() => setShowTutorialModal(false)}
+            onFinish={handleFinishTutorial}
           />
         )}
         {showAuthModal && (
@@ -2900,6 +2981,7 @@ function ProfileScreen({
   onReviewTrade,
   onSetAvatar,
   onDeleteAccount,
+  onOpenTutorial,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -2923,7 +3005,19 @@ function ProfileScreen({
   onReviewTrade?: (trade: CardTrade) => void;
   onSetAvatar: (id: string) => void;
   onDeleteAccount?: () => void;
+  onOpenTutorial?: () => void;
 }) {
+  const [colleagueQuery, setColleagueQuery] = useState("");
+  const filteredColleagues = useMemo(() => {
+    if (!colleagueQuery.trim()) return colleagues;
+    const q = colleagueQuery.toLowerCase();
+    return colleagues.filter(
+      (f) =>
+        (f.display_name || "").toLowerCase().includes(q) ||
+        (f.username || "").toLowerCase().includes(q)
+    );
+  }, [colleagues, colleagueQuery]);
+
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
   const title = level >= 10 ? "Mistr iluminátor" : level >= 6 ? "Písařský tovaryš" : "Učedník ve skriptoriu";
@@ -3203,7 +3297,7 @@ function ProfileScreen({
     )}
 
     <div className="section-title">
-      <h2>Kolegové ve skriptoriu</h2>
+      <h2>Kolegové ve skriptoriu ({colleagues.length})</h2>
       <div style={{ display: "flex", gap: 8 }}>
         {onOpenTrade && (
           <button className="icon-label" onClick={() => onOpenTrade()}>
@@ -3215,48 +3309,115 @@ function ProfileScreen({
         </button>
       </div>
     </div>
+
+    {colleagues.length > 2 && (
+      <div style={{ marginBottom: 10 }}>
+        <input
+          type="text"
+          placeholder="Hledat kolegu podle jména či přezdívky..."
+          value={colleagueQuery}
+          onChange={(e) => setColleagueQuery(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px 12px",
+            borderRadius: 6,
+            border: "1px solid #d0bc93",
+            background: "#fffdf9",
+            fontSize: "12px",
+            color: "var(--ink)",
+          }}
+        />
+      </div>
+    )}
+
     <div className="friends">
-      {colleagues.map((friend) => (
-        <article key={friend.id}>
-          <div className="friend-avatar">
-            {friend.display_name ? friend.display_name.substring(0, 1).toUpperCase() : "K"}
-          </div>
-          <div>
-            <strong>{friend.display_name || friend.username || "Kolega"}</strong>
-            <small>{friend.streak || 1} dní v řadě · {friend.xp ? `${friend.xp} XP` : "Tovaryš skriptoria"}</small>
-          </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            {onOpenTrade && (
-              <button
-                type="button"
-                onClick={() => onOpenTrade(friend)}
-                style={{
-                  padding: "5px 10px",
-                  borderRadius: 6,
-                  background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
-                  color: "#fff4d4",
-                  border: "1px solid #3d2206",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <ArrowLeftRight size={11} /> Směna
+      {filteredColleagues.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "16px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
+          Nenalezen žádný kolega odpovídající hledání „{colleagueQuery}“.
+        </div>
+      ) : (
+        filteredColleagues.map((friend) => (
+          <article
+            key={friend.id}
+            style={{
+              border: friend.role === "admin" ? "1px solid #d4af37" : undefined,
+              background: friend.role === "admin" ? "linear-gradient(90deg, #fffcf0 0%, #faf3db 100%)" : undefined,
+            }}
+          >
+            <div
+              className="friend-avatar"
+              style={{
+                background: friend.role === "admin" ? "linear-gradient(135deg, #b8860b, #6b4e05)" : undefined,
+                color: friend.role === "admin" ? "#fff9e6" : undefined,
+                fontWeight: 700,
+                boxShadow: friend.role === "admin" ? "0 2px 8px rgba(184,134,11,0.35)" : undefined,
+              }}
+            >
+              {friend.display_name ? friend.display_name.substring(0, 1).toUpperCase() : "K"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <strong>{friend.display_name || friend.username || "Kolega"}</strong>
+                {friend.role === "admin" ? (
+                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
+                    👑 Mistr skriptoria (Admin)
+                  </span>
+                ) : !friend.id?.startsWith("demo-") ? (
+                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.15)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
+                    ✦ Kolega ze semináře
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: 4, background: "rgba(0,0,0,0.05)", border: "1px solid #ccc", color: "#777" }}>
+                    Cvičný písař
+                  </span>
+                )}
+              </div>
+              <small>{friend.streak || 1} dní v řadě · {friend.xp !== undefined ? `${friend.xp} XP` : "Tovaryš skriptoria"}</small>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              {onOpenTrade && (
+                <button
+                  type="button"
+                  onClick={() => onOpenTrade(friend)}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+                    color: "#fff4d4",
+                    border: "1px solid #3d2206",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <ArrowLeftRight size={11} /> Směna
+                </button>
+              )}
+              <button onClick={() => onSend(friend)}>
+                <Send size={12} /> Darovat
               </button>
-            )}
-            <button onClick={() => onSend(friend)}>
-              <Send size={12} /> Darovat
-            </button>
-          </div>
-        </article>
-      ))}
+            </div>
+          </article>
+        ))
+      )}
     </div>
 
     <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {onOpenTutorial && (
+          <button
+            type="button"
+            className="settings-button"
+            style={{ flex: 1, minWidth: 160, background: "#fffdf5", borderColor: "#c9a66b", color: "#54380e", fontWeight: 600 }}
+            onClick={onOpenTutorial}
+            title="Znovu si projít 5kapitolového průvodce skriptoriem a kolofony"
+          >
+            <Sparkles size={12} /> 📜 Průvodce skriptoriem (Tutoriál)
+          </button>
+        )}
         <button
           type="button"
           className="settings-button"
@@ -4171,6 +4332,276 @@ function AuthModal({
           </svg>
           Pokračovat přes Google
         </button>
+      </section>
+    </div>
+  );
+}
+
+function OnboardingTutorialModal({
+  isOpen,
+  onClose,
+  onFinish,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onFinish: () => void;
+}) {
+  const [step, setStep] = useState(0);
+
+  if (!isOpen) return null;
+
+  const steps = [
+    {
+      badge: "KROK 1 ZE 5 · HISTORICKÝ KONTEXT",
+      icon: "🪶",
+      title: "Vítejte ve Skriptoriu Karlovy univerzity",
+      lead: "Vstupujete do světa středověkých rukopisů, písařských dílen a zapomenutých podpisů 14. a 15. století.",
+      body: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
+          <p>
+            V písařských dílnách pražské univerzity a českých klášterů vznikaly kodexy, které dodnes udivují svou krásou. Každý řádek byl psán husím brkem při svitu svíček za mrazivých zimních rán.
+          </p>
+          <div style={{ padding: "10px 14px", background: "rgba(184, 134, 11, 0.1)", borderRadius: 8, borderLeft: "4px solid #b8860b" }}>
+            Quilldrop propojuje herní sběratelský zážitek s reálným výzkumem rukopisů Filozofické fakulty UK vedeným <strong>prof. PhDr. Lucií Doležalovou, Ph.D.</strong>
+          </div>
+        </div>
+      ),
+    },
+    {
+      badge: "KROK 2 ZE 5 · SBĚRATELSKÉ KARTY",
+      icon: "📜",
+      title: "Co je to kolofon a jak karty fungují?",
+      lead: "Kolofon je osobní vzkaz, který písař vepsal na samý konec dokončeného rukopisu.",
+      body: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
+          <p>
+            Středověcí písaři v kolofonech děkovali Bohu, stěžovali si na bolavá záda a ztuhlé prsty, prosili o pohár vína, nebo varovali zloděje knih před pekelným ohněm.
+          </p>
+          <div style={{ padding: "10px 14px", background: "#fcf8ee", borderRadius: 8, border: "1px solid #d8c29d", fontStyle: "italic" }}>
+            „Explicit expliceat, ludere scriptor eat.“ (Dopsáno jest, nechť si jde písař hrát!)
+          </div>
+          <p>
+            Každá karta v Quilldropu představuje <strong>skutečný historický kodex</strong> z fakultní databáze Heurist s přesným 4:3 výřezem originálního písma a českým překladem.
+          </p>
+        </div>
+      ),
+    },
+    {
+      badge: "KROK 3 ZE 5 · DENNÍ PŘÍDĚL KARET",
+      icon: "📦",
+      title: "3 denní balíčky a cesta písaře",
+      lead: "Vyzvedněte si každý kalendářní den 15 nových kolofonů zdarma.",
+      body: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
+          <p>
+            Každý den na vás ve skriptoriu čekají <strong>3 bezplatné zapečetěné balíčky</strong>. V každém balíčku naleznete 5 karet v šesti stupních vzácnosti:
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, textAlign: "center", fontSize: "11px", fontWeight: 700 }}>
+            <span style={{ padding: "4px", background: "#e8e5df", borderRadius: 4, color: "#555" }}>Common</span>
+            <span style={{ padding: "4px", background: "#e2f0d9", borderRadius: 4, color: "#2e7d32" }}>Uncommon</span>
+            <span style={{ padding: "4px", background: "#deebf7", borderRadius: 4, color: "#1565c0" }}>Rare</span>
+            <span style={{ padding: "4px", background: "#f2e1f5", borderRadius: 4, color: "#7b1fa2" }}>Epic</span>
+            <span style={{ padding: "4px", background: "#fef3d6", borderRadius: 4, color: "#e65100" }}>Legendary</span>
+            <span style={{ padding: "4px", background: "linear-gradient(135deg, #ffe082, #ffb300)", borderRadius: 4, color: "#4e342e" }}>Unique ★</span>
+          </div>
+          <p>
+            Za každou denní návštěvu navíc odhalíte dílek v 16denní iluminované mozaice <strong>Cesta písaře</strong>!
+          </p>
+        </div>
+      ),
+    },
+    {
+      badge: "KROK 4 ZE 5 · PALEOGRAFIE A MINIHRY",
+      icon: "⚔️",
+      title: "5 denních výzev pro bystrý zrak",
+      lead: "Trénujte čtení gotických liter a dešifrování středověkých zkratek.",
+      body: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
+          <p>
+            V záložce <strong>Výzvy</strong> máte denně k dispozici <strong>5 písařských aktivit</strong>:
+          </p>
+          <ul style={{ margin: "0 0 0 18px", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            <li><strong>Nálada písaře:</strong> Odhadněte duševní rozpoložení autora kolofonu.</li>
+            <li><strong>Rozlušti šifru:</strong> Dešifrujte latinské kryptogramy a anagramy.</li>
+            <li><strong>Paleografický přepis:</strong> Přečtěte originální gotické písmo přímo z rukopisu.</li>
+          </ul>
+          <p>
+            Za úspěšné odpovědi získáváte <strong>XP</strong> pro postup na vyšší písařské hodnosti a bonusové <strong>Mistrovské balíčky</strong>.
+          </p>
+        </div>
+      ),
+    },
+    {
+      badge: "KROK 5 ZE 5 · SPOLUŽÁCI A OBCHODOVÁNÍ",
+      icon: "⚖️",
+      title: "Písařská směna a smlouvy se spolužáky",
+      lead: "Vyměňujte duplikáty, posílejte protinabídky a darujte karty přátelům.",
+      body: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
+          <p>
+            V záložce <strong>Profil</strong> naleznete seznam svých kolegů ze semináře i vyučujících (včetně mistra skriptoria <em>benysek.vojta</em>).
+          </p>
+          <p>
+            Můžete zahájit <strong>Písařskou směnu</strong> – navrhnout své přebytečné duplikáty a vybrat kolofony, které vám chybí. Příjemce může smlouvu zpečetit, nebo poslat protinabídku.
+          </p>
+          <div style={{ padding: "12px 14px", background: "linear-gradient(135deg, #fff3cd 0%, #fae69e 100%)", borderRadius: 8, border: "1px solid #d4af37", marginTop: 4, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 24 }}>🎁</span>
+            <div>
+              <strong style={{ color: "#54380e", display: "block" }}>Uvítací dar nového tovaryše:</strong>
+              <span style={{ color: "#6b4916", fontSize: "12px" }}>Získáváte <strong>+50 XP</strong> do začátku! Vaše 3 zapečetěné balíčky již čekají.</span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  const current = steps[step];
+
+  const handleNext = () => {
+    if (step < steps.length - 1) {
+      playParchmentFlip(0.2);
+      setStep((s) => s + 1);
+    } else {
+      onFinish();
+    }
+  };
+
+  const handlePrev = () => {
+    if (step > 0) {
+      playParchmentFlip(0.2);
+      setStep((s) => s - 1);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 10000 }}>
+      <section
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Úvodní zasvěcení do skriptoria"
+        style={{
+          maxWidth: 540,
+          width: "92vw",
+          padding: "26px 28px 22px",
+          background: "linear-gradient(175deg, #fcf8ee 0%, #f4ebd8 100%)",
+          border: "2px solid #b89758",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(184,151,88,0.15)",
+          borderRadius: 14,
+        }}
+      >
+        <button className="close" onClick={onClose} title="Zavřít průvodce">×</button>
+
+        {/* Hlavička s ikonou a odznakem kroku */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #d4af37, #8b6508)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 22,
+            boxShadow: "0 4px 12px rgba(139, 101, 8, 0.35)",
+            flexShrink: 0,
+          }}>
+            {current.icon}
+          </div>
+          <div>
+            <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "1.2px", color: "#8a6008", fontWeight: 800 }}>
+              {current.badge}
+            </span>
+            <h2 style={{ margin: "2px 0 0", fontSize: "19px", color: "#2d1a08", fontFamily: "Cinzel, Georgia, serif" }}>
+              {current.title}
+            </h2>
+          </div>
+        </div>
+
+        {/* Podtitul / Lead */}
+        <p style={{ margin: "0 0 14px", fontSize: "13px", color: "#7a5423", fontStyle: "italic", borderBottom: "1px dashed #d0be98", paddingBottom: 10 }}>
+          {current.lead}
+        </p>
+
+        {/* Tělo kroku */}
+        <div style={{ minHeight: 180 }}>
+          {current.body}
+        </div>
+
+        {/* Spodní lišta s tečkami a tlačítky */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20, paddingTop: 14, borderTop: "1px solid #dfcfb2" }}>
+          {/* Tečky indikující krok */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {steps.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => { playParchmentFlip(0.15); setStep(idx); }}
+                style={{
+                  width: idx === step ? 22 : 8,
+                  height: 8,
+                  borderRadius: 4,
+                  background: idx === step ? "#8b5a19" : "#d8c7a6",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  padding: 0,
+                }}
+                aria-label={`Přejít na krok ${idx + 1}`}
+              />
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={handlePrev}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 7,
+                  border: "1px solid #c9b084",
+                  background: "#fdfbf5",
+                  color: "#5c3d14",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Předchozí
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleNext}
+              style={{
+                padding: "8px 18px",
+                borderRadius: 7,
+                border: "1px solid #4a2807",
+                background: step === steps.length - 1
+                  ? "linear-gradient(180deg, #b8860b 0%, #7a5205 100%)"
+                  : "linear-gradient(180deg, #8b5a19 0%, #5e3a09 100%)",
+                color: "#fff7e6",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {step === steps.length - 1 ? (
+                <>Zahájit písařskou pouť (+50 XP) ➔</>
+              ) : (
+                <>Další krok ➔</>
+              )}
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );
