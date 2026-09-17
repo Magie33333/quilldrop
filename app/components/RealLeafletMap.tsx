@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ScriptoriumPlace } from "../data/scriptoria";
+import { type ScriptoriumPlace, getPlaceName, getPlaceCountry } from "../data/scriptoria";
+import type { Language } from "../data/translations";
 import { MODERN_COUNTRIES, MEDIEVAL_RIVERS } from "../data/medievalMapData";
 
 type ScriptoriaData = {
@@ -16,12 +17,14 @@ export default function RealLeafletMap({
   onSelectPlace,
   compact = false,
   onOpenFull,
+  lang = "cs",
 }: {
   scriptoria: ScriptoriaData[];
   selectedPlace: ScriptoriumPlace;
   onSelectPlace: (place: ScriptoriumPlace) => void;
   compact?: boolean;
   onOpenFull?: () => void;
+  lang?: Language;
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -227,13 +230,15 @@ export default function RealLeafletMap({
         const hasOwned = owned.length > 0;
         const isSelected = selectedPlace.id === place.id;
         const markerSize = compact ? 34 : 40;
+        const placeName = getPlaceName(place, lang);
+        const placeCountry = getPlaceCountry(place, lang);
 
         // Vytvoření custom DivIconu ve stylu voskové pečeti
         const iconHtml = `
-          <div class="medieval-leaf-marker ${compact ? "is-compact" : ""} ${hasOwned ? "has-owned" : "is-unowned"} ${isSelected ? "is-selected" : ""}" title="${place.name} (${place.country})">
+          <div class="medieval-leaf-marker ${compact ? "is-compact" : ""} ${hasOwned ? "has-owned" : "is-unowned"} ${isSelected ? "is-selected" : ""}" title="${placeName} (${placeCountry})">
             <span class="marker-seal">${hasOwned ? place.icon : "🔒"}</span>
             <span class="marker-count">${owned.length}/${cards.length}</span>
-            <span class="marker-tooltip">${hasOwned ? "✓ " + place.name : "🔒 " + place.name} (${hasOwned ? `${owned.length}/${cards.length} objeveno` : "zatím neobjeveno"})</span>
+            <span class="marker-tooltip">${hasOwned ? "✓ " + placeName : "🔒 " + placeName} (${hasOwned ? `${owned.length}/${cards.length} ${lang === "en" ? "discovered" : "objeveno"}` : (lang === "en" ? "undiscovered" : "zatím neobjeveno")})</span>
           </div>
         `;
 
@@ -270,7 +275,7 @@ export default function RealLeafletMap({
     return () => {
       isCancelled = true;
     };
-  }, [mapReady, scriptoria, selectedPlace, onSelectPlace, compact, onOpenFull]);
+  }, [mapReady, scriptoria, selectedPlace, onSelectPlace, compact, onOpenFull, lang]);
 
   // Posun kamery při změně vybraného místa (pouze v nekompaktním režimu)
   useEffect(() => {
@@ -321,8 +326,8 @@ export default function RealLeafletMap({
 
   // Formátování souřadnic
   const formatCoord = (lat: number, lng: number) => {
-    const latDir = lat >= 0 ? "s. š." : "j. š.";
-    const lngDir = lng >= 0 ? "v. d." : "z. d.";
+    const latDir = lat >= 0 ? (lang === "en" ? "N" : "s. š.") : (lang === "en" ? "S" : "j. š.");
+    const lngDir = lng >= 0 ? (lang === "en" ? "E" : "v. d.") : (lang === "en" ? "W" : "z. d.");
     const latDeg = Math.floor(Math.abs(lat));
     const latMin = Math.round((Math.abs(lat) - latDeg) * 60);
     const lngDeg = Math.floor(Math.abs(lng));
@@ -343,7 +348,7 @@ export default function RealLeafletMap({
         <span>📜 ORBIS SCRIPTORIORUM</span>
         {!compact && (
           <small style={{ display: "block", fontSize: "9.5px", opacity: 0.88, fontWeight: 600 }}>
-            Geografické uložení kodexů a skriptorií
+            {lang === "en" ? "Geographical custody of codices & scriptoria" : "Geografické uložení kodexů a skriptorií"}
           </small>
         )}
       </div>
@@ -354,25 +359,25 @@ export default function RealLeafletMap({
           type="button"
           className="map-compact-expand-btn"
           onClick={onOpenFull}
-          title="Otevřít celou interaktivní mapu"
+          title={lang === "en" ? "Open full interactive map" : "Otevřít celou interaktivní mapu"}
         >
-          🔍 Otevřít velkou mapu ↗
+          {lang === "en" ? "🔍 Open Full Map ↗" : "🔍 Otevřít velkou mapu ↗"}
         </button>
       )}
 
       {/* Ovládací prvky mapy */}
       <div className="real-map-controls">
-        <button type="button" onClick={handleZoomIn} title="Přiblížit mapu (+)" aria-label="Přiblížit">
+        <button type="button" onClick={handleZoomIn} title={lang === "en" ? "Zoom in (+)" : "Přiblížit mapu (+)"} aria-label={lang === "en" ? "Zoom in" : "Přiblížit"}>
           +
         </button>
-        <button type="button" onClick={handleZoomOut} title="Oddálit mapu (−)" aria-label="Oddálit">
+        <button type="button" onClick={handleZoomOut} title={lang === "en" ? "Zoom out (−)" : "Oddálit mapu (−)"} aria-label={lang === "en" ? "Zoom out" : "Oddálit"}>
           −
         </button>
         <button
           type="button"
           onClick={handleCenterBohemia}
-          title="Zaměřit na Českou republiku"
-          aria-label="Česká republika"
+          title={lang === "en" ? "Center on Bohemia" : "Zaměřit na Českou republiku"}
+          aria-label={lang === "en" ? "Bohemia" : "Česká republika"}
         >
           🏰
         </button>
@@ -380,8 +385,8 @@ export default function RealLeafletMap({
           <button
             type="button"
             onClick={handleCenterEurope}
-            title="Zobrazit celou Evropu"
-            aria-label="Celá Evropa"
+            title={lang === "en" ? "View full Europe" : "Zobrazit celou Evropu"}
+            aria-label={lang === "en" ? "Full Europe" : "Celá Evropa"}
           >
             🗺️
           </button>
@@ -392,8 +397,8 @@ export default function RealLeafletMap({
       {!compact && (
         <div className="real-map-status">
           <span className="status-pin">{selectedPlace.icon}</span>
-          <strong>{selectedPlace.name}</strong>
-          <span className="status-country">({selectedPlace.country})</span>
+          <strong>{getPlaceName(selectedPlace, lang)}</strong>
+          <span className="status-country">({getPlaceCountry(selectedPlace, lang)})</span>
           <small>{formatCoord(selectedPlace.lat, selectedPlace.lng)}</small>
         </div>
       )}

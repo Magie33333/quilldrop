@@ -7,7 +7,17 @@ import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_QUESTIONS, type QuestionData } from "./data/questions.generated";
 import { DEFAULT_CURIOS, type Curio } from "./data/curios";
-import { SCRIPTORIA_PLACES, getScriptoriumForCard, getScriptoriaWithCards, type ScriptoriumPlace } from "./data/scriptoria";
+import {
+  SCRIPTORIA_PLACES,
+  getScriptoriumForCard,
+  getScriptoriaWithCards,
+  type ScriptoriumPlace,
+  getPlaceName,
+  getPlaceRegion,
+  getPlaceCountry,
+  getPlaceRepository,
+  getPlaceDescription,
+} from "./data/scriptoria";
 import {
   type Language,
   UI_TRANSLATIONS,
@@ -439,22 +449,27 @@ export default function Home() {
         updated_at: new Date().toISOString(),
       });
 
-      const entries = Object.entries(st.collection);
-      const rows: { user_id: string; card_id: string; count: number }[] = [];
-      for (const [cardKey, count] of entries) {
-        const match = currentCards.find(c => String(c.id) === String(cardKey));
+      const cardMap = new Map<string, number>();
+      for (const [cardKey, count] of Object.entries(st.collection)) {
+        if (!count || count <= 0) continue;
+        const match = currentCards.find(c => String(c.id) === String(cardKey) || c.uuid === String(cardKey));
         const uuid = match?.uuid || (typeof cardKey === "string" && cardKey.length === 36 ? cardKey : null);
         if (uuid) {
-          rows.push({
-            user_id: userId,
-            card_id: uuid,
-            count: count,
-          });
+          cardMap.set(uuid, Math.max(cardMap.get(uuid) || 0, count));
         }
       }
 
+      const rows = Array.from(cardMap.entries()).map(([card_id, count]) => ({
+        user_id: userId,
+        card_id,
+        count,
+      }));
+
       if (rows.length > 0) {
-        await supabase.from("user_cards").upsert(rows, { onConflict: "user_id,card_id" });
+        const { error: ucErr } = await supabase.from("user_cards").upsert(rows, { onConflict: "user_id,card_id" });
+        if (ucErr) {
+          console.warn("user_cards upsert warning:", ucErr.message);
+        }
       }
     } catch (e) {
       console.warn("Supabase sync warning:", e);
@@ -510,6 +525,9 @@ export default function Home() {
           );
           const cardKey = cardMatch ? cardMatch.id : uc.card_id;
           mergedCollection[cardKey] = Math.max(mergedCollection[cardKey] || 0, uc.count || 1);
+          if (cardMatch && String(cardMatch.id) !== String(uc.card_id) && mergedCollection[uc.card_id]) {
+            delete mergedCollection[uc.card_id];
+          }
         }
       }
 
@@ -1412,7 +1430,7 @@ export default function Home() {
           recipient_request: request,
           message: msg.trim() || "Návrh na vzájemnou výměnu kolofonů mezi písaři.",
           status: "pending",
-          parent_trade_id: parentTradeId || null,
+          parent_trade_id: (parentTradeId && !parentTradeId.startsWith("demo-") && parentTradeId.length === 36) ? parentTradeId : null,
         });
       }
     } catch {}
@@ -1583,7 +1601,6 @@ export default function Home() {
           currentProfile={currentProfile}
           onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
           lang={lang}
-          onToggleLang={() => handleSetLang(lang === "cs" ? "en" : "cs")}
         />
 
         <div className="scroll-area">
@@ -1605,9 +1622,9 @@ export default function Home() {
               lang={lang}
             />
           )}
-          {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} />}
+          {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} lang={lang} />}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} lang={lang} />}
-          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} activeIllumination={activeIllumination} />}
+          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} activeIllumination={activeIllumination} lang={lang} />}
           {tab === "profile" && (
             <ProfileScreen
               state={state}
@@ -1671,6 +1688,7 @@ export default function Home() {
             setStep={setGameStep}
             onClose={() => { setGame(null); setActiveQuestion(null); setAnswer(null); setGameStep(0); }}
             onAnswer={finishGame}
+            lang={lang}
           />
         )}
         {showMap && (
@@ -1682,15 +1700,15 @@ export default function Home() {
             lang={lang}
           />
         )}
-        {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} lang={lang} />}
         {giftModalTarget && (
-          <div className="modal-backdrop" role="dialog" aria-label="Darování pergamenu kolegovi">
+          <div className="modal-backdrop" role="dialog" aria-label={lang === "en" ? "Gift Manuscript to Colleague" : "Darování pergamenu kolegovi"}>
             <div className="modal" style={{ maxWidth: 440, borderRadius: 12, padding: "20px 22px" }}>
-              <button className="close" onClick={() => setGiftModalTarget(null)} title="Zavřít">×</button>
+              <button className="close" onClick={() => setGiftModalTarget(null)} title={lang === "en" ? "Close" : "Zavřít"}>×</button>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                 <Send size={18} className="text-[#8b5a19]" />
                 <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
-                  Darování pergamenu kolegovi
+                  {lang === "en" ? "Gift Manuscript to Colleague" : "Darování pergamenu kolegovi"}
                 </h3>
               </div>
 
@@ -1700,10 +1718,10 @@ export default function Home() {
                 </div>
                 <div>
                   <div style={{ fontSize: "12px", fontWeight: 700, color: "#3d2206" }}>
-                    {giftModalTarget.display_name || giftModalTarget.username || "Kolega"}
+                    {giftModalTarget.display_name || giftModalTarget.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}
                   </div>
                   <div style={{ fontSize: "10px", color: "#7a5323" }}>
-                    {giftModalTarget.streak || 1} dní v řadě · {giftModalTarget.xp ? `${giftModalTarget.xp} XP` : "Tovaryš skriptoria"}
+                    {giftModalTarget.streak || 1} {lang === "en" ? "days streak" : "dní v řadě"} · {giftModalTarget.xp ? `${giftModalTarget.xp} XP` : (lang === "en" ? "Scriptorium Fellow" : "Tovaryš skriptoria")}
                   </div>
                 </div>
               </div>
@@ -1711,7 +1729,7 @@ export default function Home() {
               {/* Seznam duplicit k výběru */}
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 6 }}>
-                  Zvolte duplicitní kolofon k darování:
+                  {lang === "en" ? "Select duplicate colophon to gift:" : "Zvolte duplicitní kolofon k darování:"}
                 </label>
                 <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4 }}>
                   {cards
@@ -1719,6 +1737,7 @@ export default function Home() {
                     .map((c) => {
                       const count = state.collection[c.id] || 0;
                       const isSelected = selectedGiftCardId === String(c.id);
+                      const title = getCardTitle(c, lang);
                       return (
                         <div
                           key={c.id}
@@ -1738,14 +1757,14 @@ export default function Home() {
                         >
                           <div style={{ minWidth: 0 }}>
                             <strong style={{ fontSize: "12px", color: "#40260b", display: "block" }} className="truncate">
-                              {c.title}
+                              {title}
                             </strong>
                             <small style={{ fontSize: "10px", color: "#785324" }}>
                               {c.place} · <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>{c.rarity}</span>
                             </small>
                           </div>
                           <span style={{ fontSize: "11px", fontWeight: 700, color: "#8a5814", whiteSpace: "nowrap" }}>
-                            Máte: {count} ks
+                            {lang === "en" ? `You have: ${count} pcs` : `Máte: ${count} ks`}
                           </span>
                         </div>
                       );
@@ -1756,13 +1775,13 @@ export default function Home() {
               {/* Dobové věnování */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 4 }}>
-                  Dobové věnování (volitelné):
+                  {lang === "en" ? "Historical dedication (optional):" : "Dobové věnování (volitelné):"}
                 </label>
                 <input
                   type="text"
                   value={giftMessage}
                   onChange={(e) => setGiftMessage(e.target.value)}
-                  placeholder="Ať ti toto folio dobře poslouží při nočním bádání..."
+                  placeholder={lang === "en" ? "May this folio serve thee well in thy nightly studies..." : "Ať ti toto folio dobře poslouží při nočním bádání..."}
                   style={{
                     width: "100%",
                     padding: "7px 10px",
@@ -1782,7 +1801,7 @@ export default function Home() {
                   onClick={() => setGiftModalTarget(null)}
                   style={{ padding: "7px 14px", background: "none", border: "1px solid #ba9f73", borderRadius: 6, fontSize: "12px", color: "var(--brown)", cursor: "pointer" }}
                 >
-                  Zrušit
+                  {lang === "en" ? "Cancel" : "Zrušit"}
                 </button>
                 <button
                   type="button"
@@ -1803,7 +1822,7 @@ export default function Home() {
                     opacity: !selectedGiftCardId || isSendingGift ? 0.6 : 1,
                   }}
                 >
-                  <Send size={13} /> {isSendingGift ? "Zpečeťuji..." : "Zpečetit a darovat (-1 ks)"}
+                  <Send size={13} /> {isSendingGift ? (lang === "en" ? "Sealing..." : "Zpečeťuji...") : (lang === "en" ? "Seal & Gift (-1 pc)" : "Zpečetit a darovat (-1 ks)")}
                 </button>
               </div>
             </div>
@@ -1820,6 +1839,7 @@ export default function Home() {
             parentTradeId={activeTradeModal.parentTradeId}
             onClose={() => setActiveTradeModal(null)}
             onSend={handleSendTrade}
+            lang={lang}
           />
         )}
         {reviewTradeModal && (
@@ -1832,6 +1852,7 @@ export default function Home() {
             onCounter={handleCounterTrade}
             onDecline={handleDeclineTrade}
             onClose={() => setReviewTradeModal(null)}
+            lang={lang}
           />
         )}
         {showTutorialModal && (
@@ -1881,7 +1902,6 @@ function StatusBar({
   currentProfile,
   onOpenAuth,
   lang = "cs",
-  onToggleLang,
 }: {
   state: GameState;
   isLive: boolean;
@@ -1895,7 +1915,6 @@ function StatusBar({
   currentProfile?: UserProfile | null;
   onOpenAuth?: () => void;
   lang?: Language;
-  onToggleLang?: () => void;
 }) {
   return (
     <header className="status-bar">
@@ -1938,29 +1957,6 @@ function StatusBar({
         <span title={lang === "en" ? "Daily streak without interruption" : "Dní v řadě bez přerušení"} aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
         <span title={lang === "en" ? "16-day illumination" : "16denní iluminace"} aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
         <span title={lang === "en" ? "Experience Points (XP)" : "Zkušenostní body (XP)"} aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
-        {onToggleLang && (
-          <button
-            type="button"
-            className="lang-toggle-btn"
-            onClick={onToggleLang}
-            title={lang === "cs" ? "Switch to English" : "Přepnout do češtiny"}
-            style={{
-              background: "rgba(255, 255, 255, 0.45)",
-              border: "1px solid rgba(139, 37, 0, 0.25)",
-              borderRadius: "6px",
-              padding: "3px 7px",
-              fontSize: "11px",
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              color: "#4a2d04",
-            }}
-          >
-            <span>{lang === "cs" ? "🇨🇿 CZ" : "🇬🇧 EN"}</span>
-          </button>
-        )}
         {onToggleSound && (
           <button
             type="button"
@@ -2203,9 +2199,9 @@ function HomeScreen({
     <div className="screen home-screen">
       <section className="welcome-panel">
         <div>
-          <p className="eyebrow">Středověké skriptorium</p>
-          <h1>Co dnes vydají okraje kodexů?</h1>
-          <p>Otevřete novou várku hlasů písařů, stížností na bolavé ruce i slavnostních přípisů ze starých rukopisů.</p>
+          <p className="eyebrow">{lang === "en" ? "Medieval Scriptorium" : "Středověké skriptorium"}</p>
+          <h1>{lang === "en" ? "What will the manuscript margins reveal today?" : "Co dnes vydají okraje kodexů?"}</h1>
+          <p>{lang === "en" ? "Uncover a fresh harvest of scribal voices, laments of weary hands, and celebratory verses from medieval codices." : "Otevřete novou várku hlasů písařů, stížností na bolavé ruce i slavnostních přípisů ze starých rukopisů."}</p>
         </div>
         <div className="scribe-medallion"><PenTool size={34} strokeWidth={1.45} /></div>
       </section>
@@ -2214,7 +2210,7 @@ function HomeScreen({
         <section className="home-hero-card home-hero-pack">
           <div>
             <div className="home-pack-header">
-              <span>{hasBonus && remaining === 0 ? "Připravená odměna" : "Denní příděl balíčků"}</span>
+              <span>{hasBonus && remaining === 0 ? (lang === "en" ? "Vault Reward Ready" : "Připravená odměna") : (lang === "en" ? "Daily Pack Allowance" : "Denní příděl balíčků")}</span>
               <span
                 className={`home-pack-badge ${
                   remaining > 0
@@ -2226,21 +2222,25 @@ function HomeScreen({
                     : "empty"
                 }`}
               >
-                {remaining > 0 ? `📜 ${formatPacksCount(remaining)}` : hasBonus ? `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici` : "Vyčerpáno"}
+                {remaining > 0
+                  ? (lang === "en" ? `📜 ${remaining} pack${remaining > 1 ? "s" : ""} available` : `📜 ${formatPacksCount(remaining)}`)
+                  : hasBonus
+                  ? (lang === "en" ? `✨ ${state.bonusPacks.length} in vault` : `✨ ${formatPacksCount(state.bonusPacks.length)} v pokladnici`)
+                  : (lang === "en" ? "Exhausted" : "Vyčerpáno")}
               </span>
             </div>
             <div className="home-pack-body">
               <div className="home-pack-seal" aria-hidden="true">Q</div>
               <div className="home-pack-info">
-                <h2>{remaining ? "Balíček ze skriptoria" : hasBonus ? `${qualityLabel(state.bonusPacks[0])} balíček` : "Skriptorium odpočívá"}</h2>
+                <h2>{remaining ? (lang === "en" ? "Scriptorium Pack" : "Balíček ze skriptoria") : hasBonus ? `${qualityLabel(state.bonusPacks[0])} ${lang === "en" ? "Pack" : "balíček"}` : (lang === "en" ? "Scriptorium at Rest" : "Skriptorium odpočívá")}</h2>
                 <p>
                   {remaining
-                    ? "Pět skrytých hlasů písařů čeká pod voskovou pečetí."
+                    ? (lang === "en" ? "Five concealed scribal voices await under the wax seal." : "Pět skrytých hlasů písařů čeká pod voskovou pečetí.")
                     : hasBonus
-                    ? "Získaná odměna z písařské výzvy čeká na otevření."
+                    ? (lang === "en" ? "Earned reward from your scribal challenge awaits in vault." : "Získaná odměna z písařské výzvy čeká na otevření.")
                     : gamesLeft
-                    ? "Splňte písařskou výzvu vedle a získejte další balíček!"
-                    : "Vraťte se zítra za rozbřesku, až zapálíme nové svíce."}
+                    ? (lang === "en" ? "Complete a scribal challenge to unlock another pack!" : "Splňte písařskou výzvu vedle a získejte další balíček!")
+                    : (lang === "en" ? "Return tomorrow at dawn when fresh candles are lit." : "Vraťte se zítra za rozbřesku, až zapálíme nové svíce.")}
                 </p>
               </div>
             </div>
@@ -2250,16 +2250,16 @@ function HomeScreen({
               <div className="home-curio-top">
                 <div className="home-curio-label">
                   <BookOpen size={13} style={{ color: "#a16207" }} />
-                  <span>Glosa ze skriptoria</span>
+                  <span>{lang === "en" ? "Marginalia from Scriptorium" : "Glosa ze skriptoria"}</span>
                   <span className="home-curio-category">{curio.category}</span>
                 </div>
                 <button
                   type="button"
                   className="home-curio-next-btn"
                   onClick={onNextCurio}
-                  title="Zobrazit další zajímavost ze skriptoria"
+                  title={lang === "en" ? "Show next marginalia" : "Zobrazit další zajímavost ze skriptoria"}
                 >
-                  Další ↻
+                  {lang === "en" ? "Next ↻" : "Další ↻"}
                 </button>
               </div>
               <blockquote className="home-curio-text">
@@ -2268,46 +2268,46 @@ function HomeScreen({
             </div>
           </div>
           <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
-            {remaining || hasBonus ? "Otevřít balíček (5 karet)" : "Přejít do pokladnice"} <span>→</span>
+            {remaining || hasBonus ? (lang === "en" ? "Open Pack (5 cards)" : "Otevřít balíček (5 karet)") : (lang === "en" ? "Go to Vault" : "Přejít do pokladnice")} <span>→</span>
           </button>
         </section>
 
         <section className="home-quests-box">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-            <h3 style={{ margin: 0 }}>Písařské výzvy dne</h3>
-            <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} k dispozici</span>
+            <h3 style={{ margin: 0 }}>{lang === "en" ? "Daily Scribal Challenges" : "Písařské výzvy dne"}</h3>
+            <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} {lang === "en" ? "available" : "k dispozici"}</span>
           </div>
-          <p>Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice.</p>
+          <p>{lang === "en" ? "Complete a quick challenge and receive a bonus pack into your vault." : "Splňte rychlou výzvu a získejte bonusový balíček kolofonů do pokladnice."}</p>
           <div className="home-quests-list">
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("mood")}>
               <span className="home-quest-icon icon-mood"><Smile size={19} /></span>
               <div className="home-quest-info">
-                <strong>Nálada písaře</strong>
-                <small>Výběr emoce · 4 možnosti · Snadná</small>
+                <strong>{lang === "en" ? "Scribe's Mood" : "Nálada písaře"}</strong>
+                <small>{lang === "en" ? "Emotion choice · 4 options · Easy" : "Výběr emoce · 4 možnosti · Snadná"}</small>
               </div>
               <span className="home-quest-reward reward-standard">📜 Standard Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
               <span className="home-quest-icon icon-cipher"><KeyRound size={19} /></span>
               <div className="home-quest-info">
-                <strong>Rozlušti šifru</strong>
-                <small>Kryptogramy a hříčky · Střední</small>
+                <strong>{lang === "en" ? "Crack the Cipher" : "Rozlušti šifru"}</strong>
+                <small>{lang === "en" ? "Cryptograms & wordplay · Medium" : "Kryptogramy a hříčky · Střední"}</small>
               </div>
               <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
               <span className="home-quest-icon icon-script"><ScrollText size={19} /></span>
               <div className="home-quest-info">
-                <strong>Poznej písmo a století</strong>
-                <small>Typologie & datace kodexu · Pokročilá</small>
+                <strong>{lang === "en" ? "Script & Century" : "Poznej písmo a století"}</strong>
+                <small>{lang === "en" ? "Typology & dating · Advanced" : "Typologie & datace kodexu · Pokročilá"}</small>
               </div>
               <span className="home-quest-reward reward-scholar">✨ Scholar Pack →</span>
             </button>
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("paleo")}>
               <span className="home-quest-icon icon-paleo"><PenTool size={19} /></span>
               <div className="home-quest-info">
-                <strong>Paleografický mistr</strong>
-                <small>Přepis autentického textu s lupou · Expertní</small>
+                <strong>{lang === "en" ? "Palaeographical Master" : "Paleografický mistr"}</strong>
+                <small>{lang === "en" ? "Transcription with magnifier · Expert" : "Přepis autentického textu s lupou · Expertní"}</small>
               </div>
               <span className="home-quest-reward reward-masterwork">💎 Masterwork Pack →</span>
             </button>
@@ -2318,10 +2318,10 @@ function HomeScreen({
       <section className="home-showcase-section">
         <div className="showcase-header">
           <div>
-            <h2>{uniqueOwned > 0 ? "Výběr z vašeho archivu" : "Ukázka kolofonů k objevení"}</h2>
-            <small style={{ color: "#765228" }}>{uniqueOwned > 0 ? "Naposledy prozkoumané a odemčené iluminované karty" : "Otevřete balíček a odhalte první rukopisy"}</small>
+            <h2>{uniqueOwned > 0 ? (lang === "en" ? "Highlights from Your Archive" : "Výběr z vašeho archivu") : (lang === "en" ? "Colophons to Discover" : "Ukázka kolofonů k objevení")}</h2>
+            <small style={{ color: "#765228" }}>{uniqueOwned > 0 ? (lang === "en" ? "Recently examined and unlocked illuminated cards" : "Naposledy prozkoumané a odemčené iluminované karty") : (lang === "en" ? "Open a pack to reveal your first manuscripts" : "Otevřete balíček a odhalte první rukopisy")}</small>
           </div>
-          <button onClick={onCollection}>Zobrazit celou sbírku ({uniqueOwned}/{totalCards}) →</button>
+          <button onClick={onCollection}>{lang === "en" ? `View entire collection (${uniqueOwned}/${totalCards}) →` : `Zobrazit celou sbírku (${uniqueOwned}/${totalCards}) →`}</button>
         </div>
         <div className="showcase-grid">
           {showcaseCards.map(card => {
@@ -2346,18 +2346,18 @@ function HomeScreen({
       </section>
 
       <div className="section-title">
-        <h2>Postup kodexového archivu</h2>
-        <span>{uniqueOwned} z {totalCards} objeveno</span>
+        <h2>{lang === "en" ? "Codex Archive Progress" : "Postup kodexového archivu"}</h2>
+        <span>{uniqueOwned} {lang === "en" ? "of" : "z"} {totalCards} {lang === "en" ? "discovered" : "objeveno"}</span>
       </div>
       <div className="progress-panel">
         <div className="progress-copy">
-          <strong>Postup kompletace sbírky</strong>
+          <strong>{lang === "en" ? "Collection Completion Progress" : "Postup kompletace sbírky"}</strong>
           <span>{progressPercent}%</span>
         </div>
         <div className="progress">
           <i style={{ width: `${progressPercent}%` }} />
         </div>
-        <button onClick={onCollection}>Otevřít celou sbírku ({uniqueOwned} karet)</button>
+        <button onClick={onCollection}>{lang === "en" ? `Open full collection (${uniqueOwned} cards)` : `Otevřít celou sbírku (${uniqueOwned} karet)`}</button>
       </div>
 
       <div className="home-secondary-grid">
@@ -2365,7 +2365,7 @@ function HomeScreen({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <h3 style={{ margin: 0 }}>16denní iluminovaná mozaika</h3>
+                <h3 style={{ margin: 0 }}>{lang === "en" ? "16-day Illuminated Mosaic" : "16denní iluminovaná mozaika"}</h3>
                 <span className={`rarity-pill rarity-${activeIllumination.rarity.toLowerCase()}`} style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", fontWeight: 800, textTransform: "uppercase" }}>
                   {activeIllumination.rarity}
                 </span>
@@ -2375,23 +2375,23 @@ function HomeScreen({
               </p>
             </div>
             <button className="icon-label" onClick={onGallery} style={{ padding: "4px 8px", fontSize: "11px" }}>
-              Detail →
+              {lang === "en" ? "Details →" : "Detail →"}
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "10px" }}>
             <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px" }}>
-                <span>{activeIllumination.tierName || `Cyklus ${activeIllumination.cycle}`}</span>
-                <span>{state.puzzle} z 16</span>
+                <span>{activeIllumination.tierName || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
+                <span>{state.puzzle} {lang === "en" ? "of 16" : "z 16"}</span>
               </div>
               <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
                 <i style={{ width: `${(state.puzzle / 16) * 100}%` }} />
               </div>
               <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px" }}>
                 {state.puzzle < 16
-                  ? `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do dokončení celého díla.`
-                  : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu.`}
+                  ? (lang === "en" ? `Remaining: ${16 - state.puzzle} daily logins in a row to complete the illumination.` : `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do dokončení celého díla.`)
+                  : (lang === "en" ? `🎉 Cycle ${activeIllumination.cycle} complete! Reward +${activeIllumination.rewardXp} XP and pack added to profile.` : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu.`)}
               </small>
             </div>
           </div>
@@ -2421,6 +2421,7 @@ function HomeScreen({
               onSelectPlace={(place) => setSelectedHomePlace(place)}
               compact
               onOpenFull={onMap}
+              lang={lang}
             />
           </div>
 
@@ -2434,8 +2435,6 @@ function HomeScreen({
           </div>
         </section>
       </div>
-
-      <blockquote>“Kniha je dopsána. Kéž je čtenář laskav a písaři dopřeje číši dobrého vína.”<cite>— anonymní písař, cca 1300</cite></blockquote>
     </div>
   );
 }
@@ -2444,10 +2443,12 @@ function PacksScreen({
   state,
   onOpen,
   onGame,
+  lang = "cs",
 }: {
   state: GameState;
   onOpen: (tier?: PackQuality | "daily") => void;
   onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
+  lang?: Language;
 }) {
   const [selectedTier, setSelectedTier] = useState<PackQuality>("standard");
 
@@ -2469,18 +2470,20 @@ function PacksScreen({
 
   return (
     <div className="screen packs-screen">
-      <PageTitle kicker="Denní skriptorium">Otevření balíčků</PageTitle>
+      <PageTitle kicker={lang === "en" ? "Daily Scriptorium" : "Denní skriptorium"}>
+        {lang === "en" ? "Pack Opening" : "Otevření balíčků"}
+      </PageTitle>
 
       {/* Denní přehled */}
       <div className="daily-ledger">
         <div className="daily-ledger-col">
           <div className="daily-ledger-header">
             <ScrollText size={13} />
-            <span>Denní balíčky</span>
+            <span>{lang === "en" ? "Daily Packs" : "Denní balíčky"}</span>
           </div>
           <div className="daily-ledger-counter">
             <strong>{packsLeft}</strong>
-            <span>ze {MAX_DAILY_PACKS} k dispozici</span>
+            <span>{lang === "en" ? `of ${MAX_DAILY_PACKS} available` : `ze ${MAX_DAILY_PACKS} k dispozici`}</span>
           </div>
           <div className="ledger-pack-seals">
             {Array.from({ length: MAX_DAILY_PACKS }).map((_, i) => {
@@ -2490,13 +2493,17 @@ function PacksScreen({
                 <div
                   key={i}
                   className="ledger-pack-seal"
-                  title={`Denní balíček ${roman}: ${isOpened ? "Dnes již otevřen" : "Připraven k otevření"}`}
+                  title={
+                    isOpened
+                      ? (lang === "en" ? `Daily Pack ${roman}: Already opened today` : `Denní balíček ${roman}: Dnes již otevřen`)
+                      : (lang === "en" ? `Daily Pack ${roman}: Ready to unseal` : `Denní balíček ${roman}: Připraven k otevření`)
+                  }
                 >
                   <div className={`ledger-pack-seal-pip ${isOpened ? "opened" : "ready"}`}>
                     {isOpened ? <CheckCircle2 size={15} /> : "Q"}
                   </div>
                   <span className={`ledger-pack-seal-label ${isOpened ? "opened" : ""}`}>
-                    {isOpened ? "Otevřen" : `Balíček ${roman}`}
+                    {isOpened ? (lang === "en" ? "Opened" : "Otevřen") : (lang === "en" ? `Pack ${roman}` : `Balíček ${roman}`)}
                   </span>
                 </div>
               );
@@ -2507,11 +2514,11 @@ function PacksScreen({
         <div className="daily-ledger-col">
           <div className="daily-ledger-header games">
             <Trophy size={13} />
-            <span>Písařské výzvy</span>
+            <span>{lang === "en" ? "Scribe Challenges" : "Písařské výzvy"}</span>
           </div>
           <div className="daily-ledger-counter games">
             <strong>{gamesLeft}</strong>
-            <span>z {MAX_DAILY_GAMES} k dispozici</span>
+            <span>{lang === "en" ? `of ${MAX_DAILY_GAMES} available` : `z ${MAX_DAILY_GAMES} k dispozici`}</span>
           </div>
           <div className="ledger-game-tokens">
             {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => {
@@ -2523,13 +2530,13 @@ function PacksScreen({
                 <div
                   key={i}
                   className="ledger-game-token"
-                  title={`Písařská výzva ${roman}: ${
+                  title={
                     !isPlayed
-                      ? "K dispozici"
+                      ? (lang === "en" ? `Scribe Challenge ${roman}: Available` : `Písařská výzva ${roman}: K dispozici`)
                       : isFailed
-                      ? "Výzva zmařena (neúspěch)"
-                      : "Úspěšně splněno (+odměna)"
-                  }`}
+                      ? (lang === "en" ? `Scribe Challenge ${roman}: Failed` : `Písařská výzva ${roman}: Výzva zmařena (neúspěch)`)
+                      : (lang === "en" ? `Scribe Challenge ${roman}: Completed (+reward)` : `Písařská výzva ${roman}: Úspěšně splněno (+odměna)`)
+                  }
                 >
                   <div
                     className={`ledger-game-token-pip ${
@@ -2543,7 +2550,7 @@ function PacksScreen({
                       !isPlayed ? "" : isFailed ? "failed" : "success"
                     }`}
                   >
-                    {!isPlayed ? `Výzva ${roman}` : isFailed ? "Neúspěch" : "Splněno"}
+                    {!isPlayed ? (lang === "en" ? `Challenge ${roman}` : `Výzva ${roman}`) : isFailed ? (lang === "en" ? "Failed" : "Neúspěch") : (lang === "en" ? "Completed" : "Splněno")}
                   </span>
                 </div>
               );
@@ -2552,12 +2559,12 @@ function PacksScreen({
         </div>
 
         <div className="daily-ledger-footer">
-          <span>📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá.</span>
+          <span>{lang === "en" ? "📜 The daily allowance of packs and challenges is granted solely upon today's login and never accumulates." : "📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá."}</span>
         </div>
       </div>
 
       {/* Přepínač balíčků (Pack Tier Selector) */}
-      <div className="pack-tier-tabs" role="tablist" aria-label="Výběr druhu balíčku">
+      <div className="pack-tier-tabs" role="tablist" aria-label={lang === "en" ? "Pack tier selection" : "Výběr druhu balíčku"}>
         <button
           type="button"
           role="tab"
@@ -2567,7 +2574,7 @@ function PacksScreen({
         >
           {standardCount > 0 && <span className="tier-count-pill">{standardCount}</span>}
           <strong>Standard Pack</strong>
-          <span>{standardCount > 0 ? `${standardCount} k dispozici` : "Vyčerpáno"}</span>
+          <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "Exhausted" : "Vyčerpáno")}</span>
         </button>
 
         <button
@@ -2579,7 +2586,7 @@ function PacksScreen({
         >
           {scholarCount > 0 && <span className="tier-count-pill">{scholarCount}</span>}
           <strong>Scholar Pack</strong>
-          <span>{scholarCount > 0 ? `${scholarCount} v pokladnici` : "0 v pokladnici"}</span>
+          <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} in vault` : `${scholarCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
         </button>
 
         <button
@@ -2591,7 +2598,7 @@ function PacksScreen({
         >
           {masterworkCount > 0 && <span className="tier-count-pill">{masterworkCount}</span>}
           <strong>Masterwork Pack</strong>
-          <span>{masterworkCount > 0 ? `${masterworkCount} v pokladnici` : "0 v pokladnici"}</span>
+          <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} in vault` : `${masterworkCount} v pokladnici`) : (lang === "en" ? "0 in vault" : "0 v pokladnici")}</span>
         </button>
       </div>
 
@@ -2601,8 +2608,12 @@ function PacksScreen({
       >
         <div className={`pack-ribbon quality-${selectedTier}`}>
           {countForSelected > 0
-            ? `${countForSelected} ${selectedTier === "standard" ? "zbývá k otevření" : "v pokladnici"}`
-            : "Balíček není k dispozici"}
+            ? `${countForSelected} ${
+                lang === "en"
+                  ? (selectedTier === "standard" ? "remaining to open" : "in vault")
+                  : (selectedTier === "standard" ? "zbývá k otevření" : "v pokladnici")
+              }`
+            : (lang === "en" ? "Pack unavailable" : "Balíček není k dispozici")}
         </div>
 
         <div className="seal-orbit">
@@ -2635,12 +2646,20 @@ function PacksScreen({
 
         <p>
           {selectedTier === "masterwork"
-            ? "Nejvyšší královská edice. Garantuje pouze Rare a vyšší karty s vysokou šancí na mýtické unikáty."
+            ? (lang === "en"
+                ? "Supreme royal edition. Guarantees Rare+ cards with high odds of mythical Unique codices."
+                : "Nejvyšší královská edice. Garantuje pouze Rare a vyšší karty s vysokou šancí na mýtické unikáty.")
             : selectedTier === "refined"
-            ? "Učenecký balíček s výrazně posílenou šancí na Rare a Epic kolofony pro pokročilé badatele."
+            ? (lang === "en"
+                ? "Scholar pack with boosted chances for Rare and Epic colophons for dedicated researchers."
+                : "Učenecký balíček s výrazně posílenou šancí na Rare a Epic kolofony pro pokročilé badatele.")
             : dailyRemaining > 0
-            ? "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendary a Unique poklady."
-            : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže."}
+            ? (lang === "en"
+                ? "Daily scriptorium pack containing 5 cards of all rarities including a chance for Legendary and Unique treasures."
+                : "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendary a Unique poklady.")
+            : (lang === "en"
+                ? "Standard daily allowance exhausted. Earn additional packs by completing challenges below."
+                : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže.")}
         </p>
 
         {countForSelected > 0 ? (
@@ -2649,16 +2668,16 @@ function PacksScreen({
             onClick={() => onOpen(selectedTier)}
             style={{ width: "100%", maxWidth: "340px", justifyContent: "center" }}
           >
-            Otevřít {qualityLabel(selectedTier)} (5 karet) <span>→</span>
+            {lang === "en" ? `Unseal ${qualityLabel(selectedTier)} (5 cards)` : `Otevřít ${qualityLabel(selectedTier)} (5 karet)`} <span>→</span>
           </button>
         ) : (
           <div className="empty-pack-prompt">
             <span>
               {selectedTier === "masterwork"
-                ? "Masterwork Pack získáte úspěšným přepisem v Paleografickém mistrovi."
+                ? (lang === "en" ? "Earn a Masterwork Pack by transcribing lines in Palaeographical Master." : "Masterwork Pack získáte úspěšným přepisem v Paleografickém mistrovi.")
                 : selectedTier === "refined"
-                ? "Scholar Pack získáte vyřešením šifry nebo určením písma a století."
-                : "Standardní balíčky se obnoví zítra za svítání, nebo splňte výzvu níže."}
+                ? (lang === "en" ? "Earn a Scholar Pack by cracking ciphers or identifying script & dating." : "Scholar Pack získáte vyřešením šifry nebo určením písma a století.")
+                : (lang === "en" ? "Standard packs replenish tomorrow at dawn, or complete a challenge below." : "Standardní balíčky se obnoví zítra za svítání, nebo splňte výzvu níže.")}
             </span>
             {selectedTier === "masterwork" && (
               <button
@@ -2667,7 +2686,7 @@ function PacksScreen({
                 onClick={() => onGame("paleo")}
                 style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
               >
-                Spustit Paleografického mistra <span>→</span>
+                {lang === "en" ? "Launch Palaeographical Master" : "Spustit Paleografického mistra"} <span>→</span>
               </button>
             )}
             {selectedTier === "refined" && (
@@ -2677,7 +2696,7 @@ function PacksScreen({
                 onClick={() => onGame("cipher")}
                 style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
               >
-                Spustit Rozlušti šifru <span>→</span>
+                {lang === "en" ? "Launch Crack the Cipher" : "Spustit Rozlušti šifru"} <span>→</span>
               </button>
             )}
             {selectedTier === "standard" && (
@@ -2687,7 +2706,7 @@ function PacksScreen({
                 onClick={() => onGame("mood")}
                 style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
               >
-                Spustit Náladu písaře <span>→</span>
+                {lang === "en" ? "Launch Scribe's Mood" : "Spustit Náladu písaře"} <span>→</span>
               </button>
             )}
           </div>
@@ -2697,12 +2716,14 @@ function PacksScreen({
       {/* Výzvy o další balíčky */}
       <div className="section-title">
         <div>
-          <h2>Získejte další balíček do pokladnice</h2>
+          <h2>{lang === "en" ? "Earn Another Pack for Your Vault" : "Získejte další balíček do pokladnice"}</h2>
           <small style={{ color: "#765228", display: "block", marginTop: "2px", fontSize: "11px" }}>
-            Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček.
+            {lang === "en"
+              ? "Master any of the four scribal disciplines to unlock an authentic bonus pack."
+              : "Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček."}
           </small>
         </div>
-        <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} výzev k dispozici</span>
+        <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} {lang === "en" ? "challenges available" : "výzev k dispozici"}</span>
       </div>
 
       <div className="game-grid-4">
@@ -2716,17 +2737,17 @@ function PacksScreen({
             <span className="game-seal-medallion seal-mood">
               <Smile size={23} />
             </span>
-            <span className="game-difficulty-pill diff-easy">Snadná</span>
+            <span className="game-difficulty-pill diff-easy">{lang === "en" ? "Easy" : "Snadná"}</span>
           </div>
           <div className="game-card-content">
-            <strong>Nálada písaře</strong>
-            <p>Odhadněte z autentického citátu a překladu rozpoložení středověkého písaře.</p>
+            <strong>{lang === "en" ? "Scribe's Mood" : "Nálada písaře"}</strong>
+            <p>{lang === "en" ? "Deduce the scribe's emotional state from the original quote and translation." : "Odhadněte z autentického citátu a překladu rozpoložení středověkého písaře."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-standard">
               📜 Standard Pack
             </span>
-            <span className="game-action-arrow">Hrát →</span>
+            <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
         </button>
 
@@ -2740,17 +2761,17 @@ function PacksScreen({
             <span className="game-seal-medallion seal-cipher">
               <KeyRound size={23} />
             </span>
-            <span className="game-difficulty-pill diff-medium">Střední</span>
+            <span className="game-difficulty-pill diff-medium">{lang === "en" ? "Medium" : "Střední"}</span>
           </div>
           <div className="game-card-content">
-            <strong>Rozlušti šifru</strong>
-            <p>Odhalte písařský kryptogram, hříčku nebo substituční šifru v kolofonu.</p>
+            <strong>{lang === "en" ? "Crack the Cipher" : "Rozlušti šifru"}</strong>
+            <p>{lang === "en" ? "Solve a medieval cryptogram, wordplay, or substitution cipher in the colophon." : "Odhalte písařský kryptogram, hříčku nebo substituční šifru v kolofonu."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
               ✨ Scholar Pack
             </span>
-            <span className="game-action-arrow">Hrát →</span>
+            <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
         </button>
 
@@ -2764,17 +2785,17 @@ function PacksScreen({
             <span className="game-seal-medallion seal-script">
               <ScrollText size={23} />
             </span>
-            <span className="game-difficulty-pill diff-advanced">Pokročilá</span>
+            <span className="game-difficulty-pill diff-advanced">{lang === "en" ? "Advanced" : "Pokročilá"}</span>
           </div>
           <div className="game-card-content">
-            <strong>Poznej písmo a století</strong>
-            <p>Zařaďte duktus písma kodexu: textura, bastarda, kurzíva a století vzniku.</p>
+            <strong>{lang === "en" ? "Script & Century" : "Poznej písmo a století"}</strong>
+            <p>{lang === "en" ? "Identify the script ductus: textura, bastarda, cursiva, and the century of origin." : "Zařaďte duktus písma kodexu: textura, bastarda, kurzíva a století vzniku."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
               ✨ Scholar Pack
             </span>
-            <span className="game-action-arrow">Hrát →</span>
+            <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
         </button>
 
@@ -2788,17 +2809,17 @@ function PacksScreen({
             <span className="game-seal-medallion seal-paleo">
               <PenTool size={23} />
             </span>
-            <span className="game-difficulty-pill diff-expert">Expertní</span>
+            <span className="game-difficulty-pill diff-expert">{lang === "en" ? "Expert" : "Expertní"}</span>
           </div>
           <div className="game-card-content">
-            <strong>Paleografický mistr</strong>
-            <p>Přepis autentických latinských řádků přímo z rukopisu s paleografickou lupou.</p>
+            <strong>{lang === "en" ? "Palaeographical Master" : "Paleografický mistr"}</strong>
+            <p>{lang === "en" ? "Transcribe authentic Latin lines directly from the manuscript using the paleographical lens." : "Přepis autentických latinských řádků přímo z rukopisu s paleografickou lupou."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-masterwork">
               💎 Masterwork Pack
             </span>
-            <span className="game-action-arrow">Hrát →</span>
+            <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
           </div>
         </button>
       </div>
@@ -2898,10 +2919,12 @@ function TrophiesScreen({
   state,
   cards,
   activeIllumination,
+  lang = "cs",
 }: {
   state: GameState;
   cards: Colophon[];
   activeIllumination: IlluminationMosaicItem;
+  lang?: Language;
 }) {
   const trophies: {
     id: string;
@@ -2913,56 +2936,56 @@ function TrophiesScreen({
   }[] = [
     {
       id: "first-spark",
-      title: "První jiskra",
-      text: "Vstupte do skriptoria a otevřete svůj první balíček",
+      title: lang === "en" ? "First Spark" : "První jiskra",
+      text: lang === "en" ? "Enter the scriptorium and open your first pack" : "Vstupte do skriptoria a otevřete svůj první balíček",
       xp: "100 XP",
       initial: "Q",
       check: () => state.packsOpened >= 1 || state.trophies.includes("first-spark"),
     },
     {
       id: "first-pack",
-      title: "Lamač pečetí",
-      text: "Získejte alespoň 5 různých kolofonů do své sbírky",
+      title: lang === "en" ? "Seal Breaker" : "Lamač pečetí",
+      text: lang === "en" ? "Collect at least 5 different colophons in your library" : "Získejte alespoň 5 různých kolofonů do své sbírky",
       xp: "150 XP",
       initial: "S",
       check: () => Object.keys(state.collection).length >= 5 || state.trophies.includes("first-pack"),
     },
     {
       id: "collector",
-      title: "Zkušený tovaryš",
-      text: "Shromážděte alespoň 10 různých středověkých kodexů",
+      title: lang === "en" ? "Journeyman Scribe" : "Zkušený tovaryš",
+      text: lang === "en" ? "Gather at least 10 unique medieval codices" : "Shromážděte alespoň 10 různých středověkých kodexů",
       xp: "250 XP",
       initial: "A",
       check: () => Object.keys(state.collection).length >= 10 || state.trophies.includes("collector"),
     },
     {
       id: "bibliophile",
-      title: "Knihovník Klementina",
-      text: "Vlastněte alespoň 20 různých kodexů a pergamenů",
+      title: lang === "en" ? "Clementinum Librarian" : "Knihovník Klementina",
+      text: lang === "en" ? "Possess at least 20 unique codices and charters" : "Vlastněte alespoň 20 různých kodexů a pergamenů",
       xp: "500 XP",
       initial: "K",
       check: () => Object.keys(state.collection).length >= 20 || state.trophies.includes("bibliophile"),
     },
     {
       id: "streak-7",
-      title: "Týden ve skriptoriu",
-      text: "Udržte 7 dní nepřetržitého každodenního bádání",
+      title: lang === "en" ? "Week in the Scriptorium" : "Týden ve skriptoriu",
+      text: lang === "en" ? "Maintain a continuous 7-day daily study streak" : "Udržte 7 dní nepřetržitého každodenního bádání",
       xp: "200 XP",
       initial: "T",
       check: () => state.streak >= 7 || state.trophies.includes("streak-7"),
     },
     {
       id: "streak",
-      title: "Vytrvalý iluminátor",
-      text: "Udržte 16 dní nepřetržité návštěvy a složte mozaiku",
+      title: lang === "en" ? "Steadfast Illuminator" : "Vytrvalý iluminátor",
+      text: lang === "en" ? "Maintain a 16-day streak and assemble the full mosaic" : "Udržte 16 dní nepřetržité návštěvy a složte mozaiku",
       xp: "400 XP",
       initial: "I",
       check: () => state.streak >= 16 || state.puzzle >= 16 || state.trophies.includes("streak"),
     },
     {
       id: "prague-scholar",
-      title: "Pražský magistr",
-      text: "Získejte alespoň 3 kodexy z pražských skriptorií",
+      title: lang === "en" ? "Prague Magister" : "Pražský magistr",
+      text: lang === "en" ? "Collect at least 3 codices from Prague scriptoria" : "Získejte alespoň 3 kodexy z pražských skriptorií",
       xp: "250 XP",
       initial: "P",
       check: () =>
@@ -2977,8 +3000,8 @@ function TrophiesScreen({
     },
     {
       id: "vyssi-brod",
-      title: "Vyšebrodský mnich",
-      text: "Vlastněte kodex z cisterciáckého kláštera Vyšší Brod",
+      title: lang === "en" ? "Monk of Vyšší Brod" : "Vyšebrodský mnich",
+      text: lang === "en" ? "Own a codex from the Cistercian monastery of Vyšší Brod" : "Vlastněte kodex z cisterciáckého kláštera Vyšší Brod",
       xp: "300 XP",
       initial: "V",
       check: () =>
@@ -2993,8 +3016,8 @@ function TrophiesScreen({
     },
     {
       id: "cipher-breaker",
-      title: "Lamač šifer",
-      text: "Najděte a vlastněte kolofon se šifrou či kryptogramem",
+      title: lang === "en" ? "Cipher Breaker" : "Lamač šifer",
+      text: lang === "en" ? "Discover and own a colophon containing a cipher or cryptogram" : "Najděte a vlastněte kolofon se šifrou či kryptogramem",
       xp: "350 XP",
       initial: "X",
       check: () =>
@@ -3010,8 +3033,8 @@ function TrophiesScreen({
     },
     {
       id: "verse-lover",
-      title: "Pěvec latinský",
-      text: "Získejte veršovaný či rýmovaný kolofon do sbírky",
+      title: lang === "en" ? "Latin Versifier" : "Pěvec latinský",
+      text: lang === "en" ? "Acquire a rhymed or metrical colophon into your collection" : "Získejte veršovaný či rýmovaný kolofon do sbírky",
       xp: "250 XP",
       initial: "C",
       check: () =>
@@ -3024,8 +3047,8 @@ function TrophiesScreen({
     },
     {
       id: "initial-master",
-      title: "Zlatá iniciála",
-      text: "Získejte kartu kolofonu zdobenou iluminovanou iniciálou",
+      title: lang === "en" ? "Golden Initial" : "Zlatá iniciála",
+      text: lang === "en" ? "Acquire a colophon card adorned with an illuminated initial" : "Získejte kartu kolofonu zdobenou iluminovanou iniciálou",
       xp: "200 XP",
       initial: "M",
       check: () =>
@@ -3038,8 +3061,8 @@ function TrophiesScreen({
     },
     {
       id: "rare-seeker",
-      title: "Sběratel kuriozit",
-      text: "Získejte alespoň jednu vzácnou (Rare) či epickou (Epic) kartu",
+      title: lang === "en" ? "Curio Collector" : "Sběratel kuriozit",
+      text: lang === "en" ? "Acquire at least one Rare or Epic colophon card" : "Získejte alespoň jednu vzácnou (Rare) či epickou (Epic) kartu",
       xp: "250 XP",
       initial: "E",
       check: () =>
@@ -3052,8 +3075,8 @@ function TrophiesScreen({
     },
     {
       id: "unique",
-      title: "Zlacené tajemství",
-      text: "Najděte Unikátní (Unique) monumentální kolofon",
+      title: lang === "en" ? "Gilded Mystery" : "Zlacené tajemství",
+      text: lang === "en" ? "Discover a Unique monumental colophon" : "Najděte Unikátní (Unique) monumentální kolofon",
       xp: "500 XP",
       initial: "G",
       check: () =>
@@ -3062,24 +3085,24 @@ function TrophiesScreen({
     },
     {
       id: "paleographer",
-      title: "Písařský mistr",
-      text: "Úspěšně absolvujte alespoň 5 písařských výzev",
+      title: lang === "en" ? "Master Palaeographer" : "Písařský mistr",
+      text: lang === "en" ? "Successfully pass at least 5 scribal challenges" : "Úspěšně absolvujte alespoň 5 písařských výzev",
       xp: "300 XP",
       initial: "D",
       check: () => state.gamesPlayed >= 5 || state.trophies.includes("paleographer"),
     },
     {
       id: "philanthropist",
-      title: "Štědrý tovaryš",
-      text: "Darujte duplicitní kartu svému kolegovi ve skriptoriu",
+      title: lang === "en" ? "Generous Fellow" : "Štědrý tovaryš",
+      text: lang === "en" ? "Gift a duplicate colophon to a colleague in the scriptorium" : "Darujte duplicitní kartu svému kolegovi ve skriptoriu",
       xp: "200 XP",
       initial: "F",
       check: () => state.trophies.includes("philanthropist"),
     },
     {
       id: "mosaic-master",
-      title: "Mistr iluminátor",
-      text: "Složte celou 16dílnou mozaiku alespoň jednoho cyklu",
+      title: lang === "en" ? "Master Illuminator" : "Mistr iluminátor",
+      text: lang === "en" ? "Complete the full 16-piece mosaic of at least one cycle" : "Složte celou 16dílnou mozaiku alespoň jednoho cyklu",
       xp: "600 XP",
       initial: "Z",
       check: () => state.puzzle >= 16 || (state.gallery && state.gallery.length > 0) || state.trophies.includes("mosaic-master"),
@@ -3089,19 +3112,21 @@ function TrophiesScreen({
   const earnedCount = trophies.filter((t) => t.check()).length;
 
   return <div className="screen trophies-screen">
-    <PageTitle kicker="Poutníkovy milníky">Písařská ocenění</PageTitle>
+    <PageTitle kicker={lang === "en" ? "Pilgrim's Milestones" : "Poutníkovy milníky"}>
+      {lang === "en" ? "Scribal Honors" : "Písařská ocenění"}
+    </PageTitle>
     <section className="puzzle-board">
       <div className="puzzle-copy">
-        <p>16denní iluminovaná mozaika · Cyklus {activeIllumination.cycle}</p>
-        <h2>{state.puzzle}/16 dní</h2>
-        <small>Denní přihlašování v řadě odhaluje: <strong>{activeIllumination.title}</strong> ({activeIllumination.rarity}).</small>
+        <p>{lang === "en" ? `16-day illuminated mosaic · Cycle ${activeIllumination.cycle}` : `16denní iluminovaná mozaika · Cyklus ${activeIllumination.cycle}`}</p>
+        <h2>{state.puzzle}/16 {lang === "en" ? "days" : "dní"}</h2>
+        <small>{lang === "en" ? "Daily streak reveals:" : "Denní přihlašování v řadě odhaluje:"} <strong>{activeIllumination.title}</strong> ({activeIllumination.rarity}).</small>
         <div className="progress"><i style={{ width: `${(state.puzzle / 16) * 100}%` }} /></div>
       </div>
       <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
     </section>
     <div className="section-title">
-      <h2>Získané pocty</h2>
-      <span>{earnedCount}/{trophies.length} splněno</span>
+      <h2>{lang === "en" ? "Earned Honors" : "Získané pocty"}</h2>
+      <span>{earnedCount}/{trophies.length} {lang === "en" ? "completed" : "splněno"}</span>
     </div>
     <div className="trophy-list">
       {trophies.map((t) => {
@@ -3112,7 +3137,7 @@ function TrophiesScreen({
             <div>
               <strong>{t.title}</strong>
               <p>{t.text}</p>
-              <small>{earned ? "Splněno" : t.xp}</small>
+              <small>{earned ? (lang === "en" ? "Completed" : "Splněno") : t.xp}</small>
             </div>
             <span>{earned ? <Award size={18} /> : <LockKeyhole size={16} />}</span>
           </article>
@@ -3196,61 +3221,156 @@ function ProfileScreen({
       {lang === "en" ? "Scribe Profile" : "Profil písaře"}
     </PageTitle>
 
-    {/* Volba jazyka hry / Language Switcher */}
-    <div style={{ marginTop: 12, marginBottom: 16, padding: "12px 14px", background: "linear-gradient(135deg, #fffdf8 0%, #f7eed8 100%)", borderRadius: 10, border: "1px solid #d8c29d", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <strong style={{ color: "#4a2d04", fontSize: "13px" }}>
-          🌐 {lang === "en" ? "Game & Colophon Language" : "Jazyk hry a kolofonů"}
-        </strong>
-        <small style={{ color: "#785324", fontSize: "11px", fontStyle: "italic" }}>
-          {lang === "en" ? "Bilingual database" : "Dvojjazyčná databáze"}
-        </small>
+    {/* Volba jazyka hry / Language Switcher - Medieval Scriptorium Charter Design */}
+    <div
+      style={{
+        marginTop: 14,
+        marginBottom: 18,
+        padding: "16px 18px",
+        background: "linear-gradient(145deg, #fbf4e4 0%, #edd8b4 100%)",
+        border: "2px solid #8d5b1c",
+        outline: "1px solid #bc8a43",
+        outlineOffset: "-5px",
+        borderRadius: 12,
+        boxShadow: "0 6px 16px rgba(74, 45, 11, 0.12), inset 0 0 20px rgba(188, 138, 67, 0.15)",
+        position: "relative",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "18px" }}>📜</span>
+          <div>
+            <strong style={{ color: "#3d2206", fontSize: "13.5px", fontFamily: "Cinzel, var(--font-display)", letterSpacing: "0.5px", display: "block" }}>
+              {lang === "en" ? "Lingua Scriptorii · Game Language" : "Lingua Scriptorii · Jazyk hry"}
+            </strong>
+            <small style={{ color: "#7a5323", fontSize: "10.5px", fontStyle: "italic" }}>
+              {lang === "en" ? "Select your codex & manuscript language" : "Zvolte jazyk rozhraní a překladů kolofonů"}
+            </small>
+          </div>
+        </div>
+        <span style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "10px", background: "rgba(139, 90, 25, 0.12)", border: "1px solid #c49a55", color: "#54380e", fontWeight: 700 }}>
+          {lang === "en" ? "Bilingual Codex" : "Dvojjazyčný kodex"}
+        </span>
       </div>
-      <div style={{ display: "flex", gap: 10 }}>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {/* Česká volba */}
         <button
           type="button"
-          onClick={() => onSetLang?.("cs")}
+          onClick={() => { playSoftClick(); onSetLang?.("cs"); }}
           style={{
-            flex: 1,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: lang === "cs" ? "2px solid #8b2500" : "1px solid #c8b99d",
-            background: lang === "cs" ? "#fff" : "rgba(255,255,255,0.6)",
-            color: lang === "cs" ? "#8b2500" : "#554",
-            fontWeight: lang === "cs" ? 700 : 500,
+            padding: "12px 14px",
+            borderRadius: 9,
+            border: lang === "cs" ? "2px solid #8b2500" : "1px solid #c9b48c",
+            background: lang === "cs"
+              ? "linear-gradient(180deg, #fff7ea 0%, #faeed5 100%)"
+              : "rgba(255, 255, 255, 0.5)",
+            boxShadow: lang === "cs"
+              ? "0 4px 12px rgba(139, 37, 0, 0.18), inset 0 0 0 1px #d4af37"
+              : "inset 0 1px 2px rgba(0,0,0,0.04)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            fontSize: "12px",
-            boxShadow: lang === "cs" ? "0 2px 5px rgba(139,37,0,0.12)" : "none",
+            gap: 10,
+            textAlign: "left",
+            position: "relative",
+            transition: "all 0.2s ease",
           }}
         >
-          <span style={{ fontSize: 16 }}>🇨🇿</span> Čeština
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              background: lang === "cs"
+                ? "radial-gradient(circle, #c86247 0 56%, #9b3022 58% 63%, #b84732 65%)"
+                : "radial-gradient(circle, #dfd0b5 0 60%, #c4b08c 62%)",
+              border: lang === "cs" ? "2px solid #7a231a" : "1px solid #bba37f",
+              boxShadow: lang === "cs" ? "0 2px 6px rgba(122, 35, 26, 0.4)" : "none",
+              display: "grid",
+              placeItems: "center",
+              fontSize: "18px",
+              flexShrink: 0,
+            }}
+          >
+            🇨🇿
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <strong style={{ fontSize: "13px", color: lang === "cs" ? "#8b2500" : "#554", fontWeight: 800 }}>
+                Čeština
+              </strong>
+              {lang === "cs" && (
+                <span style={{ fontSize: "10px", color: "#8b2500", fontWeight: 800 }}>✓</span>
+              )}
+            </div>
+            <small style={{ display: "block", fontSize: "10px", color: lang === "cs" ? "#784b1a" : "#887", fontStyle: "italic" }}>
+              Lingua Bohemica
+            </small>
+          </div>
         </button>
+
+        {/* Anglická volba */}
         <button
           type="button"
-          onClick={() => onSetLang?.("en")}
+          onClick={() => { playSoftClick(); onSetLang?.("en"); }}
           style={{
-            flex: 1,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: lang === "en" ? "2px solid #8b2500" : "1px solid #c8b99d",
-            background: lang === "en" ? "#fff" : "rgba(255,255,255,0.6)",
-            color: lang === "en" ? "#8b2500" : "#554",
-            fontWeight: lang === "en" ? 700 : 500,
+            padding: "12px 14px",
+            borderRadius: 9,
+            border: lang === "en" ? "2px solid #8b2500" : "1px solid #c9b48c",
+            background: lang === "en"
+              ? "linear-gradient(180deg, #fff7ea 0%, #faeed5 100%)"
+              : "rgba(255, 255, 255, 0.5)",
+            boxShadow: lang === "en"
+              ? "0 4px 12px rgba(139, 37, 0, 0.18), inset 0 0 0 1px #d4af37"
+              : "inset 0 1px 2px rgba(0,0,0,0.04)",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            fontSize: "12px",
-            boxShadow: lang === "en" ? "0 2px 5px rgba(139,37,0,0.12)" : "none",
+            gap: 10,
+            textAlign: "left",
+            position: "relative",
+            transition: "all 0.2s ease",
           }}
         >
-          <span style={{ fontSize: 16 }}>🇬🇧</span> English
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              background: lang === "en"
+                ? "radial-gradient(circle, #c86247 0 56%, #9b3022 58% 63%, #b84732 65%)"
+                : "radial-gradient(circle, #dfd0b5 0 60%, #c4b08c 62%)",
+              border: lang === "en" ? "2px solid #7a231a" : "1px solid #bba37f",
+              boxShadow: lang === "en" ? "0 2px 6px rgba(122, 35, 26, 0.4)" : "none",
+              display: "grid",
+              placeItems: "center",
+              fontSize: "18px",
+              flexShrink: 0,
+            }}
+          >
+            🇬🇧
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <strong style={{ fontSize: "13px", color: lang === "en" ? "#8b2500" : "#554", fontWeight: 800 }}>
+                English
+              </strong>
+              {lang === "en" && (
+                <span style={{ fontSize: "10px", color: "#8b2500", fontWeight: 800 }}>✓</span>
+              )}
+            </div>
+            <small style={{ display: "block", fontSize: "10px", color: lang === "en" ? "#784b1a" : "#887", fontStyle: "italic" }}>
+              Lingua Anglica
+            </small>
+          </div>
         </button>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: "10.5px", color: "#6e4b1b", fontStyle: "italic", textAlign: "center" }}>
+        {lang === "en"
+          ? "✦ The selected language immediately translates all codices, challenges, and library views."
+          : "✦ Zvolený jazyk se okamžitě projeví v celém rozhraní, u všech kodexů i písařských výzev."}
       </div>
     </div>
 
@@ -3263,36 +3383,36 @@ function ProfileScreen({
             <span>{scribeName}</span>
           </h3>
           <span className="profile-account-role-badge">
-            {currentProfile?.role === "admin" ? "🛡️ Administrátor" : "📜 Člen skriptoria"}
+            {currentProfile?.role === "admin" ? (lang === "en" ? "🛡️ Administrator" : "🛡️ Administrátor") : (lang === "en" ? "📜 Scriptorium Fellow" : "📜 Člen skriptoria")}
           </span>
         </div>
         <div className="profile-account-details">
           <div>
-            <small>E-mailový účet</small>
+            <small>{lang === "en" ? "Email account" : "E-mailový účet"}</small>
             <strong>{currentUser.email}</strong>
           </div>
           <div>
-            <small>Cloudová synchronizace</small>
+            <small>{lang === "en" ? "Cloud synchronization" : "Cloudová synchronizace"}</small>
             <strong style={{ color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
-              <CheckCircle2 size={13} /> Aktivní (Supabase)
+              <CheckCircle2 size={13} /> {lang === "en" ? "Active (Supabase)" : "Aktivní (Supabase)"}
             </strong>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           {currentProfile?.role === "admin" ? (
             <a href="/admin" className="profile-admin-link">
-              <ExternalLink size={13} /> Vstoupit do Studia
+              <ExternalLink size={13} /> {lang === "en" ? "Enter Studio" : "Vstoupit do Studia"}
             </a>
           ) : <span />}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button type="button" className="profile-logout-btn" onClick={onLogout}>
-              <LogOut size={13} /> Odhlásit se
+              <LogOut size={13} /> {lang === "en" ? "Log Out" : "Odhlásit se"}
             </button>
             {onDeleteAccount && (
               <button
                 type="button"
                 onClick={onDeleteAccount}
-                title="Trvale zrušit účet a smazat data"
+                title={lang === "en" ? "Permanently delete account and all data" : "Trvale zrušit účet a smazat data"}
                 style={{
                   background: "transparent",
                   border: "1px solid #b91c1c",
@@ -3307,7 +3427,7 @@ function ProfileScreen({
                   gap: "4px",
                 }}
               >
-                <Trash2 size={12} /> Zrušit účet
+                <Trash2 size={12} /> {lang === "en" ? "Delete account" : "Zrušit účet"}
               </button>
             )}
           </div>
@@ -3318,14 +3438,16 @@ function ProfileScreen({
         <div className="profile-account-header">
           <h3>
             <User size={16} />
-            <span>Režim hosta</span>
+            <span>{lang === "en" ? "Guest Mode" : "Režim hosta"}</span>
           </h3>
           <span className="profile-account-role-badge" style={{ background: "#e2e8f0", color: "#475569", borderColor: "#cbd5e1" }}>
-            👤 Lokální profil
+            👤 {lang === "en" ? "Local Profile" : "Lokální profil"}
           </span>
         </div>
         <p style={{ fontSize: 12, color: "var(--ink-faded)", margin: "0 0 12px", lineHeight: 1.45 }}>
-          Váš herní postup a karty jsou nyní uloženy pouze v paměti tohoto prohlížeče. Založte si bezplatný účet nebo se přihlaste pro trvalé ukládání sbírky do cloudu, získávání trofejí a budoucí obchodování s kolegy.
+          {lang === "en"
+            ? "Your progress and cards are currently stored only in this browser's local cache. Create a free scribe account or sign in to permanently sync your collection to the cloud, earn honors, and trade with colleagues."
+            : "Váš herní postup a karty jsou nyní uloženy pouze v paměti tohoto prohlížeče. Založte si bezplatný účet nebo se přihlaste pro trvalé ukládání sbírky do cloudu, získávání trofejí a budoucí obchodování s kolegy."}
         </p>
         <button
           type="button"
@@ -3333,7 +3455,7 @@ function ProfileScreen({
           onClick={onOpenAuth}
           style={{ width: "auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 16px" }}
         >
-          <LogIn size={14} /> Přihlásit se / Vytvořit účet
+          <LogIn size={14} /> {lang === "en" ? "Sign In / Register" : "Přihlásit se / Vytvořit účet"}
         </button>
       </div>
     )}
@@ -3358,27 +3480,27 @@ function ProfileScreen({
       </div>
       <div>
         <h2>{scribeName}</h2>
-        <p>{title} · Úroveň {level}</p>
+        <p>{title} · {lang === "en" ? "Level" : "Úroveň"} {level}</p>
         <div className="level-progress" aria-label={`${levelXp} z ${XP_PER_LEVEL} XP do úrovně ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div>
-        <small>{levelXp} / {XP_PER_LEVEL} XP · Zbývá {XP_PER_LEVEL - levelXp} XP do úrovně {level + 1}</small>
+        <small>{levelXp} / {XP_PER_LEVEL} XP · {lang === "en" ? `Remaining: ${XP_PER_LEVEL - levelXp} XP to Level ${level + 1}` : `Zbývá ${XP_PER_LEVEL - levelXp} XP do úrovně ${level + 1}`}</small>
       </div>
     </section>
-    <blockquote>“Per pedes et non per manus.” (Nohama a ne rukama.)<cite>Osobní zápis písaře</cite></blockquote>
+    <blockquote>“Per pedes et non per manus.” ({lang === "en" ? "By foot and not by hands." : "Nohama a ne rukama."})<cite>{lang === "en" ? "Personal scribe note" : "Osobní zápis písaře"}</cite></blockquote>
     <div className="profile-stats">
-      <div><strong>{uniqueOwned}</strong><span>unikátních</span></div>
-      <div><strong>{state.streak}</strong><span>dní v řadě</span></div>
-      <div><strong>{duplicates}</strong><span>duplikátů</span></div>
+      <div><strong>{uniqueOwned}</strong><span>{lang === "en" ? "unique" : "unikátních"}</span></div>
+      <div><strong>{state.streak}</strong><span>{lang === "en" ? "day streak" : "dní v řadě"}</span></div>
+      <div><strong>{duplicates}</strong><span>{lang === "en" ? "duplicates" : "duplikátů"}</span></div>
     </div>
 
     <div className="section-title gallery-title">
-      <h2>Galerie iluminací</h2>
-      <span>{state.gallery.length} dokončeno</span>
+      <h2>{lang === "en" ? "Illumination Gallery" : "Galerie iluminací"}</h2>
+      <span>{state.gallery.length} {lang === "en" ? "completed" : "dokončeno"}</span>
     </div>
     <section className="current-illumination">
       <IlluminationMosaic pieces={state.puzzle} illumination={activeIllumination} />
       <div>
         <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span>Rozpracované dílo · Cyklus {activeIllumination.cycle}</span>
+          <span>{lang === "en" ? `Current Work · Cycle ${activeIllumination.cycle}` : `Rozpracované dílo · Cyklus ${activeIllumination.cycle}`}</span>
           <span className={`rarity-pill rarity-${activeIllumination.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "1px 5px", borderRadius: "8px", fontWeight: 800 }}>
             {activeIllumination.rarity}
           </span>
@@ -3389,8 +3511,8 @@ function ProfileScreen({
         </small>
         <div style={{ marginTop: 6, fontSize: "11px", color: "#684824" }}>
           {state.puzzle < 16
-            ? `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do složení celého díla.`
-            : "🎉 Dílo je kompletní! Portrét byl odemčen v galerii níže."}
+            ? (lang === "en" ? `Remaining: ${16 - state.puzzle} daily logins in a row to complete the illumination.` : `Zbývá ${16 - state.puzzle} denních přihlášení v řadě do složení celého díla.`)
+            : (lang === "en" ? "🎉 Illumination complete! Portrait unlocked in gallery below." : "🎉 Dílo je kompletní! Portrét byl odemčen v galerii níže.")}
         </div>
       </div>
     </section>
@@ -3418,7 +3540,7 @@ function ProfileScreen({
                   className={state.avatarArt === id ? "selected" : ""}
                   onClick={() => onSetAvatar(id)}
                 >
-                  {state.avatarArt === id ? "Aktivní portrét" : "Zvolit jako portrét"}
+                  {state.avatarArt === id ? (lang === "en" ? "Active Portrait" : "Aktivní portrét") : (lang === "en" ? "Set as Portrait" : "Zvolit jako portrét")}
                 </button>
               </div>
             </article>
@@ -3426,7 +3548,7 @@ function ProfileScreen({
         })}
       </div>
     ) : (
-      <p className="empty-gallery">Složte 16denní mozaiku pro odemčení první celistvé iluminace do své stálé galerie a portrétů.</p>
+      <p className="empty-gallery">{lang === "en" ? "Complete the 16-day mosaic to unlock your first permanent illumination and portraits." : "Složte 16denní mozaiku pro odemčení první celistvé iluminace do své stálé galerie a portrétů."}</p>
     )}
 
     {/* Čekající nabídky směn od kolegů */}
@@ -3445,11 +3567,14 @@ function ProfileScreen({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <div>
             <strong style={{ color: "#593309", display: "flex", alignItems: "center", gap: 6, fontSize: "13px" }}>
-              <ArrowLeftRight size={15} color="#8b5a19" /> Písařská směna kolofonů ({pendingTrades.length})
+              <ArrowLeftRight size={15} color="#8b5a19" /> {lang === "en" ? `Scribe Codex Exchange (${pendingTrades.length})` : `Písařská směna kolofonů (${pendingTrades.length})`}
             </strong>
             <small style={{ color: "#452706", display: "block", marginTop: 3 }}>
-              Kolega <strong>{pendingTrades[0].sender_name}</strong> vám navrhuje směnu:{" "}
-              <em>{pendingTrades[0].sender_offer.length} {pendingTrades[0].sender_offer.length === 1 ? "kolofon" : "kolofony"} za {pendingTrades[0].recipient_request.length}</em>
+              {lang === "en" ? (
+                <>Fellow scribe <strong>{pendingTrades[0].sender_name}</strong> proposes a trade: <em>{pendingTrades[0].sender_offer.length} {pendingTrades[0].sender_offer.length === 1 ? "codex" : "codices"} for {pendingTrades[0].recipient_request.length}</em></>
+              ) : (
+                <>Kolega <strong>{pendingTrades[0].sender_name}</strong> vám navrhuje směnu: <em>{pendingTrades[0].sender_offer.length} {pendingTrades[0].sender_offer.length === 1 ? "kolofon" : "kolofony"} za {pendingTrades[0].recipient_request.length}</em></>
+              )}
               {pendingTrades[0].message && ` – „${pendingTrades[0].message}“`}
             </small>
           </div>
@@ -3471,7 +3596,7 @@ function ProfileScreen({
               boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}
           >
-            <ScrollText size={13} /> Posoudit smlouvu
+            <ScrollText size={13} /> {lang === "en" ? "Review Contract" : "Posoudit smlouvu"}
           </button>
         </div>
       </div>
@@ -3493,10 +3618,14 @@ function ProfileScreen({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <div>
             <strong style={{ color: "#784714", display: "flex", alignItems: "center", gap: 6, fontSize: "13px" }}>
-              <Sparkles size={15} color="#b8860b" /> Požehnání ze skriptoria ({pendingGifts.length})
+              <Sparkles size={15} color="#b8860b" /> {lang === "en" ? `Scriptorium Blessing (${pendingGifts.length})` : `Požehnání ze skriptoria (${pendingGifts.length})`}
             </strong>
             <small style={{ color: "#543818", display: "block", marginTop: 3 }}>
-              Kolega <strong>{pendingGifts[0].sender_name}</strong> vám daroval kolofon: <em>{pendingGifts[0].card_title}</em>
+              {lang === "en" ? (
+                <>Fellow scribe <strong>{pendingGifts[0].sender_name}</strong> gifted you a colophon: <em>{pendingGifts[0].card_title}</em></>
+              ) : (
+                <>Kolega <strong>{pendingGifts[0].sender_name}</strong> vám daroval kolofon: <em>{pendingGifts[0].card_title}</em></>
+              )}
               {pendingGifts[0].message && ` – „${pendingGifts[0].message}“`}
             </small>
           </div>
@@ -3518,22 +3647,22 @@ function ProfileScreen({
               boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             }}
           >
-            <ScrollText size={13} /> Přijmout do sbírky
+            <ScrollText size={13} /> {lang === "en" ? "Accept to Collection" : "Přijmout do sbírky"}
           </button>
         </div>
       </div>
     )}
 
     <div className="section-title">
-      <h2>Kolegové ve skriptoriu ({colleagues.length})</h2>
+      <h2>{lang === "en" ? `Fellow Scribes (${colleagues.length})` : `Kolegové ve skriptoriu (${colleagues.length})`}</h2>
       <div style={{ display: "flex", gap: 8 }}>
         {onOpenTrade && (
           <button className="icon-label" onClick={() => onOpenTrade()}>
-            <ArrowLeftRight size={13} /> Zahájit směnu
+            <ArrowLeftRight size={13} /> {lang === "en" ? "Start Trade" : "Zahájit směnu"}
           </button>
         )}
         <button className="icon-label" onClick={() => onSend()}>
-          <UserPlus size={13} /> Odeslat duplikát
+          <UserPlus size={13} /> {lang === "en" ? "Send Duplicate" : "Odeslat duplikát"}
         </button>
       </div>
     </div>
@@ -3542,7 +3671,7 @@ function ProfileScreen({
       <div style={{ marginBottom: 10 }}>
         <input
           type="text"
-          placeholder="Hledat kolegu podle jména či přezdívky..."
+          placeholder={lang === "en" ? "Search fellow scribe by name..." : "Hledat kolegu podle jména či přezdívky..."}
           value={colleagueQuery}
           onChange={(e) => setColleagueQuery(e.target.value)}
           style={{
@@ -3561,7 +3690,7 @@ function ProfileScreen({
     <div className="friends">
       {filteredColleagues.length === 0 ? (
         <div style={{ textAlign: "center", padding: "16px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
-          Nenalezen žádný kolega odpovídající hledání „{colleagueQuery}“.
+          {lang === "en" ? `No fellow scribe found matching "${colleagueQuery}".` : `Nenalezen žádný kolega odpovídající hledání „${colleagueQuery}“`}
         </div>
       ) : (
         filteredColleagues.map((friend) => (
@@ -3585,22 +3714,22 @@ function ProfileScreen({
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <strong>{friend.display_name || friend.username || "Kolega"}</strong>
+                <strong>{friend.display_name || friend.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}</strong>
                 {friend.role === "admin" ? (
                   <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
-                    👑 Mistr skriptoria (Admin)
+                    {lang === "en" ? "👑 Master of Scriptorium (Admin)" : "👑 Mistr skriptoria (Admin)"}
                   </span>
                 ) : !friend.id?.startsWith("demo-") ? (
                   <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.15)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
-                    ✦ Kolega ze semináře
+                    {lang === "en" ? "✦ Seminar Colleague" : "✦ Kolega ze semináře"}
                   </span>
                 ) : (
                   <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: 4, background: "rgba(0,0,0,0.05)", border: "1px solid #ccc", color: "#777" }}>
-                    Cvičný písař
+                    {lang === "en" ? "Practice Scribe" : "Cvičný písař"}
                   </span>
                 )}
               </div>
-              <small>{friend.streak || 1} dní v řadě · {friend.xp !== undefined ? `${friend.xp} XP` : "Tovaryš skriptoria"}</small>
+              <small>{friend.streak || 1} {lang === "en" ? "days streak" : "dní v řadě"} · {friend.xp !== undefined ? `${friend.xp} XP` : (lang === "en" ? "Scriptorium Fellow" : "Tovaryš skriptoria")}</small>
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               {onOpenTrade && (
@@ -3621,11 +3750,11 @@ function ProfileScreen({
                     gap: 4,
                   }}
                 >
-                  <ArrowLeftRight size={11} /> Směna
+                  <ArrowLeftRight size={11} /> {lang === "en" ? "Trade" : "Směna"}
                 </button>
               )}
               <button onClick={() => onSend(friend)}>
-                <Send size={12} /> Darovat
+                <Send size={12} /> {lang === "en" ? "Gift" : "Darovat"}
               </button>
             </div>
           </article>
@@ -3641,9 +3770,9 @@ function ProfileScreen({
             className="settings-button"
             style={{ flex: 1, minWidth: 160, background: "#fffdf5", borderColor: "#c9a66b", color: "#54380e", fontWeight: 600 }}
             onClick={onOpenTutorial}
-            title="Znovu si projít 5kapitolového průvodce skriptoriem a kolofony"
+            title={lang === "en" ? "Review the 5-chapter guide to the scriptorium and colophons" : "Znovu si projít 5kapitolového průvodce skriptoriem a kolofony"}
           >
-            <Sparkles size={12} /> 📜 Průvodce skriptoriem (Tutoriál)
+            <Sparkles size={12} /> {lang === "en" ? "📜 Scriptorium Guide (Tutorial)" : "📜 Průvodce skriptoriem (Tutoriál)"}
           </button>
         )}
         <button
@@ -3651,22 +3780,22 @@ function ProfileScreen({
           className="settings-button"
           style={{ flex: 1, minWidth: 160 }}
           onClick={onAdvanceDay}
-          title="Simulovat další den návštěvy (+1 fragment do mozaiky)"
+          title={lang === "en" ? "Simulate next day (+1 mosaic fragment)" : "Simulovat další den návštěvy (+1 fragment do mozaiky)"}
         >
-          <Sparkles size={12} /> Simulovat další den (+1 fragment)
+          <Sparkles size={12} /> {lang === "en" ? "Simulate Next Day (+1 fragment)" : "Simulovat další den (+1 fragment)"}
         </button>
         <button
           type="button"
           className="settings-button"
           style={{ flex: 1, minWidth: 160, color: "#b91c1c" }}
           onClick={onBreakStreak}
-          title="Simulovat vynechání dne (reset streaku na Den 1 dle pravidel)"
+          title={lang === "en" ? "Simulate broken streak (reset to Day 1)" : "Simulovat vynechání dne (reset streaku na Den 1 dle pravidel)"}
         >
-          <RotateCcw size={12} /> Simulovat přerušení streaku (reset)
+          <RotateCcw size={12} /> {lang === "en" ? "Simulate Streak Break (reset)" : "Simulovat přerušení streaku (reset)"}
         </button>
       </div>
       <button className="settings-button" onClick={onReset}>
-        <RotateCcw size={12} /> Resetovat celý postup pro demonstraci
+        <RotateCcw size={12} /> {lang === "en" ? "Reset All Progress (Demo)" : "Resetovat celý postup pro demonstraci"}
       </button>
     </div>
   </div>;
@@ -3720,6 +3849,7 @@ function TradeModal({
   parentTradeId,
   onClose,
   onSend,
+  lang = "cs",
 }: {
   colleague: any;
   cards: Colophon[];
@@ -3730,6 +3860,7 @@ function TradeModal({
   parentTradeId?: string;
   onClose: () => void;
   onSend: (offer: TradeItem[], request: TradeItem[], message: string, parentTradeId?: string) => Promise<void>;
+  lang?: Language;
 }) {
   const [activeTab, setActiveTab] = useState<"offer" | "request">("offer");
   const [search, setSearch] = useState("");
@@ -3763,8 +3894,10 @@ function TradeModal({
   const currentList = useMemo(() => {
     const base = activeTab === "offer" ? ownedCards : cards;
     return base.filter((c) => {
+      const cardT = getCardTitle(c, lang).toLowerCase();
       const matchSearch =
         !search ||
+        cardT.includes(search.toLowerCase()) ||
         c.title.toLowerCase().includes(search.toLowerCase()) ||
         (c.place && c.place.toLowerCase().includes(search.toLowerCase())) ||
         (c.quote && c.quote.toLowerCase().includes(search.toLowerCase())) ||
@@ -3772,7 +3905,7 @@ function TradeModal({
       const matchRarity = rarityFilter === "All" || c.rarity === rarityFilter;
       return matchSearch && matchRarity;
     });
-  }, [activeTab, ownedCards, cards, search, rarityFilter]);
+  }, [activeTab, ownedCards, cards, search, rarityFilter, lang]);
 
   const totalOfferedCount = useMemo(() => {
     return Object.values(offeredCounts).reduce((a, b) => a + b, 0);
@@ -3831,7 +3964,7 @@ function TradeModal({
         const c = cards.find((item) => String(item.id) === String(cardId));
         return {
           card_id: cardId,
-          title: c?.title || "Neznámý kolofon",
+          title: c ? getCardTitle(c, lang) : (lang === "en" ? "Unknown Codex" : "Neznámý kolofon"),
           rarity: (c?.rarity as Rarity) || "Common",
           count: cnt,
           crop_x: c?.crop_x,
@@ -3848,7 +3981,7 @@ function TradeModal({
         const c = cards.find((item) => String(item.id) === String(cardId));
         return {
           card_id: cardId,
-          title: c?.title || "Neznámý kolofon",
+          title: c ? getCardTitle(c, lang) : (lang === "en" ? "Unknown Codex" : "Neznámý kolofon"),
           rarity: (c?.rarity as Rarity) || "Common",
           count: cnt,
           crop_x: c?.crop_x,
@@ -3867,19 +4000,19 @@ function TradeModal({
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Smlouva o písařské směně">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === "en" ? "Scribe Trade Agreement" : "Smlouva o písařské směně"}>
       <div className="modal" style={{ maxWidth: 540, borderRadius: 12, padding: "20px 24px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <button className="close" onClick={onClose} title="Zavřít">×</button>
+        <button className="close" onClick={onClose} title={lang === "en" ? "Close" : "Zavřít"}>×</button>
 
         {/* Hlavička modálu */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <ArrowLeftRight size={20} className="text-[#8b5a19]" />
           <div>
             <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
-              {parentTradeId ? "Protinabídka ke směně" : "Smlouva o písařské směně"}
+              {parentTradeId ? (lang === "en" ? "Counter-Offer to Trade" : "Protinabídka ke směně") : (lang === "en" ? "Scribe Trade Agreement" : "Smlouva o písařské směně")}
             </h3>
             <small style={{ color: "#784f1d", fontSize: "11px" }}>
-              {parentTradeId ? "Upravte podmínky a zašlete protinávrh zpět" : "Navrhněte výměnu kolofonů s kolegou ze skriptoria"}
+              {parentTradeId ? (lang === "en" ? "Adjust the terms and send a counter-proposal back" : "Upravte podmínky a zašlete protinávrh zpět") : (lang === "en" ? "Propose a colophon exchange with a fellow scribe" : "Navrhněte výměnu kolofonů s kolegou ze skriptoria")}
             </small>
           </div>
         </div>
@@ -3892,16 +4025,16 @@ function TradeModal({
             </div>
             <div>
               <div style={{ fontSize: "12px", fontWeight: 700, color: "#3d2206" }}>
-                Partner ve směně: {colleague.display_name || colleague.username || "Kolega"}
+                {lang === "en" ? "Trade Partner:" : "Partner ve směně:"} {colleague.display_name || colleague.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}
               </div>
               <div style={{ fontSize: "10px", color: "#7a5323" }}>
-                {colleague.streak ? `${colleague.streak} dní v řadě` : "Tovaryš skriptoria"}
+                {colleague.streak ? `${colleague.streak} ${lang === "en" ? "days streak" : "dní v řadě"}` : (lang === "en" ? "Scriptorium Fellow" : "Tovaryš skriptoria")}
               </div>
             </div>
           </div>
           {parentTradeId && (
             <span style={{ fontSize: "10px", background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: 10, border: "1px solid #f59e0b", fontWeight: 600 }}>
-              🔄 Protinabídka
+              🔄 {lang === "en" ? "Counter-Offer" : "Protinabídka"}
             </span>
           )}
         </div>
@@ -3928,7 +4061,7 @@ function TradeModal({
               transition: "all 0.15s ease",
             }}
           >
-            <span>📤 Co nabízíte ({totalOfferedCount} ks)</span>
+            <span>📤 {lang === "en" ? `What you offer (${totalOfferedCount} pcs)` : `Co nabízíte (${totalOfferedCount} ks)`}</span>
           </button>
           <button
             type="button"
@@ -3950,7 +4083,7 @@ function TradeModal({
               transition: "all 0.15s ease",
             }}
           >
-            <span>📥 Co žádáte ({totalRequestedCount} ks)</span>
+            <span>📥 {lang === "en" ? `What you request (${totalRequestedCount} pcs)` : `Co žádáte (${totalRequestedCount} ks)`}</span>
           </button>
         </div>
 
@@ -3958,7 +4091,7 @@ function TradeModal({
         <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
           <input
             type="text"
-            placeholder={activeTab === "offer" ? "Hledat ve vaší sbírce..." : "Hledat v celém katalogu..."}
+            placeholder={activeTab === "offer" ? (lang === "en" ? "Search your collection..." : "Hledat ve vaší sbírce...") : (lang === "en" ? "Search full codex catalog..." : "Hledat v celém katalogu...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -3984,7 +4117,7 @@ function TradeModal({
               cursor: "pointer",
             }}
           >
-            <option value="All">Všechny rarity</option>
+            <option value="All">{lang === "en" ? "All rarities" : "Všechny rarity"}</option>
             <option value="Common">Common</option>
             <option value="Uncommon">Uncommon</option>
             <option value="Rare">Rare</option>
@@ -3998,13 +4131,14 @@ function TradeModal({
         <div style={{ flex: 1, minHeight: 180, maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, paddingRight: 4, marginBottom: 12 }}>
           {currentList.length === 0 ? (
             <div style={{ textAlign: "center", padding: "24px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
-              {activeTab === "offer" ? "Ve sbírce nemáte žádné odpovídající kolofony k nabídnutí." : "Nenalezen žádný kolofon."}
+              {activeTab === "offer" ? (lang === "en" ? "No matching colophons in your library to offer." : "Ve sbírce nemáte žádné odpovídající kolofony k nabídnutí.") : (lang === "en" ? "No colophons found." : "Nenalezen žádný kolofon.")}
             </div>
           ) : (
             currentList.map((c) => {
               const ownedCount = userCollection[c.id] || 0;
               const selectedCount = activeTab === "offer" ? (offeredCounts[c.id] || 0) : (requestedCounts[c.id] || 0);
               const isSelected = selectedCount > 0;
+              const title = getCardTitle(c, lang);
 
               return (
                 <div
@@ -4024,24 +4158,24 @@ function TradeModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                     <div style={{ width: 32, height: 32, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
                       {c.imageUrl ? (
-                        <img src={c.imageUrl} alt={c.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={c.imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       ) : (
                         <ScrollText size={16} color="#d4af37" style={{ margin: 8 }} />
                       )}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <strong style={{ fontSize: "12px", color: "#3d2206", display: "block" }} className="truncate">
-                        {c.title}
+                        {title}
                       </strong>
                       <div style={{ fontSize: "10px", color: "#7a5323", display: "flex", alignItems: "center", gap: 4 }}>
-                        <span className="truncate">{c.place || "Neznámé místo"}</span>
+                        <span className="truncate">{c.place || (lang === "en" ? "Unknown scriptorium" : "Neznámé místo")}</span>
                         <span>·</span>
                         <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
                           {c.rarity}
                         </span>
                         {activeTab === "offer" && (
                           <span style={{ color: "#8c6020", fontWeight: 600 }}>
-                            (Máte: {ownedCount} ks)
+                            ({lang === "en" ? `You have: ${ownedCount} pcs` : `Máte: ${ownedCount} ks`})
                           </span>
                         )}
                       </div>
@@ -4115,20 +4249,20 @@ function TradeModal({
           alignItems: "center",
           marginBottom: 10,
         }}>
-          <span>⚖️ Bilance smlouvy:</span>
-          <strong>{totalOfferedCount} ks dáváte ⇄ {totalRequestedCount} ks žádáte</strong>
+          <span>⚖️ {lang === "en" ? "Agreement Balance:" : "Bilance smlouvy:"}</span>
+          <strong>{lang === "en" ? `${totalOfferedCount} pcs offered ⇄ ${totalRequestedCount} pcs requested` : `${totalOfferedCount} ks dáváte ⇄ ${totalRequestedCount} ks žádáte`}</strong>
         </div>
 
         {/* Pergamenový vzkaz */}
         <div style={{ marginBottom: 14 }}>
           <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "var(--brown)", marginBottom: 4 }}>
-            📜 Pergamenový vzkaz / průvodní listina (volitelné):
+            📜 {lang === "en" ? "Parchment Note / Accompanying Letter (optional):" : "Pergamenový vzkaz / průvodní listina (volitelné):"}
           </label>
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ať ti tento kolofon poslouží. Rád bych za něj získal..."
+            placeholder={lang === "en" ? "May this colophon serve thee well. In return, I would gladly receive..." : "Ať ti tento kolofon poslouží. Rád bych za něj získal..."}
             style={{
               width: "100%",
               padding: "7px 10px",
@@ -4149,7 +4283,7 @@ function TradeModal({
             onClick={onClose}
             style={{ padding: "7px 14px", background: "none", border: "1px solid #ba9f73", borderRadius: 6, fontSize: "12px", color: "var(--brown)", cursor: "pointer" }}
           >
-            Zrušit
+            {lang === "en" ? "Cancel" : "Zrušit"}
           </button>
           <button
             type="button"
@@ -4170,7 +4304,7 @@ function TradeModal({
               opacity: (totalOfferedCount === 0 && totalRequestedCount === 0) || isSubmitting ? 0.5 : 1,
             }}
           >
-            <ScrollText size={13} /> {isSubmitting ? "Zpečeťuji..." : parentTradeId ? "Odeslat protinabídku" : "Zpečetit a odeslat návrh"}
+            <ScrollText size={13} /> {isSubmitting ? (lang === "en" ? "Sealing..." : "Zpečeťuji...") : parentTradeId ? (lang === "en" ? "Send Counter-Offer" : "Odeslat protinabídku") : (lang === "en" ? "Seal & Send Proposal" : "Zpečetit a odeslat návrh")}
           </button>
         </div>
       </div>
@@ -4187,6 +4321,7 @@ function TradeReviewModal({
   onCounter,
   onDecline,
   onClose,
+  lang = "cs",
 }: {
   trade: CardTrade;
   cards: Colophon[];
@@ -4196,6 +4331,7 @@ function TradeReviewModal({
   onCounter: (trade: CardTrade) => void;
   onDecline: (trade: CardTrade) => void;
   onClose: () => void;
+  lang?: Language;
 }) {
   // Check if current user actually has all the cards requested by sender
   const canAccept = useMemo(() => {
@@ -4206,19 +4342,19 @@ function TradeReviewModal({
   }, [trade.recipient_request, userCollection]);
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Posouzení návrhu směny">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={lang === "en" ? "Review Scribe Trade" : "Posouzení návrhu směny"}>
       <div className="modal" style={{ maxWidth: 520, borderRadius: 12, padding: "20px 24px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <button className="close" onClick={onClose} title="Zavřít">×</button>
+        <button className="close" onClick={onClose} title={lang === "en" ? "Close" : "Zavřít"}>×</button>
 
         {/* Hlavička */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <ArrowLeftRight size={20} className="text-[#8b5a19]" />
           <div>
             <h3 style={{ margin: 0, color: "var(--brown)", fontFamily: "var(--font-display)", fontSize: "19px" }}>
-              Posouzení písařské směny
+              {lang === "en" ? "Review Scribe Trade" : "Posouzení písařské směny"}
             </h3>
             <small style={{ color: "#784f1d", fontSize: "11px" }}>
-              Přezkoumejte podmínky nabízené smlouvy o výměně kolofonů
+              {lang === "en" ? "Examine the terms of the proposed colophon exchange contract" : "Přezkoumejte podmínky nabízené smlouvy o výměně kolofonů"}
             </small>
           </div>
         </div>
@@ -4231,10 +4367,10 @@ function TradeReviewModal({
             </div>
             <div>
               <div style={{ fontSize: "13px", fontWeight: 700, color: "#3d2206" }}>
-                Návrh od: {trade.sender_name}
+                {lang === "en" ? "Proposal from:" : "Návrh od:"} {trade.sender_name}
               </div>
               <div style={{ fontSize: "10.5px", color: "#7a5323" }}>
-                {trade.created_at ? new Date(trade.created_at).toLocaleDateString("cs-CZ") : "Nedávno"} · Smlouva o směně pergamenu
+                {trade.created_at ? new Date(trade.created_at).toLocaleDateString(lang === "en" ? "en-GB" : "cs-CZ") : (lang === "en" ? "Recently" : "Nedávno")} · {lang === "en" ? "Parchment trade contract" : "Smlouva o směně pergamenu"}
               </div>
             </div>
           </div>
@@ -4250,27 +4386,28 @@ function TradeReviewModal({
           {/* 1. Nabízeno (co získáte) */}
           <div style={{ background: "#fdfbf5", border: "1px solid #c9b084", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: "12px", fontWeight: 700, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>📥 Kolega vám nabízí (získáte do sbírky):</span>
+              <span>📥 {lang === "en" ? "Fellow scribe offers (added to your library):" : "Kolega vám nabízí (získáte do sbírky):"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {trade.sender_offer.length === 0 ? (
-                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>Žádné kolofony (dar z vaší strany)</div>
+                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>{lang === "en" ? "No colophons (gift from your side)" : "Žádné kolofony (dar z vaší strany)"}</div>
               ) : (
                 trade.sender_offer.map((item, idx) => {
                   const cardMatch = cards.find((c) => String(c.id) === String(item.card_id));
+                  const title = getCardTitle(cardMatch || { id: item.card_id, title: item.title }, lang);
                   return (
                     <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 8px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                         <div style={{ width: 28, height: 28, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
                           {(item.imageUrl || cardMatch?.imageUrl) ? (
-                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           ) : (
                             <ScrollText size={14} color="#d4af37" style={{ margin: 7 }} />
                           )}
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <strong style={{ fontSize: "11.5px", color: "#14532d", display: "block" }} className="truncate">
-                            {item.title}
+                            {title}
                           </strong>
                           <span className={`rarity-tag rarity-${item.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
                             {item.rarity}
@@ -4278,7 +4415,7 @@ function TradeReviewModal({
                         </div>
                       </div>
                       <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>
-                        +{item.count} ks
+                        +{item.count} {lang === "en" ? "pcs" : "ks"}
                       </span>
                     </div>
                   );
@@ -4290,43 +4427,44 @@ function TradeReviewModal({
           {/* 2. Požadováno (co odevzdáte) */}
           <div style={{ background: "#fdfbf5", border: "1px solid #c9b084", borderRadius: 8, padding: "10px 12px" }}>
             <div style={{ fontSize: "12px", fontWeight: 700, color: "#991b1b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>📤 Kolega od vás žádá (odevzdáte ze sbírky):</span>
+              <span>📤 {lang === "en" ? "Fellow scribe requests (deducted from your library):" : "Kolega od vás žádá (odevzdáte ze sbírky):"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {trade.recipient_request.length === 0 ? (
-                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>Žádné kolofony (čistý dar pro vás)</div>
+                <div style={{ fontSize: "11px", color: "#8c6020", fontStyle: "italic" }}>{lang === "en" ? "No colophons (pure gift for you)" : "Žádné kolofony (čistý dar pro vás)"}</div>
               ) : (
                 trade.recipient_request.map((item, idx) => {
                   const cardMatch = cards.find((c) => String(c.id) === String(item.card_id));
                   const owned = userCollection[item.card_id] || 0;
                   const hasEnough = owned >= item.count;
+                  const title = getCardTitle(cardMatch || { id: item.card_id, title: item.title }, lang);
 
                   return (
                     <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 8px", background: hasEnough ? "#fff" : "#fef2f2", border: hasEnough ? "1px solid #e5e7eb" : "1px solid #fca5a5", borderRadius: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                         <div style={{ width: 28, height: 28, borderRadius: 4, overflow: "hidden", background: "#332211", flexShrink: 0 }}>
                           {(item.imageUrl || cardMatch?.imageUrl) ? (
-                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={item.imageUrl || cardMatch?.imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           ) : (
                             <ScrollText size={14} color="#d4af37" style={{ margin: 7 }} />
                           )}
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <strong style={{ fontSize: "11.5px", color: "#374151", display: "block" }} className="truncate">
-                            {item.title}
+                            {title}
                           </strong>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <span className={`rarity-tag rarity-${item.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
                               {item.rarity}
                             </span>
                             <span style={{ fontSize: "10px", color: hasEnough ? "#15803d" : "#b91c1c", fontWeight: 600 }}>
-                              {hasEnough ? `(Vlastníte: ${owned} ks ✓)` : `(Vlastníte jen ${owned} ks ✗)`}
+                              {hasEnough ? (lang === "en" ? `(You own: ${owned} pcs ✓)` : `(Vlastníte: ${owned} ks ✓)`) : (lang === "en" ? `(You only own ${owned} pcs ✗)` : `(Vlastníte jen ${owned} ks ✗)`)}
                             </span>
                           </div>
                         </div>
                       </div>
                       <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#991b1b", whiteSpace: "nowrap" }}>
-                        -{item.count} ks
+                        -{item.count} {lang === "en" ? "pcs" : "ks"}
                       </span>
                     </div>
                   );
@@ -4339,13 +4477,17 @@ function TradeReviewModal({
         {/* Upozornění, pokud hráč nevlastní požadované karty */}
         {!canAccept && (
           <div style={{ padding: "8px 12px", background: "#fee2e2", border: "1px solid #f87171", borderRadius: 6, color: "#991b1b", fontSize: "11px", marginBottom: 12 }}>
-            ⚠️ Pro okamžité přijetí nemáte dostatek požadovaných kolofonů. Můžete však navrhnout <strong>protinabídku</strong> a upravit požadované kusy na karty, které máte!
+            {lang === "en" ? (
+              <>⚠️ You do not possess enough requested colophons to accept immediately. However, you can propose a <strong>counter-offer</strong> and adjust the requested items!</>
+            ) : (
+              <>⚠️ Pro okamžité přijetí nemáte dostatek požadovaných kolofonů. Můžete však navrhnout <strong>protinabídku</strong> a upravit požadované kusy na karty, které máte!</>
+            )}
           </div>
         )}
 
         {!isXpAvailable && (
           <div style={{ padding: "6px 10px", background: "#fdf8ee", border: "1px solid #d4c09b", borderRadius: 6, color: "#784f1d", fontSize: "11px", marginBottom: 10 }}>
-            ℹ️ S tímto kolegou jste dnes již získali zkušenostní body. Kolofony se při přijetí řádně vymění, ale další XP se dnes nepřipíšou.
+            {lang === "en" ? "ℹ️ You have already earned XP with this colleague today. Colophons will be exchanged properly upon acceptance, but no additional XP will be awarded today." : "ℹ️ S tímto kolegou jste dnes již získali zkušenostní body. Kolofony se při přijetí řádně vymění, ale další XP se dnes nepřipíšou."}
           </div>
         )}
 
@@ -4356,7 +4498,7 @@ function TradeReviewModal({
             onClick={() => onDecline(trade)}
             style={{ padding: "7px 12px", background: "none", border: "1px solid #dc2626", borderRadius: 6, fontSize: "11.5px", color: "#b91c1c", cursor: "pointer", fontWeight: 600 }}
           >
-            ❌ Odmítnout
+            ❌ {lang === "en" ? "Decline" : "Odmítnout"}
           </button>
           <div style={{ display: "flex", gap: 8 }}>
             <button
@@ -4376,7 +4518,7 @@ function TradeReviewModal({
                 gap: 5,
               }}
             >
-              🔄 Protinabídka
+              🔄 {lang === "en" ? "Counter-Offer" : "Protinabídka"}
             </button>
             <button
               type="button"
@@ -4398,7 +4540,7 @@ function TradeReviewModal({
                 opacity: canAccept ? 1 : 0.6,
               }}
             >
-              <CheckCircle2 size={13} /> {isXpAvailable ? "Přijmout směnu (+60 XP)" : "Přijmout směnu (0 XP)"}
+              <CheckCircle2 size={13} /> {isXpAvailable ? (lang === "en" ? "Accept Trade (+60 XP)" : "Přijmout směnu (+60 XP)") : (lang === "en" ? "Accept Trade (0 XP)" : "Přijmout směnu (0 XP)")}
             </button>
           </div>
         </div>
@@ -4407,15 +4549,15 @@ function TradeReviewModal({
   );
 }
 
-function LevelUpModal({ level, onClose }: { level: number; onClose: () => void }) {
-  return <div className="modal-backdrop level-up-backdrop"><section className="level-up-modal" role="dialog" aria-modal="true" aria-label={`Dosažena úroveň ${level}`}>
+function LevelUpModal({ level, onClose, lang = "cs" }: { level: number; onClose: () => void; lang?: Language }) {
+  return <div className="modal-backdrop level-up-backdrop"><section className="level-up-modal" role="dialog" aria-modal="true" aria-label={lang === "en" ? `Level ${level} Reached` : `Dosažena úroveň ${level}`}>
     <div className="level-rays" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
     <Sparkles size={28} aria-hidden="true" />
-    <p>Písařské osvícení</p><h2>Úroveň {level}</h2>
+    <p>{lang === "en" ? "Scribal Enlightenment" : "Písařské osvícení"}</p><h2>{lang === "en" ? "Level" : "Úroveň"} {level}</h2>
     <div className="level-seal"><span>{level}</span></div>
-    <strong>Odemčena mistrovská odměna</strong>
-    <small>Do vaší pokladnice byl vložen jeden Masterwork Pack s vysokou šancí na vzácné kolofony.</small>
-    <button onClick={onClose}>Převzít odměnu</button>
+    <strong>{lang === "en" ? "Masterwork Reward Unlocked" : "Odemčena mistrovská odměna"}</strong>
+    <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons has been deposited into your vault." : "Do vaší pokladnice byl vložen jeden Masterwork Pack s vysokou šancí na vzácné kolofony."}</small>
+    <button onClick={onClose}>{lang === "en" ? "Claim Reward" : "Převzít odměnu"}</button>
   </section></div>;
 }
 
@@ -5087,6 +5229,7 @@ function GameModal({
   setStep,
   onClose,
   onAnswer,
+  lang = "cs",
 }: {
   kind: GameKind;
   question: QuestionData;
@@ -5096,6 +5239,7 @@ function GameModal({
   setStep: (n: number) => void;
   onClose: () => void;
   onAnswer: (correct: boolean) => void;
+  lang?: Language;
 }) {
   const challengeCard =
     (question.card_id
@@ -5115,12 +5259,20 @@ function GameModal({
   } | null>(null);
 
   const reward = isTranscription
-    ? "Masterwork Pack · Garantuje Rare+ s šancí na Legendary (+120 XP)"
+    ? (lang === "en"
+        ? "Masterwork Pack · Guarantees Rare+ with chance of Legendary (+120 XP)"
+        : "Masterwork Pack · Garantuje Rare+ s šancí na Legendary (+120 XP)")
     : question.mode === "script" || kind === "paleo"
-    ? "Scholar Pack · Vzácnější kodexy a iluminace (+75 XP)"
+    ? (lang === "en"
+        ? "Scholar Pack · Rarer codices and illuminations (+75 XP)"
+        : "Scholar Pack · Vzácnější kodexy a iluminace (+75 XP)")
     : kind === "cipher"
-    ? "Scholar Pack · Vzácnější kodexy a iluminace (+60 XP)"
-    : "Standard Pack (+35 XP)";
+    ? (lang === "en"
+        ? "Scholar Pack · Rarer codices and illuminations (+60 XP)"
+        : "Scholar Pack · Vzácnější kodexy a iluminace (+60 XP)")
+    : (lang === "en"
+        ? "Standard Pack (+35 XP)"
+        : "Standard Pack (+35 XP)");
 
   const handleCheckTranscription = () => {
     if (!userText.trim()) return;
@@ -5139,8 +5291,12 @@ function GameModal({
         similarity: Math.round(bestSim * 100),
         message:
           bestSim >= 0.98
-            ? "Dokonalý paleografický přepis bez jediné chyby!"
-            : "Výborně! Text dosáhl požadované 90% přesnosti a byl úspěšně uznán.",
+            ? (lang === "en"
+                ? "Flawless palaeographical transcription without a single error!"
+                : "Dokonalý paleografický přepis bez jediné chyby!")
+            : (lang === "en"
+                ? "Well done! Text achieved the required 90% accuracy and was accepted."
+                : "Výborně! Text dosáhl požadované 90% přesnosti a byl úspěšně uznán."),
         pass: true,
       });
       onAnswer(true);
@@ -5149,8 +5305,12 @@ function GameModal({
         similarity: Math.round(bestSim * 100),
         message:
           bestSim >= 0.75
-            ? `Velmi blízko (${Math.round(bestSim * 100)} %)! K uznání je vyžadována alespoň 90% shoda. Zkontrolujte koncovky slov, zkratky a ligatury.`
-            : `Zatím ${Math.round(bestSim * 100)} % shoda (vyžadováno 90 %). Prozkoumejte detaily osvětlených řádků výše a zkuste to znovu.`,
+            ? (lang === "en"
+                ? `Very close (${Math.round(bestSim * 100)}%)! At least 90% match is required. Check word endings, abbreviations, and ligatures.`
+                : `Velmi blízko (${Math.round(bestSim * 100)} %)! K uznání je vyžadována alespoň 90% shoda. Zkontrolujte koncovky slov, zkratky a ligatury.`)
+            : (lang === "en"
+                ? `${Math.round(bestSim * 100)}% match so far (90% required). Inspect illuminated lines above and try again.`
+                : `Zatím ${Math.round(bestSim * 100)} % shoda (vyžadováno 90 %). Prozkoumejte detaily osvětlených řádků výše a zkuste to znovu.`),
         pass: false,
       });
     }
@@ -5167,13 +5327,13 @@ function GameModal({
         aria-modal="true"
         aria-label={question.title}
       >
-        <button className="close" onClick={onClose} aria-label="Zavřít výzvu">
+        <button className="close" onClick={onClose} aria-label={lang === "en" ? "Close challenge" : "Zavřít výzvu"}>
           ×
         </button>
-        <p className="eyebrow">Výzva o bonusový balíček</p>
+        <p className="eyebrow">{lang === "en" ? "Bonus Pack Challenge" : "Výzva o bonusový balíček"}</p>
         <h2>{question.title}</h2>
         <div className="reward-banner">
-          <span>Odměna</span>
+          <span>{lang === "en" ? "Reward" : "Odměna"}</span>
           <strong>{reward}</strong>
         </div>
         <div className="game-rule">{question.intro}</div>
@@ -5181,7 +5341,7 @@ function GameModal({
         {isTranscription ? (
           <div className="transcription-mode">
             <div className="spotlight-wrap">
-              <img src={imgSrc} alt="Rukopis k paleografickému přepisu" loading="lazy" decoding="async" />
+              <img src={imgSrc} alt={lang === "en" ? "Manuscript for palaeographical transcription" : "Rukopis k paleografickému přepisu"} loading="lazy" decoding="async" />
               {question.highlight_regions && question.highlight_regions.length > 0 && (
                 <svg className="spotlight-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
@@ -5253,7 +5413,7 @@ function GameModal({
               <input
                 type="text"
                 className="transcription-input"
-                placeholder="Zde přepište latinský text z osvětlených řádků..."
+                placeholder={lang === "en" ? "Transcribe Latin text from the illuminated lines here..." : "Zde přepište latinský text z osvětlených řádků..."}
                 value={userText}
                 disabled={answer === "correct"}
                 onChange={(e) => {
@@ -5274,7 +5434,7 @@ function GameModal({
                   disabled={!userText.trim() || answer === "correct"}
                   onClick={handleCheckTranscription}
                 >
-                  Ověřit přepis (Enter)
+                  {lang === "en" ? "Verify Transcription (Enter)" : "Ověřit přepis (Enter)"}
                 </button>
                 {transcriptionFeedback && (
                   <span
@@ -5286,12 +5446,18 @@ function GameModal({
                         : "error"
                     }`}
                   >
-                    {transcriptionFeedback.pass ? "✓ Úspěšně rozluštěno!" : `${transcriptionFeedback.similarity} % shoda (cíl: 90 %)`}
+                    {transcriptionFeedback.pass
+                      ? (lang === "en" ? "✓ Successfully deciphered!" : "✓ Úspěšně rozluštěno!")
+                      : (lang === "en" ? `${transcriptionFeedback.similarity}% match (target: 90%)` : `${transcriptionFeedback.similarity} % shoda (cíl: 90 %)`)}
                   </span>
                 )}
               </div>
               <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#7a592c" }}>
-                🎯 <b>Cíl:</b> alespoň 90% přesnost přepisu (systém toleruje záměny u/v, i/j a drobnou interpunkci).
+                {lang === "en" ? (
+                  <>🎯 <b>Target:</b> at least 90% transcription accuracy (u/v, i/j and minor punctuation variants are tolerated).</>
+                ) : (
+                  <>🎯 <b>Cíl:</b> alespoň 90% přesnost přepisu (systém toleruje záměny u/v, i/j a drobnou interpunkci).</>
+                )}
               </p>
               {transcriptionFeedback && !transcriptionFeedback.pass && (
                 <p className="hint-copy">{transcriptionFeedback.message}</p>
@@ -5301,7 +5467,7 @@ function GameModal({
         ) : (
           <div className="multiple-choice-mode">
             <div className="challenge-manuscript">
-              <ColophonImage card={challengeCard} alt="Detail rukopisu k výzvě" />
+              <ColophonImage card={challengeCard} alt={lang === "en" ? "Manuscript detail for challenge" : "Detail rukopisu k výzvě"} />
               <small>
                 {challengeCard.manuscript} · {challengeCard.locus}
               </small>
@@ -5313,7 +5479,7 @@ function GameModal({
 
             {question.translation_cs && (
               <div className="translation-box">
-                <b>Překlad</b>
+                <b>{lang === "en" ? "Translation" : "Překlad"}</b>
                 <span>„{question.translation_cs}“</span>
               </div>
             )}
@@ -5345,7 +5511,7 @@ function GameModal({
 
         {answer === "correct" && (
           <div className="game-explanation">
-            <strong>Písařský vhled & řešení:</strong>
+            <strong>{lang === "en" ? "Scribal Insight & Solution:" : "Písařský vhled & řešení:"}</strong>
             {isTranscription && (
               <p className="font-serif italic text-sm text-[#ffd580] my-1">
                 „{question.target_transcription || question.quote}“
@@ -5353,7 +5519,7 @@ function GameModal({
             )}
             {question.translation_cs && (
               <p className="text-xs text-[#dcd3c7] mb-1">
-                <b>Překlad:</b> „{question.translation_cs}“
+                <b>{lang === "en" ? "Translation:" : "Překlad:"}</b> „{question.translation_cs}“
               </p>
             )}
             {question.explanation && <p>{question.explanation}</p>}
@@ -5361,12 +5527,12 @@ function GameModal({
         )}
 
         {answer === "wrong" && !isTranscription && (
-          <p className="wrong-answer">✗ Výzva zmařena – pokus byl započten jako neúspěch.</p>
+          <p className="wrong-answer">{lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}</p>
         )}
 
         {step === 0 && !answer && question.hint && (
           <button className="hint" onClick={() => setStep(1)}>
-            Potřebujete nápovědu?
+            {lang === "en" ? "Need a hint?" : "Potřebujete nápovědu?"}
           </button>
         )}
         {step === 1 && question.hint && <p className="hint-copy">{question.hint}</p>}
@@ -5454,7 +5620,7 @@ function MapModal({
                 onClick={() => setSelectedPlace(place)}
               >
                 <span>{place.icon}</span>
-                <span>{place.name}</span>
+                <span>{getPlaceName(place, lang)}</span>
                 <small style={{ opacity: 0.85, fontSize: "9.5px" }}>
                   ({owned.length}/{pCards.length})
                 </small>
@@ -5469,26 +5635,27 @@ function MapModal({
             scriptoria={scriptoriaWithCards}
             selectedPlace={selectedPlace}
             onSelectPlace={setSelectedPlace}
+            lang={lang}
           />
 
           {/* Pravá část: detail vybraného skriptoria */}
           <div className="map-panel">
             <div className="map-panel-header">
               <h3>
-                <span>{currentSelection.place.icon}</span> {currentSelection.place.name}
+                <span>{currentSelection.place.icon}</span> {getPlaceName(currentSelection.place, lang)}
               </h3>
               <p>
-                {currentSelection.place.region} · {currentSelection.place.country}
+                {getPlaceRegion(currentSelection.place, lang)} · {getPlaceCountry(currentSelection.place, lang)}
               </p>
               <div className="map-panel-coords">
-                📍 {currentSelection.place.lat.toFixed(4)}° s. š., {currentSelection.place.lng.toFixed(4)}° v. d.
+                📍 {currentSelection.place.lat.toFixed(4)}° {lang === "en" ? "N" : "s. š."}, {currentSelection.place.lng.toFixed(4)}° {lang === "en" ? "E" : "v. d."}
               </div>
             </div>
-            <p className="map-panel-desc">{currentSelection.place.description}</p>
+            <p className="map-panel-desc">{getPlaceDescription(currentSelection.place, lang)}</p>
 
             <div className="map-panel-repo-box">
               🏛️ <strong>{lang === "en" ? "Custody of surviving holdings:" : "Uložení dochovaných fondů:"}</strong>
-              <div>{currentSelection.place.modernRepository}</div>
+              <div>{getPlaceRepository(currentSelection.place, lang)}</div>
             </div>
 
             <div className="map-panel-stats">
@@ -5554,7 +5721,7 @@ function MapModal({
                           onClick={() => onDetail(card)}
                           title={lang === "en" ? "View colophon details" : "Prohlédnout detail kolofonu"}
                         >
-                          Detail →
+                          {lang === "en" ? "Details →" : "Detail →"}
                         </button>
                       ) : (
                         <span style={{ fontSize: "10px", color: "#8a6534", padding: "4px" }}>

@@ -1,10 +1,15 @@
 export type ScriptoriumPlace = {
   id: string;
   name: string;
+  name_en?: string;
   region: string;
-  country: string; // Moderní stát: Česká republika, Polsko, Německo, Itálie, Rakousko, Maďarsko, Francie, Švýcarsko
-  modernRepository: string; // Současná paměťová instituce / knihovna / archiv
+  region_en?: string;
+  country: string;
+  country_en?: string;
+  modernRepository: string;
+  modernRepository_en?: string;
   description: string;
+  description_en?: string;
   lat: number;
   lng: number;
   zoom?: number;
@@ -181,27 +186,77 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     matchKeywords: ["zittau", "žitava", "lusatia", "christian-weise"],
   },
   {
-    id: "germany",
-    name: "Lipsko & Norimberk",
-    region: "Sasko & Bavorsko",
+    id: "leipzig",
+    name: "Lipsko (Leipzig)",
+    name_en: "Leipzig",
+    region: "Sasko",
+    region_en: "Saxony",
     country: "Německo",
-    modernRepository: "Universitätsbibliothek Leipzig, Stadtbibliothek Nürnberg",
-    description: "Německá univerzitní a městská centra. Bohemikální i německé rukopisy jsou uchovány v Lipské univerzitní knihovně a v Norimberku.",
+    country_en: "Germany",
+    modernRepository: "Universitätsbibliothek Leipzig",
+    modernRepository_en: "Leipzig University Library",
+    description: "Významné německé univerzitní město se silnými bohemikálními vazbami po odchodu pražských mistrů (1409). Bohaté fondy středověkých kodexů chová Lipská univerzitní knihovna.",
+    description_en: "Major Saxon university city with profound Bohemian connections following the departure of Prague scholars in 1409. Manuscripts are conserved at Leipzig University Library.",
     lat: 51.3397,
     lng: 12.3731,
     zoom: 11,
     x: 41,
     y: 24,
     icon: "📖",
-    matchKeywords: ["german speaking", "leipzig", "lipsk", "nürnberg", "norimberk", "erfurt", "aleman", "německo"],
+    matchKeywords: ["leipzig", "lipsk", "lipsko"],
+  },
+  {
+    id: "nurnberg",
+    name: "Norimberk (Nürnberg)",
+    name_en: "Nuremberg",
+    region: "Franky / Bavorsko",
+    region_en: "Franconia / Bavaria",
+    country: "Německo",
+    country_en: "Germany",
+    modernRepository: "Stadtbibliothek Nürnberg",
+    modernRepository_en: "Nuremberg City Library",
+    description: "Svobodné říšské město, křižovatka obchodu, humanismu a knižní kultury mezi Prahou a západní Evropou. Rukopisy a kolofony uchovává Stadtbibliothek Nürnberg.",
+    description_en: "Imperial free city and cultural crossroads linking Prague to Western Europe. Medieval codices and early prints are held in the Nuremberg City Library.",
+    lat: 49.4521,
+    lng: 11.0767,
+    zoom: 11,
+    x: 39,
+    y: 38,
+    icon: "🏰",
+    matchKeywords: ["nürnberg", "nurnberg", "norimberk", "german speaking", "aleman"],
+  },
+  {
+    id: "erfurt",
+    name: "Erfurt",
+    name_en: "Erfurt",
+    region: "Durynsko",
+    region_en: "Thuringia",
+    country: "Německo",
+    country_en: "Germany",
+    modernRepository: "Universitäts- und Forschungsbibliothek Erfurt / Bibliotheca Amploniana",
+    modernRepository_en: "Erfurt Research Library / Bibliotheca Amploniana",
+    description: "Slavné durynské univerzitní město a domov mimořádné středověké knihovny Amploniana s desítkami vědeckých a filosofických kodexů.",
+    description_en: "Celebrated Thuringian university city and home of the Bibliotheca Amploniana, a priceless surviving collection of medieval scientific and philosophical codices.",
+    lat: 50.9787,
+    lng: 11.0328,
+    zoom: 11,
+    x: 37,
+    y: 30,
+    icon: "📜",
+    matchKeywords: ["erfurt", "erford"],
   },
   {
     id: "konstanz",
     name: "Kostnice",
+    name_en: "Constance (Konstanz)",
     region: "Bádensko-Württembersko",
+    region_en: "Baden-Württemberg",
     country: "Německo",
+    country_en: "Germany",
     modernRepository: "Stadtarchiv Konstanz, Badische Landesbibliothek Karlsruhe",
+    modernRepository_en: "City Archive of Constance, Baden State Library in Karlsruhe",
     description: "Místo konání Kostnického koncilu (1414–1418). Zdejší koncilní opisy a dokumenty jsou uloženy v městském archivu v Kostnici a v Karlsruhe.",
+    description_en: "Site of the Council of Constance (1414–1418). Conciliar copies and scribal documents are housed in the Constance City Archive and the Baden State Library.",
     lat: 47.6634,
     lng: 9.1757,
     zoom: 11,
@@ -211,19 +266,44 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     matchKeywords: ["konstanz", "kostnice", "leutershausen"],
   },
   {
-    id: "austria",
-    name: "Vídeň & Melk",
+    id: "viden",
+    name: "Vídeň (Wien)",
+    name_en: "Vienna (Wien)",
     region: "Dolní Rakousy",
+    region_en: "Lower Austria",
     country: "Rakousko",
-    modernRepository: "Österreichische Nationalbibliothek (ÖNB), Vídeň / Stiftsbibliothek Melk",
-    description: "Klíčová středoevropská paměťová centra. Kodexy jsou uloženy v Rakouské národní knihovně ve Vídni a v podunajských klášterech.",
+    country_en: "Austria",
+    modernRepository: "Österreichische Nationalbibliothek (ÖNB), Vídeň",
+    modernRepository_en: "Austrian National Library (ÖNB), Vienna",
+    description: "Císařské sídlo a univerzitní centrum na Dunaji. Středověké rukopisy středoevropského okruhu jsou uchovány v Rakouské národní knihovně ve Vídni.",
+    description_en: "Imperial capital and academic center on the Danube. Central European medieval manuscripts are conserved in the Austrian National Library.",
     lat: 48.2082,
     lng: 16.3738,
     zoom: 11,
     x: 56,
     y: 58,
     icon: "🦅",
-    matchKeywords: ["austria", "wien", "vienna", "vídeň", "rakousk", "melk", "österreichische"],
+    matchKeywords: ["wien", "vienna", "vídeň", "österreichische", "österreichische nationalbibliothek", "vídni"],
+  },
+  {
+    id: "melk",
+    name: "Melk",
+    name_en: "Melk Abbey",
+    region: "Dolní Rakousy",
+    region_en: "Lower Austria",
+    country: "Rakousko",
+    country_en: "Austria",
+    modernRepository: "Stiftsbibliothek Melk",
+    modernRepository_en: "Melk Abbey Library",
+    description: "Proslulé benediktinské opatství nad Dunajem, centrum melcké klášterní reformy 15. století s mimořádně zachovanou středověkou knihovnou.",
+    description_en: "Famed Benedictine abbey perched above the Danube, the beacon of the 15th-century Melk monastic reform with a magnificent preserved medieval library.",
+    lat: 48.2281,
+    lng: 15.3328,
+    zoom: 12,
+    x: 53,
+    y: 56,
+    icon: "⛪",
+    matchKeywords: ["melk", "stiftsbibliothek melk"],
   },
   {
     id: "esztergom",
@@ -272,6 +352,26 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   },
 ];
 
+export function getPlaceName(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
+  return (lang === "en" && place.name_en) ? place.name_en : place.name;
+}
+
+export function getPlaceRegion(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
+  return (lang === "en" && place.region_en) ? place.region_en : place.region;
+}
+
+export function getPlaceCountry(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
+  return (lang === "en" && place.country_en) ? place.country_en : place.country;
+}
+
+export function getPlaceRepository(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
+  return (lang === "en" && place.modernRepository_en) ? place.modernRepository_en : place.modernRepository;
+}
+
+export function getPlaceDescription(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
+  return (lang === "en" && place.description_en) ? place.description_en : place.description;
+}
+
 export function getScriptoriumForCard(card: { place?: string; manuscript?: string }): ScriptoriumPlace {
   const p = (card.place || "").toLowerCase().trim();
   const m = (card.manuscript || "").toLowerCase().trim();
@@ -287,11 +387,17 @@ export function getScriptoriumForCard(card: { place?: string; manuscript?: strin
     if (p.includes("czech") || p.includes("česk")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "praha")!;
     }
+    if (p.includes("austria") || p.includes("rakousk")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "viden")!;
+    }
     if (p.includes("ital")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "bologna")!;
     }
     if (p.includes("poland") || p.includes("polsk")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "krakow")!;
+    }
+    if (p.includes("germany") || p.includes("německ")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "nurnberg")!;
     }
   }
 
