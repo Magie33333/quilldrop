@@ -28,6 +28,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { saveStoredCardOverride } from "./page";
 
 export type HeuristCatalogItem = {
   id: number;
@@ -482,14 +483,9 @@ export default function HeuristCatalogModal({
       newCard = res.data;
       cardError = res.error;
 
-      // Pokud sloupce v Supabase ještě nebyly přidány migrací (PGRST204), zopakujeme bez nich
-      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("created_by") || cardError.message?.includes("title_en"))) {
-        delete cardPayload.created_by;
-        delete cardPayload.created_by_name;
-        delete cardPayload.updated_by;
-        delete cardPayload.updated_by_name;
+      // Pokud sloupec title_en v Supabase ještě nebyl přidán migrací, zopakujeme bez něj
+      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("title_en"))) {
         delete cardPayload.title_en;
-
         const retry = await supabase
           .from("cards")
           .insert(cardPayload)
@@ -502,13 +498,47 @@ export default function HeuristCatalogModal({
           `
           )
           .single();
-
         newCard = retry.data;
         cardError = retry.error;
       }
 
+      // Pokud by selhalo i created_by / updated_by
+      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("created_by"))) {
+        delete cardPayload.created_by;
+        delete cardPayload.created_by_name;
+        delete cardPayload.updated_by;
+        delete cardPayload.updated_by_name;
+        const retry2 = await supabase
+          .from("cards")
+          .insert(cardPayload)
+          .select(
+            `
+            *,
+            colophons (
+              id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
+            )
+          `
+          )
+          .single();
+        newCard = retry2.data;
+        cardError = retry2.error;
+      }
+
       if (cardError || !newCard) {
         throw new Error(`Chyba při vytváření karty: ${cardError?.message || "Neznámá chyba"}`);
+      }
+
+      // Uložit lokální override pro anglický název
+      if (newCard) {
+        const tEn = formTitleEn.trim() || null;
+        if (tEn) {
+          newCard.title_en = tEn;
+          saveStoredCardOverride(newCard.id, {
+            title_en: tEn,
+            updated_by_name: authorName,
+            updated_at: new Date().toISOString(),
+          });
+        }
       }
 
       // Úspěch: předáme kartu nadřazené komponentě

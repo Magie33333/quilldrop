@@ -128,6 +128,36 @@ type GameQuestion = {
   highlight_regions?: { x: number; y: number; w: number; h: number; line_number?: number }[];
 };
 
+export const CARDS_OVERRIDES_KEY = "quilldrop-cards-overrides";
+
+export interface CardOverride {
+  title_en?: string | null;
+  rarity_reason_en?: string | null;
+  updated_at?: string | null;
+  updated_by_name?: string | null;
+}
+
+export function getStoredCardOverrides(): Record<string, CardOverride> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(CARDS_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredCardOverride(cardId: string, override: CardOverride) {
+  if (typeof window === "undefined") return;
+  try {
+    const all = getStoredCardOverrides();
+    all[cardId] = { ...(all[cardId] || {}), ...override };
+    localStorage.setItem(CARDS_OVERRIDES_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn("Failed to save card override to localStorage", e);
+  }
+}
+
 function isCipherCard(card: CardData): boolean {
   if (card.colophons?.heurist_id) {
     const h = HEURIST_COLOPHONS.find((item) => item.id === card.colophons?.heurist_id);
@@ -1026,9 +1056,32 @@ export default function AdminPage() {
     }
 
     if (!error && data) {
-      setCards(data as CardData[]);
-      if (data.length > 0 && !selectedCard) {
-        selectCard(data[0] as CardData);
+      const overrides = getStoredCardOverrides();
+      const merged = (data as CardData[]).map((card) => {
+        const ov = overrides[card.id];
+        if (!ov) return card;
+        return {
+          ...card,
+          title_en: card.title_en || ov.title_en || undefined,
+          rarity_reason_en: card.rarity_reason_en || ov.rarity_reason_en || undefined,
+          updated_at: card.updated_at || ov.updated_at || undefined,
+          updated_by_name: card.updated_by_name || ov.updated_by_name || undefined,
+        };
+      });
+
+      setCards(merged);
+      if (merged.length > 0) {
+        if (!selectedCard) {
+          selectCard(merged[0]);
+        } else {
+          // Synchronizovat pole u vybrané karty (poslední úpravy, title_en, rarity_reason_en)
+          const fresh = merged.find((c) => c.id === selectedCard.id);
+          if (fresh) {
+            setSelectedCard(fresh);
+            setEditTitleEn(fresh.title_en || "");
+            setEditRarityReasonEn(fresh.rarity_reason_en || "");
+          }
+        }
       }
     }
     setLoading(false);
@@ -1406,17 +1459,28 @@ export default function AdminPage() {
       currentUser?.email?.split("@")[0] ||
       "Editor";
 
+    const nowIso = new Date().toISOString();
+
+    // Vždy uložit lokální override pro okamžitou spolehlivou perzistenci
+    saveStoredCardOverride(selectedCard.id, {
+      title_en: editTitleEn.trim() || null,
+      rarity_reason_en: editRarityReasonEn.trim() || null,
+      updated_at: nowIso,
+      updated_by_name: editorName,
+    });
+
     const updatePayload: any = {
       title: editTitle,
-      title_en: editTitleEn || null,
+      title_en: editTitleEn.trim() || null,
       rarity: editRarity,
       rarity_reason: editRarityReason,
-      rarity_reason_en: editRarityReasonEn || null,
+      rarity_reason_en: editRarityReasonEn.trim() || null,
       status: editStatus,
       crop_x: pctX,
       crop_y: pctY,
       crop_w: pctW,
       crop_h: pctH,
+      updated_at: nowIso,
       updated_by_name: editorName,
       updated_by: currentUser?.id || null,
     };
@@ -1426,10 +1490,9 @@ export default function AdminPage() {
       .update(updatePayload)
       .eq("id", selectedCard.id);
 
-    // Pokud ještě sloupce v Supabase nebyly přidány migrací, zopakujeme bez nich
-    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("updated_by") || cardErr.message?.includes("title_en") || cardErr.message?.includes("rarity_reason_en"))) {
-      delete updatePayload.updated_by;
-      delete updatePayload.updated_by_name;
+    // Pokud sloupce title_en / rarity_reason_en ještě v Supabase nebyly přidány migrací, zopakujeme bez nich
+    // POZOR: Neodebíráme updated_by ani updated_by_name, ty v tabulce cards existují!
+    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("title_en") || cardErr.message?.includes("rarity_reason_en"))) {
       delete updatePayload.title_en;
       delete updatePayload.rarity_reason_en;
       const retry = await supabase
@@ -1439,10 +1502,22 @@ export default function AdminPage() {
       cardErr = retry.error;
     }
 
+    // Pokud by selhalo i updated_by / updated_by_name z nějakého důvodu, zopakujeme bez nich
+    if (cardErr && (cardErr.code === "PGRST204" || cardErr.message?.includes("updated_by"))) {
+      delete updatePayload.updated_by;
+      delete updatePayload.updated_by_name;
+      const retry2 = await supabase
+        .from("cards")
+        .update(updatePayload)
+        .eq("id", selectedCard.id);
+      cardErr = retry2.error;
+    }
+
     if (selectedCard.colophon_id) {
       const colPayload: any = {
         quote: editQuote.trim(),
         translation_cs: editTranslation.trim(),
+        updated_at: nowIso,
       };
       if (editTranslationEn) colPayload.translation_en = editTranslationEn.trim();
       const { error: colErr } = await supabase
@@ -1463,15 +1538,82 @@ export default function AdminPage() {
       }
     }
 
+    // Okamžitá aktualizace vybrané karty v paměti komponenty
+    setSelectedCard((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        title: editTitle,
+        title_en: editTitleEn.trim() || undefined,
+        rarity: editRarity,
+        rarity_reason: editRarityReason,
+        rarity_reason_en: editRarityReasonEn.trim() || undefined,
+        status: editStatus,
+        crop_x: pctX,
+        crop_y: pctY,
+        crop_w: pctW,
+        crop_h: pctH,
+        updated_at: nowIso,
+        updated_by_name: editorName,
+        colophons: prev.colophons
+          ? {
+              ...prev.colophons,
+              quote: editQuote.trim(),
+              translation_cs: editTranslation.trim(),
+              translation_en: editTranslationEn.trim() || null,
+            }
+          : prev.colophons,
+      };
+    });
+
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === selectedCard.id
+          ? {
+              ...c,
+              title: editTitle,
+              title_en: editTitleEn.trim() || undefined,
+              rarity: editRarity,
+              rarity_reason: editRarityReason,
+              rarity_reason_en: editRarityReasonEn.trim() || undefined,
+              status: editStatus,
+              crop_x: pctX,
+              crop_y: pctY,
+              crop_w: pctW,
+              crop_h: pctH,
+              updated_at: nowIso,
+              updated_by_name: editorName,
+              colophons: c.colophons
+                ? {
+                    ...c.colophons,
+                    quote: editQuote.trim(),
+                    translation_cs: editTranslation.trim(),
+                    translation_en: editTranslationEn.trim() || null,
+                  }
+                : c.colophons,
+            }
+          : c
+      )
+    );
+
     setSaving(false);
     setShowDiffModal(false);
 
     if (!cardErr) {
       const count = pendingChanges.length;
-      setLastSavedSummary(count === 1 ? "1 změna uložena" : count < 5 ? `${count} změny uloženy` : `${count} změn uloženo`);
+      setLastSavedSummary(
+        count === 1
+          ? "1 změna uložena do databáze"
+          : count < 5
+          ? `${count} změny uloženy do databáze`
+          : `${count} změn uloženo do databáze`
+      );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
       fetchCards();
+    } else {
+      console.error("Chyba při ukládání karty:", cardErr);
+      alert("Chyba při ukládání karty do databáze: " + (cardErr?.message || "Neznámá chyba"));
     }
   }
 
@@ -1596,7 +1738,7 @@ export default function AdminPage() {
       ]);
       setShowGameForm(false);
     } else {
-      alert("Chyba při ukládání minihry do Supabase: " + (error?.message || "Neznámá chyba"));
+      alert("Chyba při ukládání minihry do databáze: " + (error?.message || "Neznámá chyba"));
     }
   }
 
@@ -1917,23 +2059,11 @@ export default function AdminPage() {
             onClick={handleOpenSaveConfirmation}
             disabled={saving || !selectedCard}
             className="flex items-center gap-2 bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer"
-            title="Zkontrolovat a uložit změny do Supabase"
+            title="Zkontrolovat a uložit změny do databáze"
           >
             <Save size={14} />
             {saving ? "Ukládám..." : "Uložit změny"}
           </button>
-
-          {selectedCard && (
-            <button
-              onClick={() => handleDeleteCard(selectedCard)}
-              disabled={deletingCard || saving}
-              className="flex items-center gap-1.5 bg-red-950/70 hover:bg-red-900/80 border border-red-800/80 text-red-300 hover:text-red-200 font-bold text-xs px-3 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer"
-              title="Smazat tuto kartu ze hry"
-            >
-              <Trash2 size={13} />
-              <span className="hidden xl:inline">{deletingCard ? "Mazání..." : "Smazat"}</span>
-            </button>
-          )}
 
           <button
             onClick={handleLogout}
@@ -2809,12 +2939,14 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <span className="text-[#7d6f62] block text-[10px]">Poslední úprava:</span>
-                      <span className="text-[#a89887]">
+                      <span className="text-[#a89887]" title={selectedCard.updated_at ? new Date(selectedCard.updated_at).toLocaleString("cs-CZ") : undefined}>
                         {selectedCard.updated_at
                           ? new Date(selectedCard.updated_at).toLocaleDateString("cs-CZ", {
                               day: "numeric",
                               month: "numeric",
                               year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
                             })
                           : "—"}
                       </span>
@@ -3690,7 +3822,7 @@ export default function AdminPage() {
                       onClick={handleAddGame}
                       className="w-full bg-[#d4af37] text-black font-bold py-2 rounded hover:bg-[#c39e2e] transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
                     >
-                      <Check size={14} /> Uložit minihru do Supabase
+                      <Check size={14} /> Uložit minihru do databáze
                     </button>
                   </div>
                 )}
@@ -3983,7 +4115,7 @@ export default function AdminPage() {
                 className="flex items-center gap-2 bg-[#d4af37] hover:bg-[#c39e2e] text-[#1a1613] font-bold text-xs px-5 py-2 rounded shadow transition cursor-pointer disabled:opacity-50"
               >
                 <Check size={15} />
-                {saving ? "Ukládám do Supabase..." : "Potvrdit a uložit do Supabase"}
+                {saving ? "Ukládám do databáze..." : "Potvrdit a uložit do databáze"}
               </button>
             </div>
           </div>

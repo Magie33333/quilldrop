@@ -153,6 +153,18 @@ type GameState = {
 
 const ILLUMINATIONS = DEFAULT_ILLUMINATIONS;
 
+const CARDS_OVERRIDES_KEY = "quilldrop-cards-overrides";
+
+function getStoredCardOverrides(): Record<string, { title_en?: string | null; rarity_reason_en?: string | null }> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(CARDS_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 const COLOPHONS: Colophon[] = HEURIST_COLOPHONS.map(card => ({ ...card })) as Colophon[];
 
 // Výchozí demo stav pro neregistrovaného návštěvníka / hosta
@@ -754,39 +766,43 @@ export default function Home() {
         }
 
         if (!error && data && data.length > 0) {
-          const mapped: Colophon[] = (data as any[]).map((c: any) => ({
-            id: c.colophons?.heurist_id || c.id,
-            uuid: c.id,
-            slug: c.slug,
-            title: c.title,
-            title_cs: c.title,
-            title_en: c.title_en || undefined,
-            quote: c.colophons?.quote || "Explicit...",
-            translation: c.colophons?.translation_cs || "Překlad se připravuje",
-            translation_cs: c.colophons?.translation_cs || undefined,
-            translation_en: c.colophons?.translation_en || undefined,
-            scribe: c.colophons?.scribe || "Neznámý písař",
-            place: c.colophons?.place || "Neznámé místo",
-            year: c.colophons?.year || 1400,
-            rarity: c.rarity as Rarity,
-            mood: c.mood || "scribal voice",
-            sigil: c.sigil || "Q",
-            imageUrl: c.image_url,
-            remoteImageUrl: c.image_url,
-            manuscript: c.colophons?.manuscript_shelfmark || "Neznámý rukopis",
-            locus: c.colophons?.locus || "fol. ?",
-            sourceUrl: c.colophons?.source_url || c.image_url,
-            formulaFrequency: c.colophons?.formula_frequency || 1,
-            features: c.colophons?.features || [],
-            rarityReason: c.rarity_reason,
-            rarityReason_cs: c.rarity_reason,
-            rarityReason_en: c.rarity_reason_en || undefined,
-            visualNote: c.colophons?.visual_note,
-            crop_x: Number(c.crop_x) || 0,
-            crop_y: Number(c.crop_y) || 0,
-            crop_w: Number(c.crop_w) || 100,
-            crop_h: Number(c.crop_h) || 100,
-          }));
+          const overrides = getStoredCardOverrides();
+          const mapped: Colophon[] = (data as any[]).map((c: any) => {
+            const ov = overrides[c.id];
+            return {
+              id: c.colophons?.heurist_id || c.id,
+              uuid: c.id,
+              slug: c.slug,
+              title: c.title,
+              title_cs: c.title,
+              title_en: c.title_en || ov?.title_en || undefined,
+              quote: c.colophons?.quote || "Explicit...",
+              translation: c.colophons?.translation_cs || "Překlad se připravuje",
+              translation_cs: c.colophons?.translation_cs || undefined,
+              translation_en: c.colophons?.translation_en || undefined,
+              scribe: c.colophons?.scribe || "Neznámý písař",
+              place: c.colophons?.place || "Neznámé místo",
+              year: c.colophons?.year || 1400,
+              rarity: c.rarity as Rarity,
+              mood: c.mood || "scribal voice",
+              sigil: c.sigil || "Q",
+              imageUrl: c.image_url,
+              remoteImageUrl: c.image_url,
+              manuscript: c.colophons?.manuscript_shelfmark || "Neznámý rukopis",
+              locus: c.colophons?.locus || "fol. ?",
+              sourceUrl: c.colophons?.source_url || c.image_url,
+              formulaFrequency: c.colophons?.formula_frequency || 1,
+              features: c.colophons?.features || [],
+              rarityReason: c.rarity_reason,
+              rarityReason_cs: c.rarity_reason,
+              rarityReason_en: c.rarity_reason_en || ov?.rarity_reason_en || undefined,
+              visualNote: c.colophons?.visual_note,
+              crop_x: Number(c.crop_x) || 0,
+              crop_y: Number(c.crop_y) || 0,
+              crop_w: Number(c.crop_w) || 100,
+              crop_h: Number(c.crop_h) || 100,
+            };
+          });
           setCards(mapped);
           setIsLive(true);
           const { data: { user } } = await supabase.auth.getUser();
@@ -3526,9 +3542,9 @@ function ProfileScreen({
             <strong>{currentUser.email}</strong>
           </div>
           <div>
-            <small>{lang === "en" ? "Cloud synchronization" : "Cloudová synchronizace"}</small>
+            <small>{lang === "en" ? "Account status" : "Stav účtu"}</small>
             <strong style={{ color: "#15803d", display: "flex", alignItems: "center", gap: 4 }}>
-              <CheckCircle2 size={13} /> {lang === "en" ? "Active (Supabase)" : "Aktivní (Supabase)"}
+              <CheckCircle2 size={13} /> {lang === "en" ? "Active" : "Aktivní"}
             </strong>
           </div>
         </div>
