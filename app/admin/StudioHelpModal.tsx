@@ -174,25 +174,39 @@ export default function StudioHelpModal({
             <div className="space-y-4">
               <div className="bg-[#1c1611] p-4 rounded-lg border border-[#3b2f23]">
                 <h4 className="font-serif font-bold text-sm text-[#ffd580] mb-1 flex items-center gap-2">
-                  <FileText size={16} className="text-[#d4af37]" /> Český překlad a kodikologická data
+                  <FileText size={16} className="text-[#d4af37]" /> Latinský originál, české i anglické překlady a kodikologie
                 </h4>
                 <p className="text-[#c9b8a3]">
-                  Karta učí studenty i veřejnost lidskému rozměru středověkého písemnictví. Věnujte péči českému překladu!
+                  Karta učí studenty i mezinárodní veřejnost lidskému rozměru středověkého písemnictví. Věnujte péči oběma jazykovým verzím!
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] md:col-span-2">
+                  <strong className="text-[#ffd580] block mb-1">📜 Původní latinský přepis (z Heuristu)</strong>
+                  <p className="text-[#8c7b6d]">
+                    V editoru je přímo nad překlady trvale zobrazen kompletní latinský přepis kolofonu. Máte tak originál neustále před očima a můžete jej v případě chyby v Heuristu přímo opravit.
+                  </p>
+                </div>
+
                 <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">Český překlad (přirozený a výstižný)</strong>
+                  <strong className="text-[#ffd580] block mb-1">🇨🇿 Český překlad (přirozený a výstižný)</strong>
                   <p className="text-[#8c7b6d]">
                     Nepřekládejte otrocky slovo od slova. Zachovejte emoci písaře (např. <em>„Kniha je dokončena, dejte písaři napít vína!“</em> nebo <em>„Tři prsty píší, ale celé tělo trpí.“</em>).
                   </p>
                 </div>
 
                 <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">Odůvodnění rarity (pro badatele a hráče)</strong>
+                  <strong className="text-[#ffd580] block mb-1">🇬🇧 English Translation (pro zahraniční hráče)</strong>
                   <p className="text-[#8c7b6d]">
-                    Do pole <em>Odůvodnění rarity</em> napište 1–2 věty, proč má karta danou vzácnost (např. <em>„Vzácná rýmovaná formule z doby Karla IV. s červenou rubrikací.“</em>).
+                    Vyplňte anglický překlad latinské formule a anglický název karty (např. <em>„The Scribe Finished the Codex“</em>). Quilldrop má plný anglický režim pro mezinárodní studenty.
+                  </p>
+                </div>
+
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] block mb-1">Důvod rarity (česky & anglicky)</strong>
+                  <p className="text-[#8c7b6d]">
+                    Uveďte 1–2 věty, proč má karta danou vzácnost (např. <em>„Vzácná rýmovaná formule s červenou rubrikací.“</em> / <em>„Rare rhymed formula with red rubrication.“</em>).
                   </p>
                 </div>
 
@@ -205,13 +219,6 @@ export default function StudioHelpModal({
                     <li>• <strong>Epic / Legendary:</strong> Šifra, kryptogram, královský rukopis, bohatá iniciála.</li>
                     <li>• <strong>Unique:</strong> Zcela ojedinělý nález (např. Podlažický ďábel, autograf významné osobnosti).</li>
                   </ul>
-                </div>
-
-                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">Signatura a Folio (Locus)</strong>
-                  <p className="text-[#8c7b6d]">
-                    Vždy uveďte instituci a signaturu (např. <em>NK ČR XIV A 17</em>) a přesné folio včetně strany: <em>193r</em> (recto = líc) nebo <em>193v</em> (verso = rub).
-                  </p>
                 </div>
               </div>
             </div>

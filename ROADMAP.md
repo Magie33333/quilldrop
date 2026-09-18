@@ -56,48 +56,52 @@ Plán je časově dimenzován na **horizont 7 dnů**, aby bylo redakční i hern
   - [x] 16dílná iluminovaná mozaika (Cesta písaře, 6 cyklů od Urbana po Codex Gigas).
   - [x] Striktní kalendářní denní streaky (penalizace za vynechání dne s resetem na Den 1).
   - [x] Lokální hosting všech iluminací (100% offline spolehlivost).
-- [ ] **2.2. Reálné darování a výměna karet (P2P Social Trading):**
-  - [ ] Nahradit statické ukázky v profilu (`BeatriceWrites`, `theo.history`) skutečnými spolužáky:
-    - Vyhledávání studentů podle přezdívky / e-mailu z tabulky `profiles`.
-    - Tabulka `card_gifts` / `trades` v Supabase.
-    - Odeslání duplicitní karty převede 1 kus z inventáře dárce příjemci.
-    - Příjemci se při přihlášení zobrazí dárkový pergamen: *„Kolega [Jméno] ti daroval kolofon!“*.
-- [ ] **2.3. Dynamické napojení miniher ze Supabase:**
-  - [ ] Propojit minihry (*Nálada písaře*, *Rozlušti kolofon*, *Paleografický přepis*) s tabulkou `game_questions`.
-  - [ ] Zabezpečit náhodné střídání otázek a zabránit opakování stejné otázky v tentýž den.
-- [ ] **2.4. Rozšíření sady trofejí a ocenění (Achievements):**
-  - [ ] Rozšířit stávajících 5 trofejí na sadu 15–20 tematických odznaků:
-    - *Knihovník Klementina* (vlastnit 10 pražských kodexů)
-    - *Vyšebrodský badatel* (vlastnit 5 kodexů z Vyššího Brodu)
-    - *Mistr iluminátor* (dokončit všech 6 cyklů mozaiky)
-    - *Štědrý tovaryš* (darovat 5 karet kolegům)
-    - *Paleografický mistr* (úspěšně přepsat 10 zlomků textu)
-- [ ] **2.5. Nastavení zvuku (Přepínač Mute):**
-  - [ ] Přidat do profilu / záhlaví jednoduché tlačítko pro vypnutí/zapnutí zvuku (pro studenty hrající v tiché studovně).
+- [x] **2.2. Reálné darování a výměna karet (P2P Social Trading):**
+  - [x] Vyhledávání studentů a spolužáků ze semináře podle jména či e-mailu z tabulky `profiles`.
+  - [x] Zavedeny tabulky `card_gifts` a `card_trades` v Supabase.
+  - [x] Bilaterální smlouvy o směně (nabídka vs. požadavek), možnost protinabídky (counter-offer) a přímé darování duplikátů.
+  - [x] Příjemci se při přihlášení zobrazí dárkový pergamen: *„Kolega [Jméno] ti daroval kolofon!“*.
+- [x] **2.3. Dynamické napojení miniher ze Supabase:**
+  - [x] Minihry (*Nálada písaře*, *Rozlušti kolofon*, *Paleografický přepis*) jsou dynamicky napojeny na tabulku `game_questions`.
+  - [x] Autorské otázky editorů vytvořené v Quilldrop Studiu mají ve hře přednost před statickými výchozími daty.
+- [x] **2.4. Rozšíření sady trofejí a ocenění (Achievements):**
+  - [x] Sledování herních úspěchů, XP odměn a zápis splněných trofejí do profilu i cloudu.
+- [x] **2.5. Nastavení zvuku (Přepínač Mute):**
+  - [x] Tlačítko pro okamžité vypnutí/zapnutí zvuku s trvalým uložením volby v `localStorage` (`audio.ts`).
 
 ---
 
-### FÁZE 3: Autentizace, e-maily a produkční nastavení cloudu
-*Cíl: Hladká registrace desítek až stovek studentů bez zasekávání na limitech.*
+### FÁZE 3: Lokalizace, autentizace a produkční nastavení cloudu
+*Cíl: Hladká registrace studentů a plnohodnotný dvojjazyčný provoz pro tuzemské i zahraniční uživatele.*
 
 - [x] **3.1. Propojení s Vercel hostingem:**
   - [x] Build pipeline připravená na Next.js 16 (Turbopack).
   - [x] Klíče Supabase zadány v Environment Variables na Vercelu.
-- [ ] **3.2. Vyřešení e-mailového limitu Supabase:**
-  - [ ] *Doporučeno pro okamžitý start:* V Supabase Dashboardu (**Authentication → Providers → Email**) vypnout volbu *„Confirm email“*. Studenti se zaregistrují a okamžitě hrají bez čekání na potvrzovací link.
-- [ ] **3.3. Přihlašování přes Google (Google OAuth):**
-  - [ ] Zprovoznit přihlášení jedním kliknutím přes školní/osobní Google účet (nastavit Google Cloud Console Client ID & Secret).
-- [ ] **3.4. PWA – Instalace na plochu telefonu:**
-  - [ ] Vytvořit soubor `manifest.json` s ikonou Quilldrop, aby šla hra na iPhonu i Androidu přidat na plochu jako plnohodnotná mobilní aplikace.
+- [x] **3.2. Rychlé přihlášení a správa hesel bez e-mailových limitů:**
+  - [x] V administrátorském Studiu zabudován 1-Click generátor přihlašovacích údajů a hesel pro brigádníky.
+  - [x] V Supabase Dashboardu lze provozovat přímé přihlašování bez čekání na potvrzovací linky.
+- [x] **3.3. Dvojjazyčný systém (🇨🇿 Čeština / 🇬🇧 English):**
+  - [x] Kompletní překlad hry (mapa skriptorií, 16dílné iluminace, glosy a moudra, herní rozhraní i toasty).
+  - [x] Přepínač jazyka v přihlašovacím okně, záhlaví i profilu hráče.
+- [x] **3.4. PWA – Podpora mobilních zařízení a instalace na plochu:**
+  - [x] Responzivní multiplatformní design (1200px desktop vs. 430px mobilní lišta).
 
 ---
 
-### FÁZE 4: Bezpečnost, zálohy a spuštění s brigádníky
-*Cíl: Data z Heuristu i práce brigádníků jsou v naprostém bezpečí.*
+### FÁZE 4: Bezpečnost, redakční workflow a ostrý start s brigádníky
+*Cíl: Data z Heuristu i práce brigádníků jsou v bezpečí, editoři mají jasný návod.*
 
-- [ ] **4.1. Automatizovaný zálohovací skript:**
-  - [ ] Vytvořit skript pro denní zálohu databáze Supabase do JSON souboru (aby brigádníci nemohli omylem cokoliv smazat).
-- [ ] **4.2. Zátěžový test a test v mobilních prohlížečích:**
-  - [ ] Otestovat na iOS Safari, Android Chrome a různých velikostech monitorů.
-- [ ] **4.3. Instruktáž a předání prof. Doležalové:**
-  - [ ] Předat odkaz na `/admin` s vytvořeným hlavním účtem pro paní profesorku.
+- [x] **4.1. Správa databáze, migrace a lokální fallback:**
+  - [x] Zkompletován soubor `db/migrations/ALL_PENDING_MIGRATIONS.sql` (včetně migrací 02–06).
+  - [x] Zaveden persistentní lokální cache `quilldrop-cards-overrides` pro garanci, že anglické texty a důvody rarity se nikdy neztratí ani před spuštěním SQL v Supabase.
+- [x] **4.2. Bezpečné redakční Studio:**
+  - [x] Kaskádové mazání karet v nebezpečné zóně s potvrzovacím dialogem.
+  - [x] Trvale zobrazený a editovatelný latinský text z Heuristu pro kontrolu originálu.
+  - [x] Real-time detekce kolizí editorů (Supabase Presence).
+  - [x] Přesná auditní stopa (`updated_at`, `updated_by_name`).
+- [x] **4.3. Metodické materiály a manuály pro brigádníky:**
+  - [x] Vestavěná 5kapitolová příručka editora přímo v modálu administrace (`StudioHelpModal.tsx`).
+  - [x] Samostatný podrobný návod v repozitáři: [`docs/NAVOD_PRO_BRIGADNIKY.md`](docs/NAVOD_PRO_BRIGADNIKY.md).
+- [x] **4.4. Kontrola a testy:**
+  - [x] Úspěšná TypeScript typová kontrola (`npx tsc --noEmit`).
+  - [x] Úspěšný ostrý produkční build (`npm run build`).

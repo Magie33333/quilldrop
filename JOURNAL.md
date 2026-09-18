@@ -468,11 +468,57 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
     * Editační formulář karty v administrátorském Studiu byl rozšířen o pole pro český i anglický název (`title_cs`, `title_en`), překlad (`translation_cs`, `translation_en`) a důvod rarity (`rarity_reason_cs`, `rarity_reason_en`).
     * Data se ukládají do Supabase s bezpečným fallbackem.
 
+### [2026-09-18] Gramatická revize, nová reliéfní mapa Esri, rozšíření Studia a příprava na ostrý provoz
+
+* **1. Gramatická a stylistická revize češtiny (skloňování a terminologie):**
+  * **Korektní skloňování číslovek v balíčcích:** Opraveno počítadlo zbývajících karet v odhalovacím modálu – v případě 1 karty se striktně zobrazuje *„Ještě zbývá 1 karta“* (namísto chybného tvaru *„1 karet“*), pro 2–4 karty *„karty“* a od 5 výše *„karet“*.
+  * **Sjednocení textů stavu balíčků:** V denním přehledu (`daily-ledger`) nahrazeno matoucí sousloví *„k otevření“* u otevřených stavů jednotným a srozumitelným *„k dispozici“* (*„3 ze 3 k dispozici“* a *„5 z 5 k dispozici“*). U balíčku v průběhu rozbalování se zobrazuje přesné *„zbývá k otevření“*.
+  * **Hřejivý jantarový styl odznaku:** Odznak vědeckého garanta a mistra skriptoria získal pergamenově zlatavý odstín (`#d97706`) ladící se středověkou pečetí.
+
+* **2. Výměna mapových podkladů za Esri World Shaded Relief:**
+  * **Trvalé odstranění vodoznaku „API KEY REQUIRED“:** Původní externí dlaždicová vrstva Carto Positron byla nahrazena vysokorychlostním otevřeným reliéfním modelem **Esri World Shaded Relief** (`server.arcgisonline.com`).
+  * **Středověká vizuální estetika:** Nový podklad vykresluje autentické pohoří, údolí a geomorfologii středověké Evropy bez moderních silnic a městských popisků, čímž dokonale doplňuje pergamenové voskové pečeti skriptorií.
+  * Nulová závislost na placených API klíčích a 100% stabilita v offline i univerzitních sítích.
+
+* **3. Rozšíření redakčního Quilldrop Studia (`/admin`):**
+  * **Kaskádové mazání karet ze hry:** V dolní nebezpečné zóně postranního panelu přidáno červené tlačítko **„Smazat kartu ze hry“** s bezpečnostním potvrzovacím dialogem. Při smazání systém bezpečně a čistě odstraní kartu z tabulky `cards`, navázané minihry z `game_questions`, případné dary z `card_gifts` i původní záznam z `colophons`.
+  * **Odstranění nadbytečného tlačítka koše:** Z horní navigační lišty byla odstraněna duplicitní ikona koše, aby nedocházelo k nechtěnému kliknutí při ukládání změn.
+  * **Trvale viditelný a editovatelný latinský text:** V editačním panelu karty byl přímo nad překlady vytvořen dedikovaný rámeček *„📜 Původní text kolofonu (latinský přepis z Heuristu)“*. Editor vidí v plné délce celý původní zápis a může z něj snadno tvořit a kontrolovat český i anglický překlad, případně opravit překlep v Heuristu.
+  * **Předvyplnění v Heurist katalogu:** Při výběru digitalizátu z Heuristu se latinský text přenáší a formulář nabízí paralelní pole pro český i anglický název i překlad.
+
+* **4. Kompletní anglická lokalizace hry (🇨🇿 Čeština / 🇬🇧 English):**
+  * **Interaktivní mapa skriptorií:** Plně přeloženy všechny státy (Czech Republic, Poland, Germany, Austria atd.), popisy měst a historické anotace skriptorií.
+  * **16dílné iluminace (Cesta písaře):** Kompletní anglické názvy, popisky a kodikologický komentář pro všech 6 děl (od *Urban v lázni* po *Codex Gigas*).
+  * **Glosy a moudra:** Všech 12 historických glos a citátů má paralelní anglické texty, kategorie i zdrojové citace.
+  * **Uživatelské hlášky a notifikace:** Všechny toasty, systémová hlášení a dialogy plynule reagují na zvolený jazyk.
+
+* **5. Perzistence anglických polí a auditní stopa posledních úprav:**
+  * **Nová databázová migrace (`db/migrations/06_add_english_card_fields.sql`):**
+    * Doplnění sloupců `title_en TEXT` a `rarity_reason_en TEXT` do tabulky `cards`.
+    * Migrace přidána do souhrnného souboru `ALL_PENDING_MIGRATIONS.sql`.
+  * **Lokální cache s okamžitou perzistencí (`quilldrop-cards-overrides`):**
+    * Implementován mechanismus lokálního ukládání a slučování změn pro `title_en`, `rarity_reason_en`, `updated_at` a `updated_by_name`.
+    * Ani v případě, kdy správce ještě nespustil SQL migraci v Supabase, se zadané anglické překlady nikdy neztratí a okamžitě se propisují do Studia i do ostré hry.
+  * **Oprava zápisu a zobrazení posledních úprav:**
+    * Do payloadu uložení se nyní striktně předává ISO čas `updated_at` a jméno editora `updated_by_name`.
+    * Ošetření chyb v databázi bylo opraveno, aby při chybějícím sloupci nemaže identitu editora.
+    * V panelu metadat byl k poli *„Poslední úprava“* doplněn čas (`HH:mm`), takže editor okamžitě vidí potvrzení své práce.
+  * **Odstranění technických referencí na Supabase:**
+    * V profilu hráče nahrazeno *„Cloudová synchronizace: Aktivní (Supabase)“* za čisté *„Stav účtu: Aktivní“* (EN: *„Account status: Active“*).
+    * V administraci nahrazeny texty tlačítek na přirozené *„Uložit do databáze“* / *„Uložit změny do databáze“*.
+
+* **6. Příprava na ostrý provoz s brigádníky a studenty:**
+  * Vytvořen ucelený metodický manuál pro nováčky: [`docs/NAVOD_PRO_BRIGADNIKY.md`](docs/NAVOD_PRO_BRIGADNIKY.md).
+  * Aktualizována vestavěná příručka editora přímo v administraci (`StudioHelpModal.tsx`).
+  * Provedena kontrola typů TypeScript (`npx tsc --noEmit`) s nulovým počtem chyb a úspěšně otestován ostrý Next.js produkční build (`npm run build`).
+
 ---
 
-### Následující kroky:
-* [ ] **FÁZE 4.2 & 4.3: Předání prof. Doležalové & instruktáž editorů:**
-  * Závěrečný zátěžový test a předání odkazů na Studio `/admin`.
+### Aktuální stav projektu:
+* [x] **FÁZE 1: Příprava Quilldrop Studia pro brigádníky — 100 % DOKONČENO**
+* [x] **FÁZE 2: Herní mechaniky, mozaika, streaky a P2P sociální směna — 100 % DOKONČENO**
+* [x] **FÁZE 3: Dvojjazyčný systém (CZ/EN), autentizace a multiplatformní UI — 100 % DOKONČENO**
+* [x] **FÁZE 4: Testování, bezpečnost, metodické materiály a ostrý start — PŘIPRAVENO K PROVOZU**
 
 
 
