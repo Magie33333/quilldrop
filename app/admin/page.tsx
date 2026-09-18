@@ -37,6 +37,7 @@ import {
   Sparkles,
   HelpCircle,
   Trash2,
+  Pencil,
   BookOpen,
   Puzzle,
   Flame,
@@ -268,6 +269,7 @@ export default function AdminPage() {
   type GameBuilderMode = "mood" | "cipher" | "script" | "transcription";
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [showGameForm, setShowGameForm] = useState(false);
+  const [editingGameId, setEditingGameId] = useState<string | null>(null);
   const [builderMode, setBuilderMode] = useState<GameBuilderMode>("mood");
   const [builderLang, setBuilderLang] = useState<"cs" | "en">("cs");
   const [builderTitle, setBuilderTitle] = useState("Nálada písaře");
@@ -1676,7 +1678,63 @@ export default function AdminPage() {
   }
 
 
-  async function handleAddGame() {
+  function handleStartEditGame(q: GameQuestion) {
+    setEditingGameId(q.id || null);
+    const m = (q.mode as GameBuilderMode) || (q.game_kind === "paleo" ? "script" : (q.game_kind as GameBuilderMode)) || "mood";
+    setBuilderMode(m);
+    setBuilderTitle(q.title || "");
+    setBuilderTitleEn(q.title_en || "");
+    setBuilderIntro(q.intro || "");
+    setBuilderIntroEn(q.intro_en || "");
+    setBuilderQuote(q.quote || "");
+    setBuilderTranslation(q.translation_cs || "");
+    setBuilderTranslationEn(q.translation_en || "");
+    setBuilderExplanation(q.explanation || "");
+    setBuilderExplanationEn(q.explanation_en || "");
+    setBuilderHint(q.hint || "");
+    setBuilderHintEn(q.hint_en || "");
+    setBuilderDifficulty(q.difficulty || "medium");
+    setBuilderCorrectIndex(q.correct_index ?? 0);
+
+    // Options mapping
+    if (Array.isArray(q.options) && q.options.length > 0) {
+      const normalizedOpts = q.options.map((opt: any) => {
+        if (Array.isArray(opt)) return [String(opt[0] || ""), String(opt[1] || "")];
+        if (typeof opt === "object" && opt !== null) return [String(opt.icon || ""), String(opt.text || opt.label || "")];
+        return ["📜", String(opt)];
+      }) as [string, string][];
+      setBuilderOptions(normalizedOpts);
+    }
+
+    if (Array.isArray(q.options_en) && q.options_en.length > 0) {
+      const normalizedOptsEn = q.options_en.map((opt: any) => {
+        if (Array.isArray(opt)) return [String(opt[0] || ""), String(opt[1] || "")];
+        if (typeof opt === "object" && opt !== null) return [String(opt.icon || ""), String(opt.text || opt.label || "")];
+        return ["📜", String(opt)];
+      }) as [string, string][];
+      setBuilderOptionsEn(normalizedOptsEn);
+    } else if (Array.isArray(q.options) && q.options.length > 0) {
+      setBuilderOptionsEn(q.options.map((opt: any) => [Array.isArray(opt) ? opt[0] || "📜" : "📜", ""]) as [string, string][]);
+    }
+
+    // Transcription fields
+    if (q.target_transcription || m === "transcription") {
+      setBuilderTargetTranscription(q.target_transcription || q.quote || "");
+      setBuilderAcceptedVariants(Array.isArray(q.accepted_variants) ? q.accepted_variants.join(", ") : "");
+      if (Array.isArray(q.highlight_regions) && q.highlight_regions.length > 0) {
+        setBuilderStrips(q.highlight_regions);
+      }
+    }
+
+    setShowGameForm(true);
+  }
+
+  function handleCancelGameForm() {
+    setEditingGameId(null);
+    setShowGameForm(false);
+  }
+
+  async function handleSaveGame() {
     if (!selectedCard) return;
 
     // Postgres CHECK (game_kind IN ('mood', 'cipher', 'paleo'))
@@ -1702,7 +1760,7 @@ export default function AdminPage() {
       hint_en: builderHintEn.trim() || undefined,
     };
 
-    const toInsert = {
+    const questionPayload = {
       card_id: selectedCard.id,
       game_kind: dbGameKind,
       title: builderTitle.trim(),
@@ -1716,11 +1774,17 @@ export default function AdminPage() {
       is_active: true,
     };
 
-    const { data, error } = await supabase.from("game_questions").insert(toInsert).select().single();
-    if (!error && data) {
-      setQuestions([
-        ...questions,
-        {
+    if (editingGameId) {
+      // Úprava existující otázky
+      const { data, error } = await supabase
+        .from("game_questions")
+        .update(questionPayload)
+        .eq("id", editingGameId)
+        .select()
+        .single();
+
+      if (!error && data) {
+        const updatedQuestion: GameQuestion = {
           ...data,
           mode: builderMode,
           title_en: optionsPayload.title_en,
@@ -1734,11 +1798,51 @@ export default function AdminPage() {
           translation_en: optionsPayload.translation_en,
           options: builderOptions,
           options_en: builderOptionsEn,
-        } as any,
-      ]);
-      setShowGameForm(false);
+        };
+
+        setQuestions(questions.map((q) => (q.id === editingGameId ? updatedQuestion : q)));
+        setEditingGameId(null);
+        setShowGameForm(false);
+        setLastSavedSummary("Minihra byla úspěšně upravena v databázi");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        alert("Chyba při úpravě minihry v databázi: " + (error?.message || "Neznámá chyba"));
+      }
     } else {
-      alert("Chyba při ukládání minihry do databáze: " + (error?.message || "Neznámá chyba"));
+      // Vytvoření nové otázky
+      const { data, error } = await supabase
+        .from("game_questions")
+        .insert(questionPayload)
+        .select()
+        .single();
+
+      if (!error && data) {
+        setQuestions([
+          ...questions,
+          {
+            ...data,
+            mode: builderMode,
+            title_en: optionsPayload.title_en,
+            intro_en: optionsPayload.intro_en,
+            explanation_en: optionsPayload.explanation_en,
+            hint_en: optionsPayload.hint_en,
+            highlight_regions: optionsPayload.highlight_regions,
+            target_transcription: optionsPayload.target_transcription,
+            accepted_variants: optionsPayload.accepted_variants,
+            translation_cs: optionsPayload.translation_cs,
+            translation_en: optionsPayload.translation_en,
+            options: builderOptions,
+            options_en: builderOptionsEn,
+          } as any,
+        ]);
+        setShowGameForm(false);
+        setLastSavedSummary("Nová minihra byla uložena do databáze");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        alert("Chyba při ukládání minihry do databáze: " + (error?.message || "Neznámá chyba"));
+      }
     }
   }
 
@@ -3013,8 +3117,13 @@ export default function AdminPage() {
                       </h3>
                       <button
                         onClick={() => {
-                          if (!showGameForm) applyBuilderMode(builderMode, selectedCard);
-                          setShowGameForm(!showGameForm);
+                          if (showGameForm) {
+                            handleCancelGameForm();
+                          } else {
+                            setEditingGameId(null);
+                            applyBuilderMode(builderMode, selectedCard);
+                            setShowGameForm(true);
+                          }
                         }}
                         className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer font-bold"
                       >
@@ -3025,10 +3134,15 @@ export default function AdminPage() {
                 {questions.map((q, idx) => {
                   const isTrans = q.mode === "transcription" || Boolean(q.target_transcription);
                   const qMode = q.mode || q.game_kind;
+                  const isEditingThis = editingGameId === q.id;
                   return (
                     <div
                       key={q.id || idx}
-                      className="p-3 bg-[#1c1713] border border-[#382d22] rounded-lg text-xs space-y-2.5 relative group hover:border-[#52412d] transition shadow-xs"
+                      className={`p-3 bg-[#1c1713] border rounded-lg text-xs space-y-2.5 relative group transition shadow-xs ${
+                        isEditingThis
+                          ? "border-[#ffd580] bg-[#241c14] shadow-[0_0_12px_rgba(255,213,128,0.15)]"
+                          : "border-[#382d22] hover:border-[#52412d]"
+                      }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-1.5 font-bold text-[#ffd580] min-w-0">
@@ -3071,14 +3185,28 @@ export default function AdminPage() {
                             </span>
                           )}
                           {q.id && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteGame(q.id!)}
-                              className="text-[#8c524b] hover:text-[#ff6b6b] p-1 rounded hover:bg-rose-950/30 transition cursor-pointer"
-                              title="Smazat minihru"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditGame(q)}
+                                className={`p-1 rounded transition cursor-pointer ${
+                                  isEditingThis
+                                    ? "bg-[#d4af37] text-black"
+                                    : "text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#382d22]"
+                                }`}
+                                title="Upravit minihru"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGame(q.id!)}
+                                className="text-[#8c524b] hover:text-[#ff6b6b] p-1 rounded hover:bg-rose-950/30 transition cursor-pointer"
+                                title="Smazat minihru"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -3172,11 +3300,14 @@ export default function AdminPage() {
                   <div className="p-3 bg-[#171310] border border-[#d4af37]/50 rounded-lg space-y-3 text-xs shadow-xl">
                     <div className="flex items-center justify-between border-b border-[#2e251b] pb-2">
                       <p className="font-bold text-[#ffd580] flex items-center gap-1.5">
-                        <Sparkles size={13} /> Tvůrce výzvy k rukopisu
+                        {editingGameId ? <Pencil size={13} /> : <Sparkles size={13} />}
+                        {editingGameId ? "Úprava existující minihry" : "Tvůrce výzvy k rukopisu"}
                       </p>
                       <button
-                        onClick={() => setShowGameForm(false)}
-                        className="text-[#8c7b6d] hover:text-[#e8ded1] text-xs"
+                        type="button"
+                        onClick={handleCancelGameForm}
+                        className="text-[#8c7b6d] hover:text-[#e8ded1] text-xs cursor-pointer"
+                        title={editingGameId ? "Zrušit úpravy" : "Zavřít"}
                       >
                         <X size={14} />
                       </button>
@@ -3817,13 +3948,24 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleAddGame}
-                      className="w-full bg-[#d4af37] text-black font-bold py-2 rounded hover:bg-[#c39e2e] transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-                    >
-                      <Check size={14} /> Uložit minihru do databáze
-                    </button>
+                    <div className="flex items-center gap-2 pt-1">
+                      {editingGameId && (
+                        <button
+                          type="button"
+                          onClick={handleCancelGameForm}
+                          className="px-3 py-2 rounded border border-[#423425] bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] text-xs font-semibold cursor-pointer transition"
+                        >
+                          Zrušit úpravy
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSaveGame}
+                        className="flex-1 bg-[#d4af37] text-black font-bold py-2 rounded hover:bg-[#c39e2e] transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                      >
+                        <Check size={14} /> {editingGameId ? "Uložit úpravy minihry" : "Uložit minihru do databáze"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

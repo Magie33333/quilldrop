@@ -189,14 +189,64 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 
 /* Styly pro minihry (GameModal) */
 .game-modal { width: min(92vw, 680px); max-height: 88vh; margin: auto; padding: 24px 28px; border-radius: 12px; box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65); }
-.game-modal .reward-banner { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 4px 10px; background: #edd3a4; border: 1px solid #bd904d; border-radius: 6px; font-size: 11px; }
-.game-modal .reward-banner span { text-transform: uppercase; font-size: 9px; font-weight: 800; color: #764812; letter-spacing: .6px; }
-.game-modal .reward-banner strong { color: var(--blue); }
+.game-modal .reward-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  background: linear-gradient(90deg, #382107, #663c0d, #382107);
+  border: 1px solid #c9933b;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(255, 215, 128, 0.12);
+  color: #ffffff;
+}
+.game-modal .reward-banner span {
+  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 900;
+  color: #ffd580;
+  letter-spacing: 0.8px;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 213, 128, 0.35);
+  border-radius: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  flex-shrink: 0;
+}
+.game-modal .reward-banner strong {
+  color: #ffffff !important;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.game-paleo .reward-banner {
+  background: linear-gradient(90deg, #2a1534, #572966, #2a1534) !important;
+  border: 1px solid #b871c4 !important;
+  box-shadow: 0 3px 12px rgba(87, 41, 102, 0.45), inset 0 0 12px rgba(184, 113, 196, 0.15) !important;
+}
+.game-paleo .reward-banner span {
+  color: #f7caff !important;
+  border-color: rgba(247, 202, 255, 0.4) !important;
+}
+
+.game-cipher .reward-banner {
+  background: linear-gradient(90deg, #42110c, #7b271d, #42110c) !important;
+  border: 1px solid #d45f4f !important;
+  box-shadow: 0 3px 12px rgba(123, 39, 29, 0.45), inset 0 0 12px rgba(212, 95, 79, 0.15) !important;
+}
+.game-cipher .reward-banner span {
+  color: #ffc2b8 !important;
+  border-color: rgba(255, 194, 184, 0.4) !important;
+}
+
 .game-rule { padding: 9px 12px; background: #eed7ab; border: 1px solid #b99158; border-radius: 6px; text-align: center; font-size: 12px; color: #43280c; font-weight: 600; margin-bottom: 12px; }
 .game-modal blockquote { margin: 10px 0; padding: 10px 14px; border-left: 4px solid var(--brown); background: #edd9b1; font-style: italic; font-size: 15px; color: var(--ink); border-radius: 0 6px 6px 0; }
 .game-modal blockquote.paleo-text { font-size: 22px; letter-spacing: 1.2px; text-align: center; font-style: normal; font-family: var(--font-display, Georgia, serif); }
 .translation-box { margin: 6px 0 12px; padding: 8px 12px; background: #fdf5e2; border: 1px solid #cb9e57; border-radius: 6px; font-size: 12px; color: #533612; display: flex; align-items: baseline; gap: 8px; }
-.translation-box b { color: var(--blue); font-size: 10.5px; text-transform: uppercase; font-family: var(--font-display, Georgia, serif); letter-spacing: .5px; }
+.translation-box b { color: #78350f; font-size: 10.5px; text-transform: uppercase; font-family: var(--font-display, Georgia, serif); letter-spacing: .5px; }
 
 .challenge-manuscript { position: relative; height: 180px; width: 100%; margin: 10px 0; overflow: hidden; border: 2px solid var(--brown); border-radius: 8px; background: #16120e; box-shadow: inset 0 0 20px #0008, 0 4px 14px #4225091a; }
 .challenge-manuscript img { width: 100%; height: 100%; object-fit: cover; }
@@ -214,8 +264,8 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .game-options button.correct { background: #cce7c4; border-color: #3b7b43; box-shadow: 0 0 0 2px #3b7b43; }
 .game-options button.correct span { color: #1e5225; }
 .game-options button.dim { opacity: .4; pointer-events: none; }
-.wrong-answer { color: var(--red); font-weight: 700; font-size: 11.5px; text-align: center; margin-top: 10px; padding: 7px; background: #fbe5e2; border: 1px solid #e2a89f; border-radius: 6px; }
-.hint { display: block; margin: 12px auto 0; border: 0; background: none; color: var(--blue); text-decoration: underline; font-size: 11px; font-weight: 600; cursor: pointer; }
+.hint { display: block; margin: 12px auto 0; border: 0; background: none; color: #854d0e; text-decoration: underline; text-underline-offset: 3px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: color .15s ease; }
+.hint:hover { color: #b45309; }
 .hint-copy { text-align: center; font-size: 11px; color: var(--brown); margin-top: 6px; font-style: italic; }
 
 /* Paleografický mistr: Lupa / Spotlight a přepis */
@@ -1515,7 +1565,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   color: #8b5717;
 }
 
-.reward-banner { display: flex; align-items: center; gap: 9px; margin: 8px 0 12px; padding: 8px 10px; color: #fff1ce; background: linear-gradient(90deg, #7b470b, #a56a14); border: 1px solid #d0a34d; box-shadow: inset 0 0 12px #3f220866; }.reward-banner span { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; opacity: .8; }.reward-banner strong { font-size: 10px; }.game-paleo .reward-banner { background: linear-gradient(90deg, #382043, #704879, #382043); box-shadow: 0 0 16px #6a3d7366; }.game-cipher .reward-banner { background: linear-gradient(90deg, #75261d, #b84732); }
+.reward-banner { display: flex; align-items: center; gap: 9px; margin: 8px 0 12px; padding: 8px 10px; color: #ffffff; background: linear-gradient(90deg, #382107, #663c0d, #382107); border: 1px solid #d0a34d; box-shadow: inset 0 0 12px #3f220866; }
+.reward-banner span { font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; color: #ffd580; font-weight: 800; }
+.reward-banner strong { font-size: 11px; color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
 .game-modal { background: radial-gradient(circle at 50% -10%, #fff6d8, transparent 36%), var(--light); box-shadow: 0 16px 50px #0009, inset 0 0 42px #b17a2720; }
 
 .reveal-bg { overflow: hidden; display: flex; flex-direction: column; justify-content: center; background:

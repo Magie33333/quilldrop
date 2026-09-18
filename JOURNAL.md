@@ -520,6 +520,34 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 * [x] **FÁZE 3: Dvojjazyčný systém (CZ/EN), autentizace a multiplatformní UI — 100 % DOKONČENO**
 * [x] **FÁZE 4: Testování, bezpečnost, metodické materiály a ostrý start — PŘIPRAVENO K PROVOZU**
 
+---
+
+## 📅 Záznam ze dne 18. 9. 2026 — Kontrast odměn v minihrách a plná editace miniher v Quilldrop Studiu
+
+**Cíl etapy:** Vyřešit nečitelný tmavě modrý text u odměn v minihrách a doplnit chybějící funkci úpravy (editace) již dříve vytvořených miniher v redakčním prostředí Quilldrop Studia.
+
+**Realizované úpravy:**
+1. **Oprava kontrastu a čitelnosti odměn v minihrách (`app/globals.css`):**
+   - V modálech miniher (zejména v režimu Paleografický mistr `.game-paleo`) byl název odměny a její popis vykreslován tmavě modrou barvou (`var(--blue)` / `#1039a0`), která na tmavě fialovém/vínovém pozadí zcela zanikala a měla nulový kontrast.
+   - Text byl přestylován na čistě bílou `#ffffff !important` s jemným text-shadow (`0 1px 3px rgba(0,0,0,0.9)`), díky čemuž je perfektně ostrý a čitelný na jakémkoliv pozadí.
+   - Štítek „ODMĚNA“ upraven do teplého pergamenově-zlatého odstínu `#ffd580` s tmavým poloprůhledným zaobleným pozadím.
+   - Přidány specifické kontrastní styly pro `.game-paleo .reward-banner`, `.game-cipher .reward-banner` a `.game-mood .reward-banner`.
+   - Odkaz na nápovědu (*„Potřebujete nápovědu?“*) upraven z původní tmavě modré na čitelnou středověkou inkoustovou hnědo-zlatou `#854d0e` (při najetí `#b45309`).
+
+2. **Plnohodnotná editace existujících miniher v Quilldrop Studiu (`app/admin/page.tsx`):**
+   - V pravém postranním panelu Studia u každé vypsané minihry přidána ikona tužky (`Pencil`) vedle tlačítka smazání.
+   - Po kliknutí na tužku se minihra načte do formuláře:
+     - Režim výzvy (*Nálada písaře*, *Rozlušti šifru*, *Paleografický přepis* atd.)
+     - Dvojjazyčný název (CZ/EN) a úvodní zadání (CZ/EN)
+     - Možnosti odpovědí včetně ikon v češtině i angličtině
+     - Správná odpověď, nápověda i odborný výklad v obou jazycích
+     - Nastavená obtížnost (Snadná / Střední / Expert)
+     - Cílový přepis, tolerované varianty i souřadnice vyznačených řádků (`highlight_regions`)
+   - Karta editované minihry se v seznamu zvýrazní zlatým orámováním a jemnou září.
+   - Hlavička formuláře jasně indikuje *„Úprava existující minihry“* a umožňuje úpravy zrušit.
+   - Tlačítko uložení přepíná na *„Uložit úpravy minihry“* a provádí `supabase.from("game_questions").update(...)` s okamžitou aktualizací lokálního stavu i vizuálním potvrzením.
+
+
 
 
 
