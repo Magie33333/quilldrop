@@ -15,7 +15,14 @@ import {
   getQuestionExplanation,
   getQuestionHint,
 } from "./data/questions.generated";
-import { DEFAULT_CURIOS, type Curio } from "./data/curios";
+import {
+  DEFAULT_CURIOS,
+  type Curio,
+  getCurioCategory,
+  getCurioText,
+  getCurioTitle,
+  getCurioSource,
+} from "./data/curios";
 import {
   SCRIPTORIA_PLACES,
   getScriptoriumForCard,
@@ -33,6 +40,8 @@ import {
   getCardTitle,
   getCardTranslation,
   getCardRarityReason,
+  getCardScribe,
+  getCardPlace,
 } from "./data/translations";
 import {
   DEFAULT_ILLUMINATIONS,
@@ -40,6 +49,11 @@ import {
   getStoredIlluminations,
   getActiveIllumination,
   getDaysDifference,
+  getIlluminationTitle,
+  getIlluminationOrigin,
+  getIlluminationCentury,
+  getIlluminationTierName,
+  getIlluminationDescription,
 } from "./data/illuminations";
 import RealLeafletMap from "./components/RealLeafletMap";
 import {
@@ -936,9 +950,9 @@ export default function Home() {
       });
       if (error) {
         if (error.message.includes("Email not confirmed")) {
-          setAuthError("E-mail ještě nebyl potvrzen. Zkontrolujte prosím svou doručenou poštu a klikněte na potvrzovací odkaz.");
+          setAuthError(lang === "en" ? "Email has not been confirmed yet. Please check your inbox and click the confirmation link." : "E-mail ještě nebyl potvrzen. Zkontrolujte prosím svou doručenou poštu a klikněte na potvrzovací odkaz.");
         } else if (error.message.includes("Invalid login credentials")) {
-          setAuthError("Neplatné přihlašovací údaje. Zkontrolujte e-mail a heslo.");
+          setAuthError(lang === "en" ? "Invalid login credentials. Please check your email and password." : "Neplatné přihlašovací údaje. Zkontrolujte e-mail a heslo.");
         } else {
           setAuthError(error.message);
         }
@@ -946,10 +960,10 @@ export default function Home() {
         setCurrentUser(data.user);
         await loadUserData(data.user, cards);
         setShowAuthModal(false);
-        setToast("Vítejte zpět ve skriptoriu!");
+        setToast(lang === "en" ? "Welcome back to the scriptorium!" : "Vítejte zpět ve skriptoriu!");
       }
     } catch (err: any) {
-      setAuthError(err.message || "Přihlášení se nezdařilo.");
+      setAuthError(err.message || (lang === "en" ? "Sign in failed." : "Přihlášení se nezdařilo."));
     } finally {
       setAuthLoading(false);
     }
@@ -960,7 +974,7 @@ export default function Home() {
     setAuthLoading(true);
     setAuthError("");
     setAuthSuccessMsg("");
-    const name = authDisplayName.trim() || authEmail.split("@")[0] || "Písař";
+    const name = authDisplayName.trim() || authEmail.split("@")[0] || (lang === "en" ? "Scribe" : "Písař");
     try {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail.trim(),
@@ -979,7 +993,7 @@ export default function Home() {
           error.message.toLowerCase().includes("already exists") ||
           error.message.toLowerCase().includes("duplicate")
         ) {
-          setAuthError("Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
+          setAuthError(lang === "en" ? "An account with this email already exists. Please sign in with your password." : "Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
           setAuthMode("login");
         } else {
           setAuthError(error.message);
@@ -987,7 +1001,7 @@ export default function Home() {
       } else if (data.user) {
         // Kontrola duplicity při zapnutém "Prevent email enumeration" v Supabase
         if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-          setAuthError("Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
+          setAuthError(lang === "en" ? "An account with this email already exists. Please sign in with your password." : "Účet s tímto e-mailem již existuje. Přihlaste se prosím svým heslem.");
           setAuthMode("login");
           return;
         }
@@ -995,14 +1009,14 @@ export default function Home() {
           setCurrentUser(data.user);
           await loadUserData(data.user, cards);
           setShowAuthModal(false);
-          setToast("Vítejte v řádu písařů Quilldrop!");
+          setToast(lang === "en" ? "Welcome to the order of scribes Quilldrop!" : "Vítejte v řádu písařů Quilldrop!");
         } else {
-          setAuthSuccessMsg("Registrace proběhla úspěšně! Na váš e-mail jsme zaslali potvrzovací odkaz. Po potvrzení se přihlaste.");
+          setAuthSuccessMsg(lang === "en" ? "Registration successful! A confirmation link has been sent to your email. Please verify before signing in." : "Registrace proběhla úspěšně! Na váš e-mail jsme zaslali potvrzovací odkaz. Po potvrzení se přihlaste.");
           setAuthMode("login");
         }
       }
     } catch (err: any) {
-      setAuthError(err.message || "Registrace se nezdařila.");
+      setAuthError(err.message || (lang === "en" ? "Registration failed." : "Registrace se nezdařila."));
     } finally {
       setAuthLoading(false);
     }
@@ -1020,7 +1034,7 @@ export default function Home() {
       });
       if (error) setAuthError(error.message);
     } catch (err: any) {
-      setAuthError(err.message || "Google přihlášení se nezdařilo.");
+      setAuthError(err.message || (lang === "en" ? "Google sign-in failed." : "Google přihlášení se nezdařilo."));
       setAuthLoading(false);
     }
   };
@@ -1030,13 +1044,15 @@ export default function Home() {
     setCurrentUser(null);
     setCurrentProfile(null);
     setShowAuthModal(true);
-    setToast("Byli jste odhlášeni z Quilldrop.");
+    setToast(lang === "en" ? "You have been signed out of Quilldrop." : "Byli jste odhlášeni z Quilldrop.");
   };
 
   const handleDeleteAccount = async () => {
     if (!currentUser) return;
     const confirmed = window.confirm(
-      "Opravdu si přejete trvale zrušit svůj písařský účet? Tato akce je nevratná a smaže celou vaši sbírku karet i veškerý postup."
+      lang === "en"
+        ? "Are you sure you want to permanently delete your scribe account? This action is irreversible and will erase your entire card collection and all progress."
+        : "Opravdu si přejete trvale zrušit svůj písařský účet? Tato akce je nevratná a smaže celou vaši sbírku karet i veškerý postup."
     );
     if (!confirmed) return;
     try {
@@ -1053,9 +1069,9 @@ export default function Home() {
       setCurrentProfile(null);
       setState(INITIAL_STATE);
       setShowAuthModal(true);
-      setToast("Váš účet a veškerá herní data byla úspěšně smazána.");
+      setToast(lang === "en" ? "Your account and all game data have been successfully deleted." : "Váš účet a veškerá herní data byla úspěšně smazána.");
     } catch (err: any) {
-      setToast("Chyba při mazání účtu: " + (err.message || "Zkuste to znovu"));
+      setToast((lang === "en" ? "Error deleting account: " : "Chyba při mazání účtu: ") + (err.message || (lang === "en" ? "Please try again" : "Zkuste to znovu")));
     }
   };
 
@@ -1153,13 +1169,13 @@ export default function Home() {
     else {
       setOpened(null);
       if (pendingPackLevel) { setLevelUp(pendingPackLevel); setPendingPackLevel(null); }
-      else setToast("Pět nových karet bylo uloženo do vaší sbírky!");
+      else setToast(lang === "en" ? "Five new cards have been added to your collection!" : "Pět nových karet bylo uloženo do vaší sbírky!");
     }
   };
 
   const startGame = (questType: "mood" | "cipher" | "script" | "paleo") => {
     if (state.gamesPlayed >= MAX_DAILY_GAMES) {
-      setToast(`Dnešních ${MAX_DAILY_GAMES} výzev jste již dokončili. Vraťte se zítra za svítání.`);
+      setToast(lang === "en" ? `You have completed today's ${MAX_DAILY_GAMES} challenges. Return tomorrow at dawn.` : `Dnešních ${MAX_DAILY_GAMES} výzev jste již dokončili. Vraťte se zítra za svítání.`);
       return;
     }
     let pool: QuestionData[] = [];
@@ -1268,12 +1284,13 @@ export default function Home() {
   };
 
   const resetDemo = () => {
-    if (confirm("Opravdu chcete resetovat svůj postup ve hře?")) {
+    const resetConfirm = lang === "en" ? "Are you sure you want to reset your game progress?" : "Opravdu chcete resetovat svůj postup ve hře?";
+    if (confirm(resetConfirm)) {
       setState(INITIAL_STATE);
       if (currentUser) {
         syncToSupabase(currentUser.id, INITIAL_STATE, cards);
       }
-      setToast("Váš herní postup byl úspěšně resetován.");
+      setToast(lang === "en" ? "Your game progress has been successfully reset." : "Váš herní postup byl úspěšně resetován.");
     }
   };
 
@@ -1284,7 +1301,9 @@ export default function Home() {
       let nextGallery = [...prev.gallery];
       let nextBonusPacks = [...prev.bonusPacks];
       let nextXp = prev.xp + 25;
-      let msg = `Den ${nextStreak}: Odhalen ${nextPuzzle}. dílek iluminace!`;
+      let msg = lang === "en"
+        ? `Day ${nextStreak}: Revealed piece ${nextPuzzle} of the illumination!`
+        : `Den ${nextStreak}: Odhalen ${nextPuzzle}. dílek iluminace!`;
 
       if (nextPuzzle === 16) {
         const completedArt = getActiveIllumination(nextStreak, illuminations);
@@ -1295,9 +1314,10 @@ export default function Home() {
         if (completedArt.rewardPack) {
           nextBonusPacks.push(completedArt.rewardPack);
         }
+        const artTitle = getIlluminationTitle(completedArt, lang);
         msg = lang === "en"
-          ? `🎉 Cycle ${completedArt.cycle} completed: “${completedArt.title}”! You gain +${completedArt.rewardXp} XP and ${qualityLabel(completedArt.rewardPack, lang)}!`
-          : `🎉 Cyklus ${completedArt.cycle} dokončen: „${completedArt.title}“! Získáváte +${completedArt.rewardXp} XP a ${qualityLabel(completedArt.rewardPack, lang)}!`;
+          ? `🎉 Cycle ${completedArt.cycle} completed: “${artTitle}”! You gain +${completedArt.rewardXp} XP and ${qualityLabel(completedArt.rewardPack, lang)}!`
+          : `🎉 Cyklus ${completedArt.cycle} dokončen: „${artTitle}“! Získáváte +${completedArt.rewardXp} XP a ${qualityLabel(completedArt.rewardPack, lang)}!`;
       }
 
       setToast(msg);
@@ -1319,26 +1339,29 @@ export default function Home() {
   };
 
   const handleBreakStreak = () => {
-    if (confirm("Chcete simulovat vynechání dne? Váš streak a aktivní mozaika se dle pravidel resetují na Den 1.")) {
+    const breakConfirm = lang === "en"
+      ? "Simulate missing a day? Your streak and active mosaic will reset to Day 1 according to rules."
+      : "Chcete simulovat vynechání dne? Váš streak a aktivní mozaika se dle pravidel resetují na Den 1.";
+    if (confirm(breakConfirm)) {
       setState(prev => ({
         ...prev,
         streak: 1,
         puzzle: 1,
         lastLoginDate: today(),
       }));
-      setToast("Streak byl přerušen! Začínáte znovu od Dne 1 a 1. dílku.");
+      setToast(lang === "en" ? "Streak broken! Restarting from Day 1 and 1st piece." : "Streak byl přerušen! Začínáte znovu od Dne 1 a 1. dílku.");
     }
   };
 
   const handleOpenGiftModal = (target?: any) => {
     const dups = cards.filter((c) => (state.collection[c.id] || 0) > 1);
     if (dups.length === 0) {
-      setToast("Nejprve musíte vlastnit alespoň jeden duplikát (2 ks stejného kolofonu).");
+      setToast(lang === "en" ? "You must first own at least one duplicate colophon (2+ copies)." : "Nejprve musíte vlastnit alespoň jeden duplikát (2 ks stejného kolofonu).");
       return;
     }
     setGiftModalTarget(target || colleagues[0] || null);
     setSelectedGiftCardId(String(dups[0]?.id || ""));
-    setGiftMessage("Ať ti toto folio dobře poslouží při nočním bádání!");
+    setGiftMessage(lang === "en" ? "May this folio serve you well in your nighttime studies!" : "Ať ti toto folio dobře poslouží při nočním bádání!");
   };
 
   const handleSendGift = async () => {
@@ -1346,7 +1369,7 @@ export default function Home() {
     const card = cards.find((c) => String(c.id) === String(selectedGiftCardId));
     if (!card) return;
     if ((state.collection[card.id] || 0) <= 1) {
-      setToast("Tuto kartu již nemáte v duplikátu.");
+      setToast(lang === "en" ? "You no longer have duplicate copies of this card." : "Tuto kartu již nemáte v duplikátu.");
       return;
     }
 
@@ -1406,8 +1429,12 @@ export default function Home() {
     setGiftModalTarget(null);
     setToast(
       canEarnSocialXp
-        ? `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (+30 XP za štědrost)`
-        : `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (Dnes již bez dalších XP)`
+        ? (lang === "en"
+            ? `Gift sent to fellow scribe ${giftModalTarget.display_name || "in the scriptorium"}! (+30 XP for generosity)`
+            : `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (+30 XP za štědrost)`)
+        : (lang === "en"
+            ? `Gift sent to fellow scribe ${giftModalTarget.display_name || "in the scriptorium"}! (No more XP today)`
+            : `Dar byl odeslán kolegovi ${giftModalTarget.display_name || "ve skriptoriu"}! (Dnes již bez dalších XP)`)
     );
   };
 
@@ -1435,8 +1462,12 @@ export default function Home() {
     setPendingGifts((prev) => prev.filter((g) => g.id !== gift.id));
     setToast(
       canEarnSocialXp
-        ? `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (+50 XP)`
-        : `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (Dnes již bez dalších XP)`
+        ? (lang === "en"
+            ? `Colophon "${gift.card_title}" added to your collection! (+50 XP)`
+            : `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (+50 XP)`)
+        : (lang === "en"
+            ? `Colophon "${gift.card_title}" added to your collection! (No more XP today)`
+            : `Kolofon „${gift.card_title}“ byl zařazen do vaší sbírky! (Dnes již bez dalších XP)`)
     );
 
     try {
@@ -1454,9 +1485,8 @@ export default function Home() {
     message?: string,
     parentTradeId?: string
   ) => {
-    const target = colleague || colleagues[0] || { id: "demo-1", display_name: "Lucie z Klementina" };
     setActiveTradeModal({
-      colleague: target,
+      colleague: colleague || colleagues[0] || null,
       initialOffer,
       initialRequest,
       message: message || "",
@@ -1472,7 +1502,7 @@ export default function Home() {
   ) => {
     if (!activeTradeModal) return;
     if (offer.length === 0 && request.length === 0) {
-      setToast("Vyberte prosím alespoň jeden kolofon k nabídce nebo žádosti.");
+      setToast(lang === "en" ? "Please select at least one colophon to offer or request." : "Vyberte prosím alespoň jeden kolofon k nabídce nebo žádosti.");
       return;
     }
 
@@ -1480,7 +1510,7 @@ export default function Home() {
     for (const item of offer) {
       const owned = state.collection[item.card_id] || 0;
       if (owned < item.count) {
-        setToast(`Nemáte dostatek kusů karty „${item.title}“ k nabídnutí.`);
+        setToast(lang === "en" ? `You do not have enough copies of "${item.title}" to offer.` : `Nemáte dostatek kusů karty „${item.title}“ k nabídnutí.`);
         return;
       }
     }
@@ -1539,8 +1569,12 @@ export default function Home() {
     setActiveTradeModal(null);
     setToast(
       canEarnSocialXp
-        ? `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (+15 XP za diplomacii)`
-        : `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (Dnes již bez dalších XP)`
+        ? (lang === "en"
+            ? `Trade proposal sent to fellow scribe ${recipientName}! (+15 XP for diplomacy)`
+            : `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (+15 XP za diplomacii)`)
+        : (lang === "en"
+            ? `Trade proposal sent to fellow scribe ${recipientName}! (No more XP today)`
+            : `Návrh smlouvy o směně byl odeslán kolegovi ${recipientName}! (Dnes již bez dalších XP)`)
     );
   };
 
@@ -1549,7 +1583,7 @@ export default function Home() {
     for (const req of trade.recipient_request) {
       const owned = state.collection[req.card_id] || 0;
       if (owned < req.count) {
-        setToast(`Pro přijetí směny vám chybí požadovaný kolofon: „${req.title}“.`);
+        setToast(lang === "en" ? `You are missing the requested colophon to accept this trade: "${req.title}".` : `Pro přijetí směny vám chybí požadovaný kolofon: „${req.title}“.`);
         return;
       }
     }
@@ -1598,8 +1632,12 @@ export default function Home() {
     setReviewTradeModal(null);
     setToast(
       canEarnSocialXp
-        ? `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (+60 XP za dnešní směnu).`
-        : `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (denní limit XP s tímto kolegou byl již vyčerpán).`
+        ? (lang === "en"
+            ? `Trade contract sealed! New colophons are in your collection (+60 XP for today's trade).`
+            : `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (+60 XP za dnešní směnu).`)
+        : (lang === "en"
+            ? `Trade contract sealed! New colophons are in your collection (daily XP limit for this peer reached).`
+            : `Smlouva o směně byla zpečetěna! Nové kolofony jsou ve vaší sbírce (denní limit XP s tímto kolegou byl již vyčerpán).`)
     );
 
     try {
@@ -1628,7 +1666,7 @@ export default function Home() {
     playParchmentFlip(0.2);
     setPendingTrades((prev) => prev.filter((t) => t.id !== trade.id));
     setReviewTradeModal(null);
-    setToast(`Návrh směny od kolegy ${trade.sender_name} byl zdvořile odmítnut.`);
+    setToast(lang === "en" ? `Trade proposal from scribe ${trade.sender_name} was politely declined.` : `Návrh směny od kolegy ${trade.sender_name} byl zdvořile odmítnut.`);
 
     try {
       if (currentUser && !trade.id.startsWith("demo-")) {
@@ -1850,7 +1888,7 @@ export default function Home() {
                               {title}
                             </strong>
                             <small style={{ fontSize: "10px", color: "#785324" }}>
-                              {c.place} · <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>{c.rarity}</span>
+                              {getCardPlace(c.place, lang)} · <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>{c.rarity}</span>
                             </small>
                           </div>
                           <span style={{ fontSize: "11px", fontWeight: 700, color: "#8a5814", whiteSpace: "nowrap" }}>
@@ -2012,12 +2050,12 @@ function StatusBar({
         className="brand-lockup"
         onClick={() => setTab("home")}
         style={{ cursor: "pointer" }}
-        title="Quilldrop: Návrat do skriptoria"
+        title={lang === "en" ? "Quilldrop: Return to Scriptorium" : "Quilldrop: Návrat do skriptoria"}
       >
         <img src="/quilldrop-logo.png" alt="Quilldrop" />
       </div>
 
-      <nav className="desktop-nav" aria-label="Hlavní navigace">
+      <nav className="desktop-nav" aria-label={lang === "en" ? "Main navigation" : "Hlavní navigace"}>
         {NAV.map((item) => {
           const Icon = item.icon;
           const isActive = tab === item.id;
@@ -2053,7 +2091,7 @@ function StatusBar({
             className={`sound-toggle-btn ${soundOn ? "active" : "muted"}`}
             onClick={onToggleSound}
             title={soundOn ? (lang === "en" ? "Scriptorium audio is ON (click to mute)" : "Zvuk skriptoria je zapnutý (kliknutím ztlumit)") : (lang === "en" ? "Scriptorium audio is muted (click to unmute)" : "Zvuk je ztlumený (kliknutím zapnout)")}
-            aria-label={soundOn ? "Ztlumit zvuky skriptoria" : "Zapnout zvuky skriptoria"}
+            aria-label={soundOn ? (lang === "en" ? "Mute scriptorium audio" : "Ztlumit zvuky skriptoria") : (lang === "en" ? "Unmute scriptorium audio" : "Zapnout zvuky skriptoria")}
           >
             {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>
@@ -2063,7 +2101,7 @@ function StatusBar({
             type="button"
             className="user-status-btn"
             onClick={() => setTab("profile")}
-            title={`Přihlášen jako ${currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email}`}
+            title={lang === "en" ? `Signed in as ${currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email}` : `Přihlášen jako ${currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email}`}
           >
             <User size={13} />
             <span>{currentProfile?.display_name || currentUser.user_metadata?.display_name || currentUser.email?.split("@")[0]}</span>
@@ -2339,7 +2377,7 @@ function HomeScreen({
                 <div className="home-curio-label">
                   <BookOpen size={13} style={{ color: "#a16207" }} />
                   <span>{lang === "en" ? "Marginalia from Scriptorium" : "Glosa ze skriptoria"}</span>
-                  <span className="home-curio-category">{curio.category}</span>
+                  <span className="home-curio-category">{getCurioCategory(curio, lang)}</span>
                 </div>
                 <button
                   type="button"
@@ -2351,7 +2389,7 @@ function HomeScreen({
                 </button>
               </div>
               <blockquote className="home-curio-text">
-                „{curio.text}“
+                „{getCurioText(curio, lang)}“
               </blockquote>
             </div>
           </div>
@@ -2425,7 +2463,7 @@ function HomeScreen({
                 <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "To Discover" : "K objevení")}</span>
                 <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
                 <strong>{title}</strong>
-                <small>{count ? `${card.place} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
+                <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
                 {count > 1 && <b className="duplicate">×{count}</b>}
               </button>
             );
@@ -2459,7 +2497,7 @@ function HomeScreen({
                 </span>
               </div>
               <p style={{ margin: "3px 0 0", fontSize: "11px", color: "#684824" }}>
-                <strong>{activeIllumination.title}</strong> · {activeIllumination.origin} ({activeIllumination.century})
+                <strong>{getIlluminationTitle(activeIllumination, lang)}</strong> · {getIlluminationOrigin(activeIllumination, lang)} ({getIlluminationCentury(activeIllumination, lang)})
               </p>
             </div>
             <button className="icon-label" onClick={onGallery} style={{ padding: "4px 8px", fontSize: "11px" }}>
@@ -2470,7 +2508,7 @@ function HomeScreen({
             <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px" }}>
-                <span>{activeIllumination.tierName || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
+                <span>{getIlluminationTierName(activeIllumination, lang) || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
                 <span>{state.puzzle} {lang === "en" ? "of 16" : "z 16"}</span>
               </div>
               <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
@@ -3002,7 +3040,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
             <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
             <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
             <strong>{title}</strong>
-            <small>{count ? `${card.place} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
+            <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
             {count > 1 && <b className="duplicate">×{count}</b>}
           </button>;
         })}
@@ -3215,7 +3253,7 @@ function TrophiesScreen({
       <div className="puzzle-copy">
         <p>{lang === "en" ? `16-day illuminated mosaic · Cycle ${activeIllumination.cycle}` : `16denní iluminovaná mozaika · Cyklus ${activeIllumination.cycle}`}</p>
         <h2>{state.puzzle}/16 {lang === "en" ? "days" : "dní"}</h2>
-        <small>{lang === "en" ? "Daily streak reveals:" : "Denní přihlašování v řadě odhaluje:"} <strong>{activeIllumination.title}</strong> ({activeIllumination.rarity}).</small>
+        <small>{lang === "en" ? "Daily streak reveals:" : "Denní přihlašování v řadě odhaluje:"} <strong>{getIlluminationTitle(activeIllumination, lang)}</strong> ({activeIllumination.rarity}).</small>
         <div className="progress"><i style={{ width: `${(state.puzzle / 16) * 100}%` }} /></div>
       </div>
       <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
@@ -3601,9 +3639,9 @@ function ProfileScreen({
             {activeIllumination.rarity}
           </span>
         </p>
-        <h3 style={{ margin: "2px 0 4px" }}>{activeIllumination.title}</h3>
+        <h3 style={{ margin: "2px 0 4px" }}>{getIlluminationTitle(activeIllumination, lang)}</h3>
         <small style={{ display: "block", color: "#784f1d", fontSize: "10.5px" }}>
-          {activeIllumination.origin} ({activeIllumination.century})
+          {getIlluminationOrigin(activeIllumination, lang)} ({getIlluminationCentury(activeIllumination, lang)})
         </small>
         <div style={{ marginTop: 6, fontSize: "11px", color: "#684824" }}>
           {state.puzzle < 16
@@ -3623,11 +3661,14 @@ function ProfileScreen({
         {state.gallery.map(id => {
           const art = illuminations.find(item => item.id === id) || DEFAULT_ILLUMINATIONS.find(item => item.id === id);
           if (!art) return null;
+          const artTitle = getIlluminationTitle(art, lang);
+          const artOrigin = getIlluminationOrigin(art, lang);
+          const artCentury = getIlluminationCentury(art, lang);
           return (
             <article key={id}>
               <img
                 src={art.source}
-                alt={art.title}
+                alt={artTitle}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
                 }}
@@ -3636,8 +3677,8 @@ function ProfileScreen({
                 <span className={`rarity-tag rarity-${art.rarity.toLowerCase()}`} style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase" }}>
                   {art.rarity}
                 </span>
-                <strong>{art.title}</strong>
-                <small>{art.origin} · {art.century}</small>
+                <strong>{artTitle}</strong>
+                <small>{artOrigin} · {artCentury}</small>
                 <button
                   className={state.avatarArt === id ? "selected" : ""}
                   onClick={() => onSetAvatar(id)}
@@ -4270,7 +4311,7 @@ function TradeModal({
                         {title}
                       </strong>
                       <div style={{ fontSize: "10px", color: "#7a5323", display: "flex", alignItems: "center", gap: 4 }}>
-                        <span className="truncate">{c.place || (lang === "en" ? "Unknown scriptorium" : "Neznámé místo")}</span>
+                        <span className="truncate">{getCardPlace(c.place, lang)}</span>
                         <span>·</span>
                         <span className={`rarity-tag rarity-${c.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "0 4px" }}>
                           {c.rarity}
@@ -5225,8 +5266,8 @@ function CardDetail({ card, count, onClose, lang = "cs" }: { card: Colophon; cou
             </p>
           )}
           <dl>
-            <div><dt>{lang === "en" ? "Scribe" : "Písař"}</dt><dd>{card.scribe}</dd></div>
-            <div><dt>{lang === "en" ? "Place & Year" : "Místo & rok"}</dt><dd>{card.place}, {card.year}</dd></div>
+            <div><dt>{lang === "en" ? "Scribe" : "Písař"}</dt><dd>{getCardScribe(card.scribe, lang)}</dd></div>
+            <div><dt>{lang === "en" ? "Place & Year" : "Místo & rok"}</dt><dd>{getCardPlace(card.place, lang)}, {card.year}</dd></div>
             <div><dt>{lang === "en" ? "Manuscript / Shelfmark" : "Rukopis / signatura"}</dt><dd>{card.manuscript}</dd></div>
             <div><dt>{lang === "en" ? "Folio" : "Folium"}</dt><dd>{card.locus}</dd></div>
             {rarityReason && <div><dt>{lang === "en" ? "Rarity Note" : "Důvod rarity"}</dt><dd>{rarityReason}</dd></div>}
@@ -5275,7 +5316,7 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
       <section className={`reveal-card rarity-${card.rarity.toLowerCase()}`}>
         <div className="card-crown">✦ {card.rarity} ✦</div>
         <div className="large-illustration"><ColophonImage card={card} /><b>{card.year}</b></div>
-        <h2>{title}</h2><p>“{card.quote}”</p><small>{card.scribe} · {card.place}</small>
+        <h2>{title}</h2><p>“{card.quote}”</p><small>{getCardScribe(card.scribe, lang)} · {getCardPlace(card.place, lang)}</small>
       </section>
       <div className="reveal-actions"><span>{position === total ? (lang === "en" ? "Final card of the pack" : "Poslední karta balíčku") : (() => {
         const rem = total - position;
@@ -5825,7 +5866,7 @@ function MapModal({
                       <div className="map-card-info">
                         <strong>{title}</strong>
                         <small>
-                          {isOwned ? `${card.scribe} (${card.year})` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}
+                          {isOwned ? `${getCardScribe(card.scribe, lang)} (${card.year})` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}
                         </small>
                         {isOwned && card.manuscript && (
                           <div className="map-card-repo" title={card.manuscript}>

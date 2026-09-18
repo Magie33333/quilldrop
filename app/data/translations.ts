@@ -361,3 +361,53 @@ export function getCardRarityReason(card: { rarityReason?: string; rarityReason_
     return card.rarityReason_en || card.rarityReason;
   }
 }
+
+export function getCardScribe(scribe?: string, lang: Language = "cs"): string {
+  if (!scribe) return lang === "en" ? "Unknown scribe" : "Neznámý písař";
+  const lower = scribe.trim().toLowerCase();
+  if (lower === "unknown scribe" || lower === "neznámý písař" || lower === "unknown" || lower === "neznámý") {
+    return lang === "en" ? "Unknown scribe" : "Neznámý písař";
+  }
+  return scribe;
+}
+
+export function getCardPlace(place?: string, lang: Language = "cs"): string {
+  if (!place) return lang === "en" ? "Unknown place" : "Neznámé místo";
+  const lower = place.trim().toLowerCase();
+  if (
+    lower === "unknown place" ||
+    lower === "neznámé místo" ||
+    lower === "unknown" ||
+    lower === "neznámé" ||
+    lower === "unknown scriptorium"
+  ) {
+    return lang === "en" ? "Unknown place" : "Neznámé místo";
+  }
+
+  if (lang === "en") {
+    if (lower === "praha" || lower === "v praze") return "Prague";
+    if (lower === "pražský hrad" || lower === "na pražském hradě") return "Prague Castle";
+    if (lower === "vídeň" || lower === "ve vídni") return "Vienna";
+    if (lower === "lipsko" || lower === "v lipsku") return "Leipzig";
+    if (lower === "norimberk" || lower === "v norimberku") return "Nuremberg";
+    if (lower === "kostnice" || lower === "v kostnici") return "Constance";
+    if (lower === "vratislav" || lower === "ve vratislavi") return "Wrocław";
+    if (lower === "krakov" || lower === "v krakově") return "Kraków";
+    if (lower === "ostřihom" || lower === "v ostřihomi") return "Esztergom";
+    if (lower === "florencie" || lower === "ve florencii") return "Florence";
+    if (lower === "žitava" || lower === "v žitavě") return "Zittau";
+  } else {
+    if (lower === "prague") return "Praha";
+    if (lower === "prague castle") return "Pražský hrad";
+    if (lower === "vienna") return "Vídeň";
+    if (lower === "leipzig") return "Lipsko";
+    if (lower === "nuremberg") return "Norimberk";
+    if (lower === "constance") return "Kostnice";
+    if (lower === "wrocław" || lower === "wroclaw" || lower === "breslau") return "Vratislav";
+    if (lower === "kraków" || lower === "krakow" || lower === "cracow") return "Krakov";
+    if (lower === "esztergom") return "Ostřihom";
+    if (lower === "florence") return "Florencie";
+    if (lower === "zittau") return "Žitava";
+  }
+  return place;
+}

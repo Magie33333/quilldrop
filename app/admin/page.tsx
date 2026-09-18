@@ -349,15 +349,23 @@ export default function AdminPage() {
   const [curioForm, setCurioForm] = useState<{
     id: string;
     category: string;
+    category_en?: string;
     title: string;
+    title_en?: string;
     text: string;
+    text_en?: string;
     source: string;
+    source_en?: string;
   }>({
     id: "",
     category: "Písařské stížnosti",
+    category_en: "Scribal Complaints",
     title: "",
+    title_en: "",
     text: "",
+    text_en: "",
     source: "",
+    source_en: "",
   });
 
   useEffect(() => {
@@ -366,7 +374,22 @@ export default function AdminPage() {
         const saved = localStorage.getItem("quilldrop-curios");
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) setCurios(parsed);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const merged = parsed.map((c: Curio) => {
+              const def = DEFAULT_CURIOS.find((d) => d.id === c.id || d.title === c.title);
+              if (def) {
+                return {
+                  ...c,
+                  category_en: c.category_en || def.category_en,
+                  title_en: c.title_en || def.title_en,
+                  text_en: c.text_en || def.text_en,
+                  source_en: c.source_en || def.source_en,
+                };
+              }
+              return c;
+            });
+            setCurios(merged);
+          }
         }
       } catch {}
     }
@@ -377,9 +400,22 @@ export default function AdminPage() {
           .select("*")
           .order("id", { ascending: true });
         if (!error && data && data.length > 0) {
-          setCurios(data as Curio[]);
+          const merged = (data as Curio[]).map((c) => {
+            const def = DEFAULT_CURIOS.find((d) => d.id === c.id || d.title === c.title);
+            if (def) {
+              return {
+                ...c,
+                category_en: c.category_en || def.category_en,
+                title_en: c.title_en || def.title_en,
+                text_en: c.text_en || def.text_en,
+                source_en: c.source_en || def.source_en,
+              };
+            }
+            return c;
+          });
+          setCurios(merged);
           if (typeof window !== "undefined") {
-            localStorage.setItem("quilldrop-curios", JSON.stringify(data));
+            localStorage.setItem("quilldrop-curios", JSON.stringify(merged));
           }
         }
       } catch {}
@@ -388,13 +424,18 @@ export default function AdminPage() {
   }, []);
 
   const handleSelectCurioToEdit = (c: Curio) => {
+    const def = DEFAULT_CURIOS.find((d) => d.id === c.id || d.title === c.title);
     setEditingCurio(c);
     setCurioForm({
       id: c.id,
       category: c.category || "Písařské stížnosti",
+      category_en: c.category_en || def?.category_en || "",
       title: c.title || "",
+      title_en: c.title_en || def?.title_en || "",
       text: c.text || "",
+      text_en: c.text_en || def?.text_en || "",
       source: c.source || "",
+      source_en: c.source_en || def?.source_en || "",
     });
     setCurioSuccessMsg("");
   };
@@ -404,9 +445,13 @@ export default function AdminPage() {
     setCurioForm({
       id: "",
       category: "Písařské stížnosti",
+      category_en: "Scribal Complaints",
       title: "",
+      title_en: "",
       text: "",
+      text_en: "",
       source: "",
+      source_en: "",
     });
     setCurioSuccessMsg("");
   };
@@ -418,9 +463,13 @@ export default function AdminPage() {
     const newCurio: Curio = {
       id: curioId,
       category: curioForm.category.trim() || "Zajímavost",
+      category_en: curioForm.category_en?.trim() || undefined,
       title: curioForm.title.trim(),
+      title_en: curioForm.title_en?.trim() || undefined,
       text: curioForm.text.trim(),
+      text_en: curioForm.text_en?.trim() || undefined,
       source: curioForm.source.trim() || undefined,
+      source_en: curioForm.source_en?.trim() || undefined,
     };
 
     const nextList = isNew
@@ -485,24 +534,34 @@ export default function AdminPage() {
     id: string;
     cycle: number;
     title: string;
+    title_en?: string;
     source: string;
     origin: string;
+    origin_en?: string;
     century: string;
+    century_en?: string;
     tierName: string;
+    tierName_en?: string;
     rarity: IlluminationRarity;
     description: string;
+    description_en?: string;
     rewardXp: number;
     rewardPack: "standard" | "refined" | "masterwork";
   }>({
     id: "",
     cycle: 1,
     title: "",
+    title_en: "",
     source: "",
     origin: "",
+    origin_en: "",
     century: "",
+    century_en: "",
     tierName: "Cyklus učedníka (Dny 1–16)",
+    tierName_en: "Apprentice Cycle (Days 1–16)",
     rarity: "Common",
     description: "",
+    description_en: "",
     rewardXp: 150,
     rewardPack: "standard",
   });
@@ -514,17 +573,23 @@ export default function AdminPage() {
   }, []);
 
   const handleSelectMosaicToEdit = (m: IlluminationMosaicItem) => {
+    const def = DEFAULT_ILLUMINATIONS.find((d) => d.id === m.id || d.cycle === m.cycle);
     setEditingMosaic(m);
     setMosaicForm({
       id: m.id,
       cycle: m.cycle || 1,
       title: m.title || "",
+      title_en: m.title_en || def?.title_en || "",
       source: m.source || "",
       origin: m.origin || "",
+      origin_en: m.origin_en || def?.origin_en || "",
       century: m.century || "",
+      century_en: m.century_en || def?.century_en || "",
       tierName: m.tierName || "",
+      tierName_en: m.tierName_en || def?.tierName_en || "",
       rarity: m.rarity || "Common",
       description: m.description || "",
+      description_en: m.description_en || def?.description_en || "",
       rewardXp: m.rewardXp || 200,
       rewardPack: m.rewardPack || "standard",
     });
@@ -540,12 +605,17 @@ export default function AdminPage() {
       id: "",
       cycle: nextCycle,
       title: "",
+      title_en: "",
       source: "",
       origin: "",
+      origin_en: "",
       century: "",
+      century_en: "",
       tierName: `Cyklus ${nextCycle} (Dny ${startDay}–${endDay})`,
+      tierName_en: `Cycle ${nextCycle} (Days ${startDay}–${endDay})`,
       rarity: nextCycle >= 6 ? "Unique" : nextCycle === 5 ? "Legendary" : nextCycle === 4 ? "Epic" : nextCycle === 3 ? "Rare" : nextCycle === 2 ? "Uncommon" : "Common",
       description: "",
+      description_en: "",
       rewardXp: nextCycle * 150,
       rewardPack: nextCycle >= 4 ? "masterwork" : nextCycle >= 2 ? "refined" : "standard",
     });
@@ -560,12 +630,17 @@ export default function AdminPage() {
       id: mosaicId,
       cycle: Number(mosaicForm.cycle) || 1,
       title: mosaicForm.title.trim(),
+      title_en: mosaicForm.title_en?.trim() || undefined,
       source: mosaicForm.source.trim(),
       origin: mosaicForm.origin.trim() || "Neznámý rukopis",
+      origin_en: mosaicForm.origin_en?.trim() || undefined,
       century: mosaicForm.century.trim() || "14. století",
+      century_en: mosaicForm.century_en?.trim() || undefined,
       tierName: mosaicForm.tierName.trim() || `Cyklus ${mosaicForm.cycle}`,
+      tierName_en: mosaicForm.tierName_en?.trim() || undefined,
       rarity: mosaicForm.rarity,
       description: mosaicForm.description.trim(),
+      description_en: mosaicForm.description_en?.trim() || undefined,
       rewardXp: Number(mosaicForm.rewardXp) || 200,
       rewardPack: mosaicForm.rewardPack,
     };
@@ -4016,8 +4091,11 @@ export default function AdminPage() {
                       const matchesSearch =
                         !curioSearch ||
                         c.title.toLowerCase().includes(curioSearch.toLowerCase()) ||
+                        (c.title_en && c.title_en.toLowerCase().includes(curioSearch.toLowerCase())) ||
                         c.text.toLowerCase().includes(curioSearch.toLowerCase()) ||
-                        c.category.toLowerCase().includes(curioSearch.toLowerCase());
+                        (c.text_en && c.text_en.toLowerCase().includes(curioSearch.toLowerCase())) ||
+                        c.category.toLowerCase().includes(curioSearch.toLowerCase()) ||
+                        (c.category_en && c.category_en.toLowerCase().includes(curioSearch.toLowerCase()));
                       const matchesCat =
                         curioCategoryFilter === "Vše" || c.category.toLowerCase() === curioCategoryFilter.toLowerCase();
                       return matchesSearch && matchesCat;
@@ -4068,60 +4146,120 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Kategorie glosy</label>
-                    <input
-                      type="text"
-                      value={curioForm.category}
-                      onChange={(e) => setCurioForm({ ...curioForm, category: e.target.value })}
-                      placeholder="např. Písařské stížnosti, Pergamen a inkoust..."
-                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                    />
-                    <div className="flex flex-wrap gap-1 mt-1.5 text-[10px]">
-                      {["Písařské stížnosti", "Tajemství kolofonů", "Pergamen a inkoust", "Iluminace a zlato", "Démoni a legendy", "Středověká knihovna", "Kletby na zloděje"].map((sugg) => (
-                        <button
-                          key={sugg}
-                          type="button"
-                          onClick={() => setCurioForm({ ...curioForm, category: sugg })}
-                          className="bg-[#211a14] hover:bg-[#2e241c] text-[#a89278] hover:text-[#ffd580] px-1.5 py-0.5 rounded border border-[#362b20] cursor-pointer"
-                        >
-                          + {sugg}
-                        </button>
-                      ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#c9a96e] mb-1">Kategorie glosy (česky)</label>
+                      <input
+                        type="text"
+                        value={curioForm.category}
+                        onChange={(e) => setCurioForm({ ...curioForm, category: e.target.value })}
+                        placeholder="např. Písařské stížnosti, Pergamen a inkoust..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                      <div className="flex flex-wrap gap-1 mt-1.5 text-[10px]">
+                        {["Písařské stížnosti", "Tajemství kolofonů", "Pergamen a inkoust", "Iluminace a zlato", "Démoni a legendy", "Středověká knihovna", "Kletby na zloděje"].map((sugg) => (
+                          <button
+                            key={sugg}
+                            type="button"
+                            onClick={() => setCurioForm({ ...curioForm, category: sugg })}
+                            className="bg-[#211a14] hover:bg-[#2e241c] text-[#a89278] hover:text-[#ffd580] px-1.5 py-0.5 rounded border border-[#362b20] cursor-pointer"
+                          >
+                            + {sugg}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#ffd580] mb-1">Category (English)</label>
+                      <input
+                        type="text"
+                        value={curioForm.category_en || ""}
+                        onChange={(e) => setCurioForm({ ...curioForm, category_en: e.target.value })}
+                        placeholder="e.g. Scribal Complaints, Parchment & Ink..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                      <div className="flex flex-wrap gap-1 mt-1.5 text-[10px]">
+                        {["Scribal Complaints", "Colophon Secrets", "Parchment & Ink", "Illumination & Gold", "Demons & Legends", "Medieval Libraries", "Curses upon Thieves"].map((sugg) => (
+                          <button
+                            key={sugg}
+                            type="button"
+                            onClick={() => setCurioForm({ ...curioForm, category_en: sugg })}
+                            className="bg-[#211a14] hover:bg-[#2e241c] text-[#a89278] hover:text-[#ffd580] px-1.5 py-0.5 rounded border border-[#362b20] cursor-pointer"
+                          >
+                            + {sugg}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Titulek / Název moudra</label>
-                    <input
-                      type="text"
-                      value={curioForm.title}
-                      onChange={(e) => setCurioForm({ ...curioForm, title: e.target.value })}
-                      placeholder="např. Tři prsty píší, ale celé tělo trpí"
-                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#c9a96e] mb-1">Titulek / Název moudra (česky)</label>
+                      <input
+                        type="text"
+                        value={curioForm.title}
+                        onChange={(e) => setCurioForm({ ...curioForm, title: e.target.value })}
+                        placeholder="např. Tři prsty píší, ale celé tělo trpí"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#ffd580] mb-1">Title / Curio name (English)</label>
+                      <input
+                        type="text"
+                        value={curioForm.title_en || ""}
+                        onChange={(e) => setCurioForm({ ...curioForm, title_en: e.target.value })}
+                        placeholder="e.g. Three fingers write, yet the whole body suffers"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Text glosy či historické zajímavosti</label>
-                    <textarea
-                      rows={4}
-                      value={curioForm.text}
-                      onChange={(e) => setCurioForm({ ...curioForm, text: e.target.value })}
-                      placeholder="Popište zajímavost, citaci nebo moudro o středověkých rukopisech a písařích..."
-                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-3 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#c9a96e] mb-1">Text glosy (česky)</label>
+                      <textarea
+                        rows={4}
+                        value={curioForm.text}
+                        onChange={(e) => setCurioForm({ ...curioForm, text: e.target.value })}
+                        placeholder="Popište zajímavost, citaci nebo moudro o středověkých rukopisech a písařích..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-3 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#ffd580] mb-1">Curio text (English)</label>
+                      <textarea
+                        rows={4}
+                        value={curioForm.text_en || ""}
+                        onChange={(e) => setCurioForm({ ...curioForm, text_en: e.target.value })}
+                        placeholder="Describe the historical insight, marginal quote, or scribal tradition in English..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-3 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#c9a96e] mb-1">Pramen, rukopis nebo datace (volitelné)</label>
-                    <input
-                      type="text"
-                      value={curioForm.source}
-                      onChange={(e) => setCurioForm({ ...curioForm, source: e.target.value })}
-                      placeholder="např. Metropolitní kapitula Praha, rkp. 1387"
-                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-[#c9a96e] mb-1">Pramen nebo rukopis (česky, volitelné)</label>
+                      <input
+                        type="text"
+                        value={curioForm.source}
+                        onChange={(e) => setCurioForm({ ...curioForm, source: e.target.value })}
+                        placeholder="např. Metropolitní kapitula Praha, rkp. 1387"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#ffd580] mb-1">Source or Shelfmark (English, optional)</label>
+                      <input
+                        type="text"
+                        value={curioForm.source_en || ""}
+                        onChange={(e) => setCurioForm({ ...curioForm, source_en: e.target.value })}
+                        placeholder="e.g. Metropolitan Chapter Prague, MS 1387"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-3 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
                   </div>
 
                   {/* Živý náhled přesně tak, jak bude vypadat v denní kartě */}
@@ -4286,8 +4424,11 @@ export default function AdminPage() {
                       const matchesSearch =
                         !mosaicSearch ||
                         m.title.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        (m.title_en && m.title_en.toLowerCase().includes(mosaicSearch.toLowerCase())) ||
                         m.origin.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        (m.origin_en && m.origin_en.toLowerCase().includes(mosaicSearch.toLowerCase())) ||
                         m.century.toLowerCase().includes(mosaicSearch.toLowerCase()) ||
+                        (m.century_en && m.century_en.toLowerCase().includes(mosaicSearch.toLowerCase())) ||
                         String(m.cycle).includes(mosaicSearch);
                       const matchesRarity =
                         mosaicRarityFilter === "Vše" || m.rarity === mosaicRarityFilter;
@@ -4328,6 +4469,11 @@ export default function AdminPage() {
                             </div>
                             <h4 className="font-serif font-bold text-xs text-[#e8ded1] truncate">
                               {m.title}
+                              {m.title_en && (
+                                <span className="text-[10px] text-[#ffd580]/70 font-sans font-normal ml-1">
+                                  ({m.title_en})
+                                </span>
+                              )}
                             </h4>
                             <p className="text-[10.5px] text-[#8c7b6d] truncate">
                               {m.origin} · {m.century}
@@ -4385,7 +4531,7 @@ export default function AdminPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název fáze / tier</label>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název fáze (česky)</label>
                       <input
                         type="text"
                         value={mosaicForm.tierName}
@@ -4394,11 +4540,21 @@ export default function AdminPage() {
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       />
                     </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">Tier / Phase (English)</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.tierName_en || ""}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, tierName_en: e.target.value })}
+                        placeholder="e.g. Master Cycle (Days 33–48)"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <div className="col-span-2">
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název iluminace</label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název iluminace (česky)</label>
                       <input
                         type="text"
                         value={mosaicForm.title}
@@ -4408,7 +4564,20 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Datace / Století</label>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">Illumination Title (English)</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.title_en || ""}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, title_en: e.target.value })}
+                        placeholder="e.g. Bohemian Royal Lion"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Datace (česky)</label>
                       <input
                         type="text"
                         value={mosaicForm.century}
@@ -4417,11 +4586,18 @@ export default function AdminPage() {
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Původní rukopis / Instituce</label>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">Dating (English)</label>
+                      <input
+                        type="text"
+                        value={mosaicForm.century_en || ""}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, century_en: e.target.value })}
+                        placeholder="e.g. 14th century"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Původní rukopis (česky)</label>
                       <input
                         type="text"
                         value={mosaicForm.origin}
@@ -4431,30 +4607,41 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11px] font-bold text-[#c9a96e]">Zdroj obrazu / URL</label>
-                        <label className="cursor-pointer bg-[#2c221a] hover:bg-[#3d3024] text-[#ffd580] px-2 py-0.5 rounded border border-[#4a3928] text-[10.5px] flex items-center gap-1 transition">
-                          <Upload size={11} />
-                          <span>Nahrát z PC</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleMosaicFileUpload}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">Origin / MS (English)</label>
                       <input
                         type="text"
-                        value={mosaicForm.source}
-                        onChange={(e) => setMosaicForm({ ...mosaicForm, source: e.target.value })}
-                        placeholder="/illuminations/nazev.jpg nebo https://..."
+                        value={mosaicForm.origin_en || ""}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, origin_en: e.target.value })}
+                        placeholder="e.g. Gelnhausen Codex, Jihlava"
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       />
-                      <span className="block text-[10px] text-[#8c7b6d] mt-1">
-                        Lze zadat webový odkaz, nahrát soubor z PC, nebo vložit do složky <code>public/illuminations/</code>.
-                      </span>
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-[#c9a96e]">Zdroj obrazu / URL</label>
+                      <label className="cursor-pointer bg-[#2c221a] hover:bg-[#3d3024] text-[#ffd580] px-2 py-0.5 rounded border border-[#4a3928] text-[10.5px] flex items-center gap-1 transition">
+                        <Upload size={11} />
+                        <span>Nahrát z PC</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleMosaicFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      value={mosaicForm.source}
+                      onChange={(e) => setMosaicForm({ ...mosaicForm, source: e.target.value })}
+                      placeholder="/illuminations/nazev.jpg nebo https://..."
+                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                    <span className="block text-[10px] text-[#8c7b6d] mt-1">
+                      Lze zadat webový odkaz, nahrát soubor z PC, nebo vložit do složky <code>public/illuminations/</code>.
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2.5">
@@ -4482,15 +4669,27 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Popis díla pro badatele a hráče</label>
-                    <textarea
-                      rows={2}
-                      value={mosaicForm.description}
-                      onChange={(e) => setMosaicForm({ ...mosaicForm, description: e.target.value })}
-                      placeholder="Krátký historický a ikonografický komentář k iluminaci..."
-                      className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
-                    />
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Popis díla (česky)</label>
+                      <textarea
+                        rows={2}
+                        value={mosaicForm.description}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, description: e.target.value })}
+                        placeholder="Krátký historický a ikonografický komentář k iluminaci..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">Description (English)</label>
+                      <textarea
+                        rows={2}
+                        value={mosaicForm.description_en || ""}
+                        onChange={(e) => setMosaicForm({ ...mosaicForm, description_en: e.target.value })}
+                        placeholder="Historical and iconographic commentary in English..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
                   </div>
 
                   {/* INTERAKTIVNÍ 16DÍLNÝ ŘEZ A NÁHLED SLICOVÁNÍ */}
