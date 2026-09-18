@@ -222,15 +222,17 @@ export default function AdminPage() {
   const [lockRatio, setLockRatio] = useState(true);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Formulář karty (dvojjazyčný: CZ / EN)
+  // Formulář karty (dvojjazyčný: CZ / EN + původní latinský text)
   const [editTitle, setEditTitle] = useState("");
   const [editTitleEn, setEditTitleEn] = useState("");
+  const [editQuote, setEditQuote] = useState("");
   const [editRarity, setEditRarity] = useState<Rarity>("Common");
   const [editRarityReason, setEditRarityReason] = useState("");
   const [editRarityReasonEn, setEditRarityReasonEn] = useState("");
   const [editTranslation, setEditTranslation] = useState("");
   const [editTranslationEn, setEditTranslationEn] = useState("");
   const [editStatus, setEditStatus] = useState<"draft" | "review" | "published">("published");
+  const [deletingCard, setDeletingCard] = useState(false);
 
   // Minihry: Tvůrce výzev pro tým (4 herní režimy)
   type GameBuilderMode = "mood" | "cipher" | "script" | "transcription";
@@ -924,15 +926,29 @@ export default function AdminPage() {
 
   async function fetchCards() {
     setLoading(true);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("cards")
       .select(`
         *,
         colophons (
-          id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+          id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
         )
       `)
       .order("created_at", { ascending: false });
+
+    if (error && (error.code === "PGRST204" || error.message?.includes("translation_en") || error.message?.includes("column colophons.translation_en does not exist"))) {
+      const fallback = await supabase
+        .from("cards")
+        .select(`
+          *,
+          colophons (
+            id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+          )
+        `)
+        .order("created_at", { ascending: false });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (!error && data) {
       setCards(data as CardData[]);
@@ -947,6 +963,7 @@ export default function AdminPage() {
     setSelectedCard(card);
     setEditTitle(card.title || "");
     setEditTitleEn(card.title_en || "");
+    setEditQuote(card.colophons?.quote || "");
     setEditRarity(card.rarity || "Common");
     setEditRarityReason(card.rarity_reason || "");
     setEditRarityReasonEn(card.rarity_reason_en || "");
@@ -1162,13 +1179,34 @@ export default function AdminPage() {
     if (!selectedCard) return [];
     const changes: FieldChange[] = [];
 
-    // 1. Název karty
+    // 0. Latinský citát kolofonu
+    const oldQuote = selectedCard.colophons?.quote || "";
+    if (editQuote.trim() !== oldQuote.trim()) {
+      changes.push({
+        field: "quote",
+        label: "Původní text kolofonu (latinsky)",
+        oldVal: oldQuote || "(prázdné)",
+        newVal: editQuote.trim() || "(prázdné)",
+      });
+    }
+
+    // 1. Název karty (česky)
     if (editTitle.trim() !== (selectedCard.title || "").trim()) {
       changes.push({
         field: "title",
-        label: "Název karty",
+        label: "Název karty (česky)",
         oldVal: selectedCard.title || "(prázdné)",
         newVal: editTitle.trim() || "(prázdné)",
+      });
+    }
+
+    // 1b. Název karty (anglicky)
+    if ((editTitleEn || "").trim() !== (selectedCard.title_en || "").trim()) {
+      changes.push({
+        field: "title_en",
+        label: "Card Title (English)",
+        oldVal: selectedCard.title_en || "(prázdné)",
+        newVal: editTitleEn.trim() || "(prázdné)",
       });
     }
 
@@ -1182,13 +1220,23 @@ export default function AdminPage() {
       });
     }
 
-    // 3. Důvod rarity
+    // 3. Důvod rarity (česky)
     if ((editRarityReason || "").trim() !== (selectedCard.rarity_reason || "").trim()) {
       changes.push({
         field: "rarity_reason",
-        label: "Důvod rarity",
+        label: "Důvod rarity (česky)",
         oldVal: selectedCard.rarity_reason || "(prázdné)",
         newVal: editRarityReason.trim() || "(prázdné)",
+      });
+    }
+
+    // 3b. Důvod rarity (anglicky)
+    if ((editRarityReasonEn || "").trim() !== (selectedCard.rarity_reason_en || "").trim()) {
+      changes.push({
+        field: "rarity_reason_en",
+        label: "Rarity reason (English)",
+        oldVal: selectedCard.rarity_reason_en || "(prázdné)",
+        newVal: editRarityReasonEn.trim() || "(prázdné)",
       });
     }
 
@@ -1200,6 +1248,17 @@ export default function AdminPage() {
         label: "Český překlad kolofonu",
         oldVal: oldTrans || "(bez překladu)",
         newVal: editTranslation.trim() || "(bez překladu)",
+      });
+    }
+
+    // 4b. Anglický překlad
+    const oldTransEn = selectedCard.colophons?.translation_en || "";
+    if (editTranslationEn.trim() !== oldTransEn.trim()) {
+      changes.push({
+        field: "translation_en",
+        label: "English translation",
+        oldVal: oldTransEn || "(without translation)",
+        newVal: editTranslationEn.trim() || "(without translation)",
       });
     }
 
@@ -1306,17 +1365,26 @@ export default function AdminPage() {
     }
 
     if (selectedCard.colophon_id) {
-      const colPayload: any = { translation_cs: editTranslation };
-      if (editTranslationEn) colPayload.translation_en = editTranslationEn;
+      const colPayload: any = {
+        quote: editQuote.trim(),
+        translation_cs: editTranslation.trim(),
+      };
+      if (editTranslationEn) colPayload.translation_en = editTranslationEn.trim();
       const { error: colErr } = await supabase
         .from("colophons")
         .update(colPayload)
         .eq("id", selectedCard.colophon_id);
       if (colErr && (colErr.code === "PGRST204" || colErr.message?.includes("translation_en"))) {
+        delete colPayload.translation_en;
         await supabase
           .from("colophons")
-          .update({ translation_cs: editTranslation })
+          .update(colPayload)
           .eq("id", selectedCard.colophon_id);
+      }
+      if (selectedCard.colophons) {
+        selectedCard.colophons.quote = editQuote.trim();
+        selectedCard.colophons.translation_cs = editTranslation.trim();
+        selectedCard.colophons.translation_en = editTranslationEn.trim() || null;
       }
     }
 
@@ -1329,6 +1397,64 @@ export default function AdminPage() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
       fetchCards();
+    }
+  }
+
+  async function handleDeleteCard(cardToDelete?: CardData | null) {
+    const target = cardToDelete || selectedCard;
+    if (!target) return;
+
+    const confirmMsg = `Opravdu si přejete trvale smazat kartu „${target.title || "Bez názvu"}“ ze hry?\n\nTato akce je nevratná. Smaže kartu, její minihry a navázaný kolofon.`;
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingCard(true);
+    try {
+      // 1. Smazat navázané minihry (game_questions)
+      try {
+        await supabase.from("game_questions").delete().eq("card_id", target.id);
+      } catch (err) {
+        console.warn("Chyba při mazání game_questions:", err);
+      }
+
+      // 2. Smazat případné dary karet v card_gifts
+      try {
+        await supabase.from("card_gifts").delete().eq("card_id", target.id);
+      } catch {}
+
+      // 3. Smazat kartu z tabulky cards
+      const { error: cardErr } = await supabase.from("cards").delete().eq("id", target.id);
+      if (cardErr) {
+        alert("Chyba při mazání karty: " + cardErr.message);
+        setDeletingCard(false);
+        return;
+      }
+
+      // 4. Smazat záznam z tabulky colophons (pokud má colophon_id)
+      if (target.colophon_id) {
+        try {
+          await supabase.from("colophons").delete().eq("id", target.colophon_id);
+        } catch (colErr) {
+          console.warn("Chyba při mazání colophons:", colErr);
+        }
+      }
+
+      // 5. Aktualizace lokálního stavu
+      const nextCards = cards.filter((c) => c.id !== target.id);
+      setCards(nextCards);
+
+      if (selectedCard?.id === target.id) {
+        if (nextCards.length > 0) {
+          selectCard(nextCards[0]);
+        } else {
+          setSelectedCard(null);
+        }
+      }
+
+      alert(`Karta „${target.title}“ byla úspěšně smazána.`);
+    } catch (err: any) {
+      alert("Neočekávaná chyba při mazání karty: " + (err?.message || "Neznámá chyba"));
+    } finally {
+      setDeletingCard(false);
     }
   }
 
@@ -1721,6 +1847,18 @@ export default function AdminPage() {
             <Save size={14} />
             {saving ? "Ukládám..." : "Uložit změny"}
           </button>
+
+          {selectedCard && (
+            <button
+              onClick={() => handleDeleteCard(selectedCard)}
+              disabled={deletingCard || saving}
+              className="flex items-center gap-1.5 bg-red-950/70 hover:bg-red-900/80 border border-red-800/80 text-red-300 hover:text-red-200 font-bold text-xs px-3 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer"
+              title="Smazat tuto kartu ze hry"
+            >
+              <Trash2 size={13} />
+              <span className="hidden xl:inline">{deletingCard ? "Mazání..." : "Smazat"}</span>
+            </button>
+          )}
 
           <button
             onClick={handleLogout}
@@ -2380,14 +2518,24 @@ export default function AdminPage() {
                   </div>
 
                   <h4 className="font-serif font-bold text-sm text-[#ffd580] mt-2 leading-tight">
-                    {editTitle}
+                    {editTitle || "(Bez názvu)"}
                   </h4>
+                  {editTitleEn && (
+                    <p className="text-[10.5px] text-[#c9a96e] font-serif italic -mt-0.5 truncate">
+                      {editTitleEn}
+                    </p>
+                  )}
                   <p className="text-[11px] text-[#bdae9e] italic mt-1 line-clamp-2">
-                    “{selectedCard.colophons?.quote}”
+                    “{editQuote || selectedCard.colophons?.quote}”
                   </p>
                   {editTranslation && (
                     <p className="text-[10px] text-[#9c8976] mt-1 line-clamp-2">
-                      {editTranslation}
+                      🇨🇿 {editTranslation}
+                    </p>
+                  )}
+                  {editTranslationEn && (
+                    <p className="text-[10px] text-[#9c8976] mt-0.5 line-clamp-2">
+                      🇬🇧 {editTranslationEn}
                     </p>
                   )}
                   <div className="text-[9px] text-[#7d6f62] mt-2 pt-1 border-t border-[#332921] flex justify-between">
@@ -2430,6 +2578,54 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* PŮVODNÍ LATINSKÝ PŘEPIS Z HEURISTU */}
+                <div className="bg-[#18130f] border border-[#423425] rounded-lg p-3 space-y-1.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-[#ffd580] flex items-center gap-1.5">
+                      <BookOpen size={13} className="text-[#d4af37]" />
+                      Původní text kolofonu (latinský přepis z Heuristu) *
+                    </label>
+                    <span className="text-[10px] text-[#8c7b6d] font-mono">latina</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={editQuote}
+                    onChange={(e) => setEditQuote(e.target.value)}
+                    placeholder="Původní latinský přepis kolofonu..."
+                    className="w-full bg-[#120e0b] border border-[#3d3122] rounded p-2.5 text-xs text-[#f4eedf] font-serif leading-relaxed focus:outline-none focus:border-[#d4af37]"
+                  />
+                  <p className="text-[10px] text-[#8c7b6d]">
+                    Původní text přepisu slouží jako základ pro český i anglický překlad a paleografické minihry.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇨🇿</span> Český překlad kolofonu
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editTranslation}
+                      onChange={(e) => setEditTranslation(e.target.value)}
+                      placeholder="Doplňte český překlad..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
+                      <span>🇬🇧</span> English translation
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editTranslationEn}
+                      onChange={(e) => setEditTranslationEn(e.target.value)}
+                      placeholder="Provide English translation..."
+                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[11px] text-[#9c8976] block mb-1">Rarita</label>
@@ -2458,33 +2654,6 @@ export default function AdminPage() {
                       <option value="draft">Koncept (Draft)</option>
                       <option value="review">Ke kontrole</option>
                     </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
-                      <span>🇨🇿</span> Český překlad kolofonu
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editTranslation}
-                      onChange={(e) => setEditTranslation(e.target.value)}
-                      placeholder="Doplňte český překlad..."
-                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-[#9c8976] flex items-center gap-1 mb-1">
-                      <span>🇬🇧</span> English translation
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={editTranslationEn}
-                      onChange={(e) => setEditTranslationEn(e.target.value)}
-                      placeholder="Provide English translation..."
-                      className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                    />
                   </div>
                 </div>
 
@@ -2576,6 +2745,19 @@ export default function AdminPage() {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Nebezpečná zóna: Smazání karty */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCard(selectedCard)}
+                    disabled={deletingCard}
+                    className="w-full py-2 px-3 rounded-lg border border-red-900/60 bg-red-950/30 hover:bg-red-950/60 text-red-400 hover:text-red-300 text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                    {deletingCard ? "Mazání karty..." : "Smazat kartu ze hry"}
+                  </button>
                 </div>
               </div>
 

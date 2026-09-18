@@ -138,10 +138,12 @@ export default function HeuristCatalogModal({
 
   // Formulářová pole pro vytvářenou kartu
   const [formTitle, setFormTitle] = useState("");
+  const [formTitleEn, setFormTitleEn] = useState("");
   const [formRarity, setFormRarity] = useState<Rarity>("Common");
   const [formStatus, setFormStatus] = useState<CardStatus>("draft");
   const [formQuote, setFormQuote] = useState("");
   const [formTranslation, setFormTranslation] = useState("");
+  const [formTranslationEn, setFormTranslationEn] = useState("");
   const [formShelfmark, setFormShelfmark] = useState("");
   const [formLocus, setFormLocus] = useState("");
   const [formScribe, setFormScribe] = useState("");
@@ -353,10 +355,29 @@ export default function HeuristCatalogModal({
     }
 
     setFormTitle(suggestedTitle);
+    // Anglický návrh názvu
+    let suggestedTitleEn = "";
+    if (item.scribe && item.scribe !== "Neznámý písař") {
+      const shortScribe = item.scribe.split(",")[0].trim();
+      suggestedTitleEn = `Scribe ${shortScribe}`;
+      if (item.place && item.place !== "Neznámé místo") {
+        const shortPlace = item.place.split(",")[0].trim();
+        suggestedTitleEn += ` (${shortPlace})`;
+      }
+    } else if (item.place && item.place !== "Neznámé místo") {
+      const shortPlace = item.place.split(",")[0].trim();
+      suggestedTitleEn = `Voice from ${shortPlace}`;
+    } else if (item.idno) {
+      suggestedTitleEn = `Colophon of Codex ${item.idno}`;
+    } else {
+      suggestedTitleEn = `Manuscript #${item.id}`;
+    }
+    setFormTitleEn(suggestedTitleEn);
     setFormRarity(suggestedRarity);
     setFormStatus("draft"); // Nové karty výchozí jako koncept
     setFormQuote(item.quote);
     setFormTranslation(item.translation || "");
+    setFormTranslationEn((item as any).translation_en || "");
     setFormShelfmark(item.shelfmark);
     setFormLocus(item.locus);
     setFormScribe(item.scribe || "Neznámý písař");
@@ -381,21 +402,35 @@ export default function HeuristCatalogModal({
       const targetHeuristId = selectedItem ? selectedItem.id : Date.now();
 
       // 1. Založení kolofonu
-      const { data: colophon, error: colError } = await supabase
+      const colophonPayload: any = {
+        heurist_id: targetHeuristId,
+        quote: formQuote.trim(),
+        translation_cs: formTranslation.trim() || null,
+        translation_en: formTranslationEn.trim() || null,
+        scribe: formScribe.trim() || "Unknown scribe",
+        place: formPlace.trim() || "Unknown place",
+        year: Number(formYear) || 1400,
+        locus: formLocus.trim() || "1r",
+        manuscript_shelfmark: formShelfmark.trim() || "Neznámý rukopis",
+        source_url: formImageUrl.trim(),
+      };
+
+      let { data: colophon, error: colError } = await supabase
         .from("colophons")
-        .insert({
-          heurist_id: targetHeuristId,
-          quote: formQuote.trim(),
-          translation_cs: formTranslation.trim() || null,
-          scribe: formScribe.trim() || "Unknown scribe",
-          place: formPlace.trim() || "Unknown place",
-          year: Number(formYear) || 1400,
-          locus: formLocus.trim() || "1r",
-          manuscript_shelfmark: formShelfmark.trim() || "Neznámý rukopis",
-          source_url: formImageUrl.trim(),
-        })
+        .insert(colophonPayload)
         .select()
         .single();
+
+      if (colError && (colError.code === "PGRST204" || colError.message?.includes("translation_en"))) {
+        delete colophonPayload.translation_en;
+        const retry = await supabase
+          .from("colophons")
+          .insert(colophonPayload)
+          .select()
+          .single();
+        colophon = retry.data;
+        colError = retry.error;
+      }
 
       if (colError || !colophon) {
         throw new Error(`Chyba při ukládání kolofonu: ${colError?.message || "Neznámá chyba"}`);
@@ -412,6 +447,7 @@ export default function HeuristCatalogModal({
         colophon_id: colophon.id,
         slug: `card-${targetHeuristId}`,
         title: formTitle.trim() || "Nový kolofon",
+        title_en: formTitleEn.trim() || null,
         rarity: formRarity,
         status: formStatus,
         image_url: formImageUrl.trim(),
@@ -437,7 +473,7 @@ export default function HeuristCatalogModal({
           `
           *,
           colophons (
-            id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+            id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
           )
         `
         )
@@ -447,11 +483,12 @@ export default function HeuristCatalogModal({
       cardError = res.error;
 
       // Pokud sloupce v Supabase ještě nebyly přidány migrací (PGRST204), zopakujeme bez nich
-      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("created_by"))) {
+      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("created_by") || cardError.message?.includes("title_en"))) {
         delete cardPayload.created_by;
         delete cardPayload.created_by_name;
         delete cardPayload.updated_by;
         delete cardPayload.updated_by_name;
+        delete cardPayload.title_en;
 
         const retry = await supabase
           .from("cards")
@@ -460,7 +497,7 @@ export default function HeuristCatalogModal({
             `
             *,
             colophons (
-              id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+              id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
             )
           `
           )
@@ -555,8 +592,10 @@ export default function HeuristCatalogModal({
                   setMode("manual");
                   setSelectedItem(null);
                   setFormTitle("");
+                  setFormTitleEn("");
                   setFormQuote("");
                   setFormTranslation("");
+                  setFormTranslationEn("");
                   setFormShelfmark("");
                   setFormLocus("");
                   setFormScribe("");
@@ -1112,11 +1151,11 @@ export default function HeuristCatalogModal({
                       </div>
                     )}
 
-                    {/* Vstupní pole: Název a rarita */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2">
-                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                          Název hrací karty *
+                    {/* Vstupní pole: Název (ČJ + AJ) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1 flex items-center gap-1">
+                          <span>🇨🇿</span> Název hrací karty (Česky) *
                         </label>
                         <input
                           type="text"
@@ -1127,6 +1166,22 @@ export default function HeuristCatalogModal({
                           className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1 flex items-center gap-1">
+                          <span>🇬🇧</span> Card Title (English)
+                        </label>
+                        <input
+                          type="text"
+                          value={formTitleEn}
+                          onChange={(e) => setFormTitleEn(e.target.value)}
+                          placeholder="Scribe Iohannes of Prague"
+                          className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Rarita a stav */}
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
                           Rarita *
@@ -1143,50 +1198,65 @@ export default function HeuristCatalogModal({
                           ))}
                         </select>
                       </div>
-                    </div>
-
-                    {/* Stav nové karty */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Výchozí stav po zařazení
-                      </label>
-                      <select
-                        value={formStatus}
-                        onChange={(e) => setFormStatus(e.target.value as CardStatus)}
-                        className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      >
-                        <option value="draft">🟡 Koncept (Draft) – výchozí stav pro nová data</option>
-                        <option value="review">🔵 Ke kontrole (Review) – k posouzení</option>
-                        <option value="published">🟢 Publikováno (Published) – rovnou do ostré hry</option>
-                      </select>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                          Výchozí stav po zařazení
+                        </label>
+                        <select
+                          value={formStatus}
+                          onChange={(e) => setFormStatus(e.target.value as CardStatus)}
+                          className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        >
+                          <option value="draft">🟡 Koncept (Draft) – výchozí stav pro nová data</option>
+                          <option value="review">🔵 Ke kontrole (Review) – k posouzení</option>
+                          <option value="published">🟢 Publikováno (Published) – rovnou do ostré hry</option>
+                        </select>
+                      </div>
                     </div>
 
                     {/* Latinský text kolofonu */}
                     <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Původní text kolofonu (latinsky) *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-[#c9a96e]">
+                          Původní text kolofonu (latinsky) *
+                        </label>
+                        <span className="text-[9.5px] text-[#8c7b6d]">Přepis z Heuristu</span>
+                      </div>
                       <textarea
                         required
                         rows={3}
                         value={formQuote}
                         onChange={(e) => setFormQuote(e.target.value)}
-                        className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] font-serif leading-relaxed"
+                        className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2 text-xs text-[#ffd580] focus:outline-none focus:border-[#d4af37] font-serif leading-relaxed"
                       />
                     </div>
 
-                    {/* Český překlad */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Český překlad (pro studenty a hráče)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formTranslation}
-                        onChange={(e) => setFormTranslation(e.target.value)}
-                        placeholder="Kniha je dokončena, dejte písaři napít..."
-                        className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
-                      />
+                    {/* Překlady: Český a Anglický */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1 flex items-center gap-1">
+                          <span>🇨🇿</span> Český překlad (pro studenty a hráče)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formTranslation}
+                          onChange={(e) => setFormTranslation(e.target.value)}
+                          placeholder="Kniha je dokončena, dejte písaři napít..."
+                          className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1 flex items-center gap-1">
+                          <span>🇬🇧</span> English translation
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formTranslationEn}
+                          onChange={(e) => setFormTranslationEn(e.target.value)}
+                          placeholder="The book is done, give the scribe a drink..."
+                          className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                        />
+                      </div>
                     </div>
 
                     {/* Metadata: Signatura a Folio */}
@@ -1353,17 +1423,31 @@ export default function HeuristCatalogModal({
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                  Český překlad (volitelné)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formTranslation}
-                  onChange={(e) => setFormTranslation(e.target.value)}
-                  placeholder="Kniha je dokončena..."
-                  className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2.5 text-xs text-[#e8ded1]"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                    🇨🇿 Český překlad (volitelné)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formTranslation}
+                    onChange={(e) => setFormTranslation(e.target.value)}
+                    placeholder="Kniha je dokončena..."
+                    className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2.5 text-xs text-[#e8ded1]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                    🇬🇧 English translation (optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formTranslationEn}
+                    onChange={(e) => setFormTranslationEn(e.target.value)}
+                    placeholder="The book is finished..."
+                    className="w-full bg-[#1e1712] border border-[#3d3122] rounded p-2.5 text-xs text-[#e8ded1]"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -1398,32 +1482,43 @@ export default function HeuristCatalogModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název karty</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Název karty (česky)</label>
                   <input
                     type="text"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     placeholder="Např. Písařské zvolání"
-                    className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs"
+                    className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Rarita karty</label>
-                  <select
-                    value={formRarity}
-                    onChange={(e) => setFormRarity(e.target.value as Rarity)}
+                  <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Card Title (English)</label>
+                  <input
+                    type="text"
+                    value={formTitleEn}
+                    onChange={(e) => setFormTitleEn(e.target.value)}
+                    placeholder="E.g. Scribe's Exclamation"
                     className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
-                  >
-                    <option value="Common">Common</option>
-                    <option value="Uncommon">Uncommon</option>
-                    <option value="Rare">Rare</option>
-                    <option value="Epic">Epic</option>
-                    <option value="Legendary">Legendary</option>
-                    <option value="Unique">Unique</option>
-                  </select>
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">Rarita karty</label>
+                <select
+                  value={formRarity}
+                  onChange={(e) => setFormRarity(e.target.value as Rarity)}
+                  className="w-full bg-[#1e1712] border border-[#3d3122] rounded px-2.5 py-1.5 text-xs text-[#e8ded1]"
+                >
+                  <option value="Common">Common</option>
+                  <option value="Uncommon">Uncommon</option>
+                  <option value="Rare">Rare</option>
+                  <option value="Epic">Epic</option>
+                  <option value="Legendary">Legendary</option>
+                  <option value="Unique">Unique</option>
+                </select>
               </div>
 
               <div>

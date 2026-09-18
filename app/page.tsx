@@ -662,14 +662,16 @@ export default function Home() {
 
     async function fetchLiveCards() {
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("cards")
           .select(`
             id,
             slug,
             title,
+            title_en,
             rarity,
             rarity_reason,
+            rarity_reason_en,
             mood,
             sigil,
             status,
@@ -683,6 +685,7 @@ export default function Home() {
               heurist_id,
               quote,
               translation_cs,
+              translation_en,
               scribe,
               place,
               year,
@@ -697,14 +700,57 @@ export default function Home() {
           .eq("status", "published")
           .order("created_at", { ascending: true });
 
+        if (error && (error.code === "PGRST204" || error.message?.includes("translation_en") || error.message?.includes("title_en"))) {
+          const fallback = await supabase
+            .from("cards")
+            .select(`
+              id,
+              slug,
+              title,
+              rarity,
+              rarity_reason,
+              mood,
+              sigil,
+              status,
+              image_url,
+              crop_x,
+              crop_y,
+              crop_w,
+              crop_h,
+              colophons (
+                id,
+                heurist_id,
+                quote,
+                translation_cs,
+                scribe,
+                place,
+                year,
+                locus,
+                manuscript_shelfmark,
+                visual_note,
+                features,
+                formula_frequency,
+                source_url
+              )
+            `)
+            .eq("status", "published")
+            .order("created_at", { ascending: true });
+          data = fallback.data as any;
+          error = fallback.error;
+        }
+
         if (!error && data && data.length > 0) {
-          const mapped: Colophon[] = data.map((c: any) => ({
+          const mapped: Colophon[] = (data as any[]).map((c: any) => ({
             id: c.colophons?.heurist_id || c.id,
             uuid: c.id,
             slug: c.slug,
             title: c.title,
+            title_cs: c.title,
+            title_en: c.title_en || undefined,
             quote: c.colophons?.quote || "Explicit...",
             translation: c.colophons?.translation_cs || "Překlad se připravuje",
+            translation_cs: c.colophons?.translation_cs || undefined,
+            translation_en: c.colophons?.translation_en || undefined,
             scribe: c.colophons?.scribe || "Neznámý písař",
             place: c.colophons?.place || "Neznámé místo",
             year: c.colophons?.year || 1400,
@@ -719,6 +765,8 @@ export default function Home() {
             formulaFrequency: c.colophons?.formula_frequency || 1,
             features: c.colophons?.features || [],
             rarityReason: c.rarity_reason,
+            rarityReason_cs: c.rarity_reason,
+            rarityReason_en: c.rarity_reason_en || undefined,
             visualNote: c.colophons?.visual_note,
             crop_x: Number(c.crop_x) || 0,
             crop_y: Number(c.crop_y) || 0,
