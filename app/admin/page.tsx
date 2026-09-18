@@ -2563,7 +2563,7 @@ export default function AdminPage() {
                       ref={stripImgRef}
                       src={selectedCard.image_url}
                       alt="Folio pro vyznačení řádků"
-                      className="max-h-[calc(100vh-230px)] max-w-full w-auto h-auto block pointer-events-none select-none"
+                      className="max-h-[calc(100vh-260px)] max-w-full w-auto h-auto block pointer-events-none select-none"
                     />
 
                     {/* Tmavá iluminovaná maska přes rukopis */}
@@ -2632,7 +2632,7 @@ export default function AdminPage() {
                           }`}
                         >
                           {/* Odznáček s číslem řádku */}
-                          <div className="absolute -top-5 left-0 px-1.5 py-0.5 rounded bg-[#1c150e] border border-[#ffd580] text-[9.5px] font-bold text-[#ffd580] flex items-center gap-1 shadow pointer-events-none">
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#1c150e]/90 border border-[#ffd580] text-[9.5px] font-bold text-[#ffd580] flex items-center gap-1 shadow pointer-events-none z-10">
                             <span>#{st.line_number || idx + 1}</span>
                             <span className="opacity-80 font-mono text-[8.5px]">
                               {Math.round(st.w)}% × {Math.round(st.h)}%

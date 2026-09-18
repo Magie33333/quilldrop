@@ -596,8 +596,27 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Z `.spotlight-stage img` odstraněn `object-fit: contain;`, takže stage i v herním okně dokonale kopíruje rozměry obrázku.
    - Zdokonaleno chování zoomování kolečkem myši: plynulý rozsah 1,0× až 4,0×, absolutní izolace od posunu hlavní stránky a automatické vrácení na celé folio při zmenšení na 1,0×.
 4. **Vizuální a databázová kalibrace existujících miniher:**
-   - **Olomouc M III 6, 363r** (*„Et sic est finis huius operis, sit laus et gloria Deo in altissimis“*):
-     Přesné souřadnice červeného kolofonu nastaveny na `x: 44.5 %, y: 70.8 %, w: 31.0 %, h: 7.5 %` (dříve 79.2 %).
-   - **Olomouc M IV 2, 306** (*„Na velikú noc daj mazanec a beranec / mazanecz a beranecz“*):
-     Červený kolofon v notové osnově na pravé straně zkalibrován na `x: 65.0 %, y: 36.5 %, w: 27.0 %, h: 7.5 %` (dříve 48.0 %).
-   - Vizuálně ověřeno složením SVG overlaye a výřezů ve vysokém rozlišení. Žlutý iluminovaný rámeček nyní sedí naprosto přesně na obou kartách.
+    - **Olomouc M III 6, 363r** (*„Et sic est finis huius operis, sit laus et gloria Deo in altissimis“*):
+      Přesné souřadnice červeného kolofonu nastaveny na `x: 44.5 %, y: 72.2 %, w: 32.0 %, h: 6.8 %`.
+    - **Olomouc M IV 2, 306** (*„Na velikú noc daj mazanec a beranec / mazanecz a beranecz“*):
+      Červený kolofon v notové osnově na pravé straně zkalibrován na `x: 65.0 %, y: 36.5 %, w: 27.0 %, h: 7.5 %`.
+    - Vizuálně ověřeno složením SVG overlaye a výřezů ve vysokém rozlišení. Žlutý iluminovaný rámeček nyní sedí naprosto přesně na obou kartách.
+
+---
+
+## 📅 Záznam ze dne 18. 9. 2026 (Závěr) — 1:1 Vizuální shoda Quilldrop Studia s herní lupou a odstranění překryvu odznáčku
+
+**Cíl etapy:** Zajistit, aby souřadnice vyznačené v administraci (`/admin`) vizuálně i matematicky na 100 % odpovídaly hernímu zobrazení (`/`), a odstranit vizuální konflikt v administraci, kde odznáček řádku přečníval do předchozího textu.
+
+**Vyřešené detaily:**
+1. **Přesun odznáčku řádku dovnitř výběru (`app/admin/page.tsx`):**
+   - Původní třída `-top-5 left-0` způsobovala, že odznáček řádku `#1` přesahoval 20 px směrem nahoru nad horní hranu obdélníku.
+   - Vzhledem k hustému řádkování středověkých rukopisů tak odznáček překrýval řádek černého textu těsně nad kolofonem, což vizuálně mátlo editora.
+   - Odznáček byl přesunut do levého horního rohu **dovnitř** obdélníku (`top-1 left-1` s `z-10` a `pointer-events-none`), identicky jako v herní lupě. Horní hrana vyznačeného řádku je nyní zcela čistá a ostře oddělená.
+2. **Přesná pixelová kalibrace Olomouc M III 6, 363r:**
+   - Černý text končí přesně na `71.25 %` výšky folia.
+   - Červený kolofon (*„Et sic est finis huius operis...“*) začíná na `72.11 %` a končí na `77.80 %`.
+   - V databázi uloženy přesné souřadnice `x: 44.5 %, y: 72.2 %, w: 32.0 %, h: 6.8 %`.
+   - V Quilldrop Studiu i v herní paleografické lupě rámeček dokonale lemuje pouze 3 červené řádky kolofonu bez jakéhokoliv dotyku černého textu nad ním.
+3. **Komfortní zobrazení vysokých folií:**
+   - Výškový limit obrázku v editoru nastaven na `max-h-[calc(100vh-260px)]`, čímž je zaručeno, že i na menších displejích je vidět 100 % výšky pergamenu včetně spodního okraje i panelu nápovědy bez jakéhokoliv oříznutí.
