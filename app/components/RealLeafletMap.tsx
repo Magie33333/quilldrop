@@ -103,14 +103,13 @@ export default function RealLeafletMap({
           maxBoundsViscosity: 0.85,
         });
 
-        // 1. Podkladová vrstva: Středověce laděná kartografie
+        // 1. Podkladová vrstva: Autentický stínovaný reliéf bez moderních nápisů a bez API klíče (žádný vodoznak "API KEY REQUIRED")
         const tileLayer = L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}",
           {
-            subdomains: "abcd",
-            maxZoom: 18,
-            opacity: 0.7,
-            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 13,
+            opacity: 0.82,
+            attribution: "Tiles &copy; Esri &mdash; Source: Esri",
           }
         );
         tileLayer.addTo(map);
