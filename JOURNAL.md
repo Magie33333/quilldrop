@@ -547,10 +547,14 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Hlavička formuláře jasně indikuje *„Úprava existující minihry“* a umožňuje úpravy zrušit.
    - Tlačítko uložení přepíná na *„Uložit úpravy minihry“* a provádí `supabase.from("game_questions").update(...)` s okamžitou aktualizací lokálního stavu i vizuálním potvrzením.
 
-
-
-
-
+3. **Oprava mapování souřadnic vyznačených řádků a Paleografická lupa (`app/page.tsx`, `app/globals.css`):**
+   - **Příčina neshody souřadnic:** Původní kontejner `.spotlight-wrap` měl šířku 100 % (např. 624 px) a pevnou výšku 210 px s `object-fit: contain`. Protože jsou folia vertikální (portrét ~1:1.5), snímek se vykreslil uprostřed s šířkou cca 140 px a po stranách vznikly široké černé pruhy. Překryvné SVG se však roztáhlo přes celý 624px kontejner – procenta `x` a `w` se proto počítala z černého prázdného prostoru a rámeček „přetekl“ vpravo mimo rukopis do tmy.
+   - **Těsné orámování plátna (`.spotlight-stage`):** Snímek i SVG jsou nově zabaleny do samostatného elementu s `display: inline-block`, jehož rozměry jsou 100% identické s vykresleným snímkem. Tím je zaručeno, že `0..100 %` v SVG přesně odpovídá `0..100 %` rukopisu na pixel přesně jako v Quilldrop Studiu.
+   - **Plnohodnotná Paleografická lupa (Zoom & Pan):**
+     - Výzva se automaticky otevírá v režimu lupy se zvětšením **2,2×**, vycentrovaným přímo na vyznačené řádky textu.
+     - Gotické písmo a zkratky jsou velké, ostré a perfektně čitelné pro snadný přepis.
+     - Tlačítko pro rychlé přepnutí mezi **„Lupa (Zvětšit)“** a **„Celé folio (1×)“**.
+     - Ovládání měřítka (`+`, `−`, zobrazení procent, reset vycentrování) i plynulý posun tažením myší / dotykem a kolečkem myši.
 
 
 

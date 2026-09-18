@@ -5488,6 +5488,26 @@ function GameModal({
     }
   };
 
+  // Paleografická lupa a interaktivní zvětšení / posun
+  const highlightRegions = question.highlight_regions || [];
+  const primaryRegion = highlightRegions[0];
+  const targetCenterX = primaryRegion ? primaryRegion.x + (primaryRegion.w ?? (primaryRegion as any).width ?? 20) / 2 : 50;
+  const targetCenterY = primaryRegion ? primaryRegion.y + (primaryRegion.h ?? (primaryRegion as any).height ?? 5) / 2 : 75;
+
+  const [isLoupeActive, setIsLoupeActive] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(2.2);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const panStartRef = useRef<{ x: number; y: number; initPanX: number; initPanY: number }>({ x: 0, y: 0, initPanX: 0, initPanY: 0 });
+
+  useEffect(() => {
+    setIsLoupeActive(true);
+    setZoomLevel(2.2);
+    setPanOffset({ x: 0, y: 0 });
+    setUserText("");
+    setTranscriptionFeedback(null);
+  }, [question.id, question.title]);
+
   const imgSrc = challengeCard.remoteImageUrl || challengeCard.imageUrl;
 
   return (
@@ -5512,70 +5532,194 @@ function GameModal({
 
         {isTranscription ? (
           <div className="transcription-mode">
-            <div className="spotlight-wrap">
-              <img src={imgSrc} alt={lang === "en" ? "Manuscript for palaeographical transcription" : "Rukopis k paleografickému přepisu"} loading="lazy" decoding="async" />
-              {question.highlight_regions && question.highlight_regions.length > 0 && (
-                <svg className="spotlight-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <defs>
-                    <mask id={`spotlight-mask-${question.id || "curr"}`}>
-                      <rect x="0" y="0" width="100" height="100" fill="white" />
+            <div className="spotlight-container">
+              {/* Horní lišta lupy s ovládáním měřítka */}
+              <div className="spotlight-toolbar flex items-center justify-between px-3 py-1.5 bg-[#1a1410] border-b border-[#3d2e1f] text-[11px]">
+                <div className="flex items-center gap-1.5 font-bold text-[#ffd580]">
+                  <span className="text-sm leading-none">🔍</span>
+                  <span>{lang === "en" ? "Palaeographical Loupe" : "Paleografická lupa"}</span>
+                  <span className="text-[10px] text-[#9c8266] font-normal hidden sm:inline">
+                    {isLoupeActive
+                      ? (lang === "en" ? "· Focused on illuminated lines" : "· Zaostřeno na vyznačené řádky")
+                      : (lang === "en" ? "· Full folio overview" : "· Přehled celého folia")}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isLoupeActive) {
+                        setIsLoupeActive(false);
+                        setPanOffset({ x: 0, y: 0 });
+                      } else {
+                        setIsLoupeActive(true);
+                        setZoomLevel(2.2);
+                        setPanOffset({ x: 0, y: 0 });
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded border text-[11px] font-semibold transition cursor-pointer flex items-center gap-1 shadow-xs ${
+                      isLoupeActive
+                        ? "bg-[#3d2e18] text-[#ffd580] border-[#d4af37]"
+                        : "bg-[#241c15] text-[#b8a28d] border-[#423323] hover:text-[#ffd580]"
+                    }`}
+                    title={isLoupeActive ? (lang === "en" ? "Switch to full folio view" : "Zobrazit celé folio") : (lang === "en" ? "Zoom into illuminated lines" : "Přiblížit vyznačené řádky lupou")}
+                  >
+                    {isLoupeActive ? "📜 " + (lang === "en" ? "Full Folio" : "Celé folio") : "🔍 " + (lang === "en" ? "Loupe (Zoom)" : "Lupa (Zvětšit)")}
+                  </button>
+
+                  {isLoupeActive && (
+                    <div className="flex items-center gap-1 bg-[#14100c] px-1 py-0.5 rounded border border-[#382b1d]">
+                      <button
+                        type="button"
+                        onClick={() => setZoomLevel((z) => Math.max(1.2, Math.round((z - 0.3) * 10) / 10))}
+                        className="w-5 h-5 rounded hover:bg-[#2e2318] text-[#ffd580] flex items-center justify-center font-bold text-xs cursor-pointer"
+                        title={lang === "en" ? "Zoom out" : "Oddálit (−)"}
+                      >
+                        −
+                      </button>
+                      <span className="text-[10px] text-[#c9a96e] font-mono w-9 text-center">
+                        {Math.round(zoomLevel * 100)}%
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setZoomLevel((z) => Math.min(4.0, Math.round((z + 0.3) * 10) / 10))}
+                        className="w-5 h-5 rounded hover:bg-[#2e2318] text-[#ffd580] flex items-center justify-center font-bold text-xs cursor-pointer"
+                        title={lang === "en" ? "Zoom in" : "Přiblížit (+)"}
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setZoomLevel(2.2);
+                          setPanOffset({ x: 0, y: 0 });
+                        }}
+                        className="p-1 hover:bg-[#2e2318] rounded text-[#a89078] hover:text-[#ffd580] text-[10px] cursor-pointer"
+                        title={lang === "en" ? "Reset focus to target lines" : "Vycentrovat na řádky"}
+                      >
+                        <RotateCcw size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Interaktivní plátno rukopisu */}
+              <div
+                className="spotlight-viewport"
+                onPointerDown={(e) => {
+                  if (!isLoupeActive || zoomLevel <= 1) return;
+                  setIsPanning(true);
+                  panStartRef.current = {
+                    x: e.clientX,
+                    y: e.clientY,
+                    initPanX: panOffset.x,
+                    initPanY: panOffset.y,
+                  };
+                  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (!isPanning) return;
+                  const dx = e.clientX - panStartRef.current.x;
+                  const dy = e.clientY - panStartRef.current.y;
+                  setPanOffset({
+                    x: panStartRef.current.initPanX + dx,
+                    y: panStartRef.current.initPanY + dy,
+                  });
+                }}
+                onPointerUp={(e) => {
+                  if (isPanning) {
+                    setIsPanning(false);
+                    try { (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId); } catch {}
+                  }
+                }}
+                onPointerCancel={() => setIsPanning(false)}
+                onWheel={(e) => {
+                  if (!isLoupeActive) return;
+                  e.preventDefault();
+                  const delta = e.deltaY < 0 ? 0.2 : -0.2;
+                  setZoomLevel((z) => Math.max(1.2, Math.min(4.0, Math.round((z + delta) * 10) / 10)));
+                }}
+              >
+                <div
+                  className="spotlight-stage"
+                  style={{
+                    transform: `scale(${isLoupeActive ? zoomLevel : 1}) translate(${panOffset.x / (isLoupeActive ? zoomLevel : 1)}px, ${panOffset.y / (isLoupeActive ? zoomLevel : 1)}px)`,
+                    transformOrigin: isLoupeActive ? `${targetCenterX}% ${targetCenterY}%` : "center center",
+                    transition: isPanning ? "none" : "transform 0.15s ease-out",
+                  }}
+                >
+                  <img
+                    src={imgSrc}
+                    alt={lang === "en" ? "Manuscript for palaeographical transcription" : "Rukopis k paleografickému přepisu"}
+                    loading="eager"
+                    decoding="async"
+                  />
+                  {question.highlight_regions && question.highlight_regions.length > 0 && (
+                    <svg className="spotlight-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        <mask id={`spotlight-mask-${question.id || "curr"}`}>
+                          <rect x="0" y="0" width="100" height="100" fill="white" />
+                          {question.highlight_regions.map((reg, idx) => {
+                            const rw = reg.w ?? (reg as any).width ?? 20;
+                            const rh = reg.h ?? (reg as any).height ?? 5;
+                            return (
+                              <rect
+                                key={idx}
+                                x={reg.x}
+                                y={reg.y}
+                                width={rw}
+                                height={rh}
+                                rx="0.5"
+                                fill="black"
+                              />
+                            );
+                          })}
+                        </mask>
+                      </defs>
+                      <rect
+                        x="0"
+                        y="0"
+                        width="100"
+                        height="100"
+                        fill="rgba(14, 10, 7, 0.72)"
+                        mask={`url(#spotlight-mask-${question.id || "curr"})`}
+                      />
                       {question.highlight_regions.map((reg, idx) => {
-                        const rw = reg.w ?? reg.width ?? 20;
-                        const rh = reg.h ?? reg.height ?? 5;
+                        const rw = reg.w ?? (reg as any).width ?? 20;
+                        const rh = reg.h ?? (reg as any).height ?? 5;
+                        const lineNum = reg.line_number ?? (idx + 1);
                         return (
-                          <rect
-                            key={idx}
-                            x={reg.x}
-                            y={reg.y}
-                            width={rw}
-                            height={rh}
-                            rx="0.5"
-                            fill="black"
-                          />
+                          <g key={idx}>
+                            <rect
+                              x={reg.x}
+                              y={reg.y}
+                              width={rw}
+                              height={rh}
+                              rx="0.6"
+                              fill="rgba(255, 213, 128, 0.08)"
+                              stroke="#ffd580"
+                              strokeWidth="0.75"
+                              strokeDasharray="2.5 1.2"
+                            />
+                            <text
+                              x={reg.x + 0.6}
+                              y={reg.y + Math.min(rh * 0.7, 3.8)}
+                              fill="#ffd580"
+                              fontSize="2.8"
+                              fontWeight="bold"
+                              fontFamily="sans-serif"
+                            >
+                              #{lineNum}
+                            </text>
+                          </g>
                         );
                       })}
-                    </mask>
-                  </defs>
-                  <rect
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="100"
-                    fill="rgba(14, 10, 7, 0.78)"
-                    mask={`url(#spotlight-mask-${question.id || "curr"})`}
-                  />
-                  {question.highlight_regions.map((reg, idx) => {
-                    const rw = reg.w ?? reg.width ?? 20;
-                    const rh = reg.h ?? reg.height ?? 5;
-                    const lineNum = reg.line_number ?? (idx + 1);
-                    return (
-                      <g key={idx}>
-                        <rect
-                          x={reg.x}
-                          y={reg.y}
-                          width={rw}
-                          height={rh}
-                          rx="0.8"
-                          fill="none"
-                          stroke="#ffd580"
-                          strokeWidth="0.8"
-                          strokeDasharray="2 1"
-                        />
-                        <text
-                          x={reg.x + 0.8}
-                          y={reg.y + Math.min(rh * 0.75, 4.2)}
-                          fill="#ffd580"
-                          fontSize="3"
-                          fontWeight="bold"
-                          fontFamily="sans-serif"
-                        >
-                          {lineNum}.
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              )}
+                    </svg>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="text-center text-[10px] text-[#8c6b3e] mb-2">
               {challengeCard.manuscript} · {challengeCard.locus}
