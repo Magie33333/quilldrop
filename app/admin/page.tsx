@@ -2446,7 +2446,21 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCenterMode("crop")}
+                  onClick={async () => {
+                    await handleSaveGame();
+                    setCenterMode("crop");
+                  }}
+                  className="text-[11px] bg-gradient-to-r from-[#8a6828] to-[#c2963a] hover:from-[#9c762e] hover:to-[#d6a742] text-[#1a1205] px-3 py-1 rounded border border-[#ffd580] flex items-center gap-1.5 cursor-pointer font-bold transition shadow"
+                  title="Uložit změny a souřadnice řádků přímo do databáze"
+                >
+                  <Save size={13} /> {editingGameId ? "Uložit úpravy minihry" : "Uložit minihru"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCenterMode("crop");
+                    setRightSidebarTab("minigames");
+                  }}
                   className="text-[11px] bg-[#22351f] text-[#86efac] hover:bg-[#2c4728] px-3 py-1 rounded border border-[#4ade80]/50 flex items-center gap-1.5 cursor-pointer font-bold transition shadow"
                   title="Dokončit vyznačení řádků a vrátit se na náhled výřezu karty"
                 >

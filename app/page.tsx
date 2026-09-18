@@ -5499,6 +5499,38 @@ function GameModal({
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const panStartRef = useRef<{ x: number; y: number; initPanX: number; initPanY: number }>({ x: 0, y: 0, initPanX: 0, initPanY: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const isLoupeActiveRef = useRef(isLoupeActive);
+
+  // Zablokování scrollování podkladové stránky (mainpage) během otevřené minihry
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    isLoupeActiveRef.current = isLoupeActive;
+  }, [isLoupeActive]);
+
+  // Nativní non-passive wheel listener zaručuje, že e.preventDefault() zablokuje posun stránky
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isLoupeActiveRef.current) return;
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      setZoomLevel((z) => Math.max(1.2, Math.min(4.0, Math.round((z + delta) * 10) / 10)));
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   useEffect(() => {
     setIsLoupeActive(true);
@@ -5607,6 +5639,7 @@ function GameModal({
 
               {/* Interaktivní plátno rukopisu */}
               <div
+                ref={viewportRef}
                 className="spotlight-viewport"
                 onPointerDown={(e) => {
                   if (!isLoupeActive || zoomLevel <= 1) return;
@@ -5635,12 +5668,6 @@ function GameModal({
                   }
                 }}
                 onPointerCancel={() => setIsPanning(false)}
-                onWheel={(e) => {
-                  if (!isLoupeActive) return;
-                  e.preventDefault();
-                  const delta = e.deltaY < 0 ? 0.2 : -0.2;
-                  setZoomLevel((z) => Math.max(1.2, Math.min(4.0, Math.round((z + delta) * 10) / 10)));
-                }}
               >
                 <div
                   className="spotlight-stage"

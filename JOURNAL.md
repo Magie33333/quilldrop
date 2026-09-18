@@ -556,5 +556,15 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
      - Tlačítko pro rychlé přepnutí mezi **„Lupa (Zvětšit)“** a **„Celé folio (1×)“**.
      - Ovládání měřítka (`+`, `−`, zobrazení procent, reset vycentrování) i plynulý posun tažením myší / dotykem a kolečkem myši.
 
+4. **Izolace zoomování kolečkem myši od hlavní stránky (`app/page.tsx`, `app/globals.css`):**
+   - **Problém:** Při přibližování a oddalování paleografické lupy pomocí kolečka myši nad rukopisem v otevřeném okně minihry docházelo k souběžnému posouvání podkladové hlavní stránky (`mainpage`), což působilo rušivě.
+   - **Technické řešení:**
+     - Pro `GameModal` byl zaveden zámek scrollování těla stránky (`document.body.style.overflow = "hidden"` s automatickým obnovením při zavření).
+     - Pro kontejner `.spotlight-viewport` byl nasazen nativní DOM posluchač události `wheel` s parametrem `{ passive: false }`. Tím je zaručeno, že `e.preventDefault()` a `e.stopPropagation()` spolehlivě zabrání prohlížeči v propagaci kolečka myši na pozadí.
+     - V `app/globals.css` přidáno pravidlo `overscroll-behavior: contain;` pro `.modal-backdrop`, `.game-modal` i `.spotlight-viewport`.
+     - Nyní se při točení kolečkem myši plynule zoomuje pouze lupa nad rukopisem a pozadí zůstává zcela nehybné.
 
-
+5. **Přímé tlačítko pro uložení minihry na liště plátna (`app/admin/page.tsx`):**
+   - **UX zjednodušení:** V režimu označování řádků na plátně rukopisu (`centerMode === "strips"`) bylo přímo do horní lišty vedle tlačítka *„Hotovo (Zpět na výřez)“* přidáno zlaté akční tlačítko **[ 💾 Uložit úpravy minihry ]**.
+   - Editor tak po přesunutí či změně velikosti žlutého rámečku nemusí přepínat záložky v postranním panelu, ale může novou pozici řádků odeslat do Supabase jediným kliknutím přímo z pracovní plochy.
+   - Souřadnice červeného kolofonu Olomouc M III 6, 363r byly v databázi přesně zkalibrovány na pixely inkoustu (`X: 44.5 %, Y: 71.5 %, Š: 33 %, V: 8.5 %`).
