@@ -568,3 +568,36 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - **UX zjednodušení:** V režimu označování řádků na plátně rukopisu (`centerMode === "strips"`) bylo přímo do horní lišty vedle tlačítka *„Hotovo (Zpět na výřez)“* přidáno zlaté akční tlačítko **[ 💾 Uložit úpravy minihry ]**.
    - Editor tak po přesunutí či změně velikosti žlutého rámečku nemusí přepínat záložky v postranním panelu, ale může novou pozici řádků odeslat do Supabase jediným kliknutím přímo z pracovní plochy.
    - Souřadnice červeného kolofonu Olomouc M III 6, 363r byly v databázi přesně zkalibrovány na pixely inkoustu (`X: 44.5 %, Y: 71.5 %, Š: 33 %, V: 8.5 %`).
+
+---
+
+## 📅 Záznam ze dne 18. 9. 2026 (Pokračování) — Systémová oprava vertikálního posunu souřadnic v Quilldrop Studiu a dokonalé lícování
+
+**Cíl etapy:** Trvale a systémově odstranit vertikální posun (cca 8–11 % směrem dolů), ke kterému docházelo u vyznačených řádků v minihrách oproti pozici naklikané editorem v Quilldrop Studiu (`/admin`), a provést přesnou databázovou kalibraci všech existujících karet.
+
+**Klíčové zjištění a odhalení příčiny (Root Cause):**
+- **Oříznutí kontejneru a dělení zmenšenou výškou:** V `app/admin/page.tsx` byl obalující prvek plátna definován s třídami `max-h-[calc(100vh-130px)]` a `overflow-hidden`. Při výšce obrazovky editora (kde horní navigace, lišta plátna a spodní nápověda zabírají cca 210 px) byl tento DIV vysoký pouze ~630–658 px, ačkoliv vertikální folia rukopisů (např. Olomouc M IV 2 s poměrem 1091 × 1734 px a M III 6 s poměrem 1185 × 1635 px) přirozeně vyžadovala výšku 740+ px.
+- V důsledku `overflow-hidden` byla spodní část folia v administraci skrytá/oříznutá.
+- V obsluze událostí `onPointerDown` a `stripDrag` (tažení myší) se výpočet prováděl proti oříznutému kontejneru:
+  `clickY = ((e.clientY - rect.top) / rect.height) * 100`
+  kde `rect.height` byla zmenšená výška DIVu (např. 658 px místo 742 px). Tím došlo k matematickému zkreslení a **uložení souřadnice `y` o 8–11 % vyšší**, než byla skutečná pozice textu na foliu!
+- Když herní okno (`app/page.tsx`) vykreslilo nezkrácené celé folio, žlutý rámeček se podle této zkreslené hodnoty vykreslil o 8–11 % níže – přímo do prázdného spodního okraje pergamenu pod kolofonem.
+
+**Realizované systémové opravy:**
+1. **Měření přímo proti fyzickým pixelům vykresleného snímku (`app/admin/page.tsx`):**
+   - Zavedena přímá reference na element obrázku: `const stripImgRef = useRef<HTMLImageElement>(null)`.
+   - Všechny výpočty kliknutí i tažení myší (`onPointerDown`, `handlePointerMove`) nově striktně počítají `rect = stripImgRef.current.getBoundingClientRect()`.
+   - Bounding rect obrázku přesně na setinu pixelu odpovídá viditelnému foliu bez ohledu na okolní prvky.
+2. **Eliminace ořezu a deformace kontejneru (`app/admin/page.tsx`):**
+   - Obalující kontejner upraven na `relative inline-block` s `line-height: 0` bez `overflow-hidden` a bez omezujícího `max-h`.
+   - Výškové omezení `max-h-[calc(100vh-230px)]` bylo přesunuto přímo na element `<img>` a byl z něj odstraněn `object-contain`. Prohlížeč tak snímek přirozeně škáluje při zachování nativního poměru stran bez černých okrajů a letterboxingu.
+   - Kontejner i překryvná SVG maska se těsně přimknou k hranám obrázku (`100 %` šířky a výšky plátna = `100 %` šířky a výšky rukopisu).
+3. **Harmonizace stylů v herním zobrazení (`app/globals.css`, `app/page.tsx`):**
+   - Z `.spotlight-stage img` odstraněn `object-fit: contain;`, takže stage i v herním okně dokonale kopíruje rozměry obrázku.
+   - Zdokonaleno chování zoomování kolečkem myši: plynulý rozsah 1,0× až 4,0×, absolutní izolace od posunu hlavní stránky a automatické vrácení na celé folio při zmenšení na 1,0×.
+4. **Vizuální a databázová kalibrace existujících miniher:**
+   - **Olomouc M III 6, 363r** (*„Et sic est finis huius operis, sit laus et gloria Deo in altissimis“*):
+     Přesné souřadnice červeného kolofonu nastaveny na `x: 44.5 %, y: 70.8 %, w: 31.0 %, h: 7.5 %` (dříve 79.2 %).
+   - **Olomouc M IV 2, 306** (*„Na velikú noc daj mazanec a beranec / mazanecz a beranecz“*):
+     Červený kolofon v notové osnově na pravé straně zkalibrován na `x: 65.0 %, y: 36.5 %, w: 27.0 %, h: 7.5 %` (dříve 48.0 %).
+   - Vizuálně ověřeno složením SVG overlaye a výřezů ve vysokém rozlišení. Žlutý iluminovaný rámeček nyní sedí naprosto přesně na obou kartách.

@@ -5522,9 +5522,16 @@ function GameModal({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isLoupeActiveRef.current) return;
-      const delta = e.deltaY < 0 ? 0.2 : -0.2;
-      setZoomLevel((z) => Math.max(1.2, Math.min(4.0, Math.round((z + delta) * 10) / 10)));
+      const delta = e.deltaY < 0 ? 0.25 : -0.25;
+      setIsLoupeActive(true);
+      setZoomLevel((z) => {
+        const next = Math.max(1.0, Math.min(4.0, Math.round((z + delta) * 10) / 10));
+        if (next <= 1.0) {
+          setIsLoupeActive(false);
+          setPanOffset({ x: 0, y: 0 });
+        }
+        return next;
+      });
     };
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => {

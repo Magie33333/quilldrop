@@ -312,7 +312,6 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   max-width: 100%;
   width: auto;
   height: auto;
-  object-fit: contain;
   user-select: none;
   pointer-events: none;
 }

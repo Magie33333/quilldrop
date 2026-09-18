@@ -308,6 +308,7 @@ export default function AdminPage() {
   const [rightSidebarTab, setRightSidebarTab] = useState<"card" | "minigames">("card");
   const [activeStripIdx, setActiveStripIdx] = useState<number>(0);
   const stripContainerRef = useRef<HTMLDivElement>(null);
+  const stripImgRef = useRef<HTMLImageElement>(null);
   const [stripDrag, setStripDrag] = useState<{
     action: "move" | "resize-se" | "resize-e" | "resize-s";
     stripIdx: number;
@@ -323,8 +324,9 @@ export default function AdminPage() {
     if (!stripDrag) return;
 
     const handlePointerMove = (e: PointerEvent) => {
-      if (!stripContainerRef.current) return;
-      const rect = stripContainerRef.current.getBoundingClientRect();
+      const imgEl = stripImgRef.current;
+      if (!imgEl) return;
+      const rect = imgEl.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
 
       const deltaPctX = ((e.clientX - stripDrag.startX) / rect.width) * 100;
@@ -2504,8 +2506,10 @@ export default function AdminPage() {
                   <div
                     ref={stripContainerRef}
                     onPointerDown={(e) => {
-                      if (!stripContainerRef.current) return;
-                      const rect = stripContainerRef.current.getBoundingClientRect();
+                      const imgEl = stripImgRef.current;
+                      if (!imgEl) return;
+                      const rect = imgEl.getBoundingClientRect();
+                      if (rect.width <= 0 || rect.height <= 0) return;
                       const clickX = Math.max(0, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
                       const clickY = Math.max(0, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
 
@@ -2552,12 +2556,14 @@ export default function AdminPage() {
                         });
                       }
                     }}
-                    className="relative border border-[#4a3928] shadow-2xl bg-[#0f0d0b] max-h-[calc(100vh-130px)] select-none cursor-crosshair overflow-hidden"
+                    className="relative inline-block border border-[#4a3928] shadow-2xl bg-[#0f0d0b] select-none cursor-crosshair"
+                    style={{ lineHeight: 0 }}
                   >
                     <img
+                      ref={stripImgRef}
                       src={selectedCard.image_url}
                       alt="Folio pro vyznačení řádků"
-                      className="max-h-[calc(100vh-130px)] max-w-full w-auto h-auto object-contain block pointer-events-none select-none"
+                      className="max-h-[calc(100vh-230px)] max-w-full w-auto h-auto block pointer-events-none select-none"
                     />
 
                     {/* Tmavá iluminovaná maska přes rukopis */}
