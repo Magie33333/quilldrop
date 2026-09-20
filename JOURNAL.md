@@ -666,3 +666,30 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
 3. **Zpřehlednění seznamu miniher v postranním panelu:**
    - V seznamu miniher u vybrané karty byl odstraněn štítek obtížnosti, čímž se rozhraní odlehčilo a zůstaly pouze klíčové informace (typ disciplíny, jazyková lokalizace CZ/EN a akční tlačítka).
 
+---
+
+## 📅 Záznam ze dne 20. 9. 2026 (Pokračování) — Systém Výzev: Dynamické kategorie, vizuální builder podmínek, obrázky, lupa na 1000 % a ruční dokončení minihry
+
+**Cíl etapy:** Zpřístupnit kompletní správu kategorií výzev, vytvořit vizuální nástroj pro definování herních podmínek výzev (s podporou více podmínek na výzvu), přidat obrázky výzev, navýšit přiblížení paleografické lupy až na 1000 % a umožnit hráči v klidu si přečíst řešení minihry s ručním odkliknutím.
+
+**Provedené úpravy:**
+1. **Správa a plné zobrazení kategorií výzev (`app/admin/page.tsx`, `app/data/trophies.ts`):**
+   - Odstraněno usekávání názvů kategorií (`truncate`) – tlačítka i filtry se nyní přizpůsobují celému textu.
+   - Implementován samostatný panel pro správu kategorií výzev: možnost vytvářet nové kategorie, editovat existující, mazat nepoužívané a obnovovat výchozí sadu (`DEFAULT_TROPHY_CATEGORIES`).
+   - Kategorie se ukládají a načítají dynamicky v adminu i ve hře.
+2. **Vizuální builder herních podmínek (Multi-podmínky & AND pravidlo):**
+   - Rozšířen model podmínek o více než 20 typů pokrývajících celou herní mechaniku: sbírka karet, rarity (Legendary, Rare, Uncommon), skriptoria/města, otevřené balíčky, florény, darování karet, vyřešené minihry (transkripce, šifry, písma, nálada), použití lupy na maximum (1000 %), písařský level, celkové XP, denní streak, dílky mozaiky, přečtené glosy i noční písař (22:00–04:00).
+   - V administraci vytvořeno názorné prostředí pro skládání podmínek s výběrem typu, kontextovým zadáním hodnot (čísla s jednotkami nebo výběrové seznamy) a možností přidat libovolný počet podmínek (pravidlo AND).
+3. **Obrázky výzev:**
+   - Výzvy nyní podporují obrázek (`image_url`) zadaný přes URL nebo nahraný přímo ze souboru (Base64).
+   - V administraci je k dispozici živý náhled v písařském rámečku a miniatura v seznamu výzev.
+   - Ve hře (`app/page.tsx` & `app/globals.css`) se obrázek výzvy zobrazuje ve stylovém rámečku `.trophy-image-box` (47×55 px s dvojitým zlatým lemem).
+4. **Paleografická lupa na 1000 % (`app/page.tsx`):**
+   - Maximální zoom navýšen z 500 % na 1000 % (`10.0`) na kolečku myši i tlačítku `+`.
+   - Implementován detektor maximálního přiblížení `onLoupeMax` pro odemčení trofeje *„Ostříží zrak / Paleografický mikroskop“*.
+5. **Ruční odkliknutí po dokončení minihry:**
+   - Zrušeno automatické zavírání minihry přes časovač.
+   - Přidáno zlaté iluminované tlačítko *„Rozumím, pokračovat k odměně →“* (nebo *„Zavřít výzvu“* při neúspěchu).
+   - Případné oznámení o novém levelu (`pendingGameLevel`) je odloženo a zobrazí se až po ručním zavření minihry hráčem.
+
+

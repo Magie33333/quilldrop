@@ -68,10 +68,11 @@ import {
 import {
   type TrophyItem,
   type TrophyDifficulty,
-  type TrophyCategory,
+  type TrophyCategoryItem,
   TROPHY_DIFFICULTY_META,
-  TROPHY_CATEGORY_META,
   getStoredTrophies,
+  getStoredTrophyCategories,
+  evaluateTrophy,
 } from "./data/trophies";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
@@ -148,6 +149,7 @@ type GameState = {
   puzzle: number;
   trophies: string[];
   trophyTimestamps?: Record<string, string>;
+  loupeMaxUsed?: boolean;
   lastPlayed: string;
   gamesPlayed: number;
   dailyGamesHistory?: ("success" | "fail")[];
@@ -186,6 +188,7 @@ const INITIAL_STATE: GameState = {
   puzzle: 1,
   trophies: ["first-spark"],
   trophyTimestamps: { "first-spark": new Date().toISOString() },
+  loupeMaxUsed: false,
   lastPlayed: "",
   gamesPlayed: 0,
   dailyGamesHistory: [],
@@ -208,6 +211,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   puzzle: 1,
   trophies: [],
   trophyTimestamps: {},
+  loupeMaxUsed: false,
   lastPlayed: "",
   gamesPlayed: 0,
   dailyGamesHistory: [],
@@ -291,6 +295,7 @@ function loadState(userId?: string): GameState {
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
       trophyTimestamps: saved?.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
+      loupeMaxUsed: saved?.loupeMaxUsed || false,
       dailyGamesHistory: Array.isArray(saved?.dailyGamesHistory) ? saved.dailyGamesHistory : [],
       completedQuestionsToday: saved?.completedQuestionsToday || [],
       dailyTradedPartners: saved?.dailyTradedPartners || [],
@@ -387,6 +392,7 @@ export default function Home() {
   const [mapInitialPlace, setMapInitialPlace] = useState<ScriptoriumPlace | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [pendingPackLevel, setPendingPackLevel] = useState<number | null>(null);
+  const [pendingGameLevel, setPendingGameLevel] = useState<number | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
   const [curioIndex, setCurioIndex] = useState(0);
@@ -1279,7 +1285,7 @@ export default function Home() {
         trophies: nextTrophies,
       }, earnedXp));
       if (nextLevel > levelForXp(state.xp)) {
-        window.setTimeout(() => setLevelUp(nextLevel), activeQuestion?.explanation ? 3200 : 1300);
+        setPendingGameLevel(nextLevel);
       } else {
         setToast(lang === "en" ? `Correct! ${qualityLabel(quality, lang)} is ready to open.` : `Správně! ${qualityLabel(quality, lang)} je připraven k otevření.`);
       }
@@ -1303,13 +1309,17 @@ export default function Home() {
           : `Výzva zmařena — dnes zbývá ${remChallenges} výzev.`
       );
     }
-    const delay = correct && activeQuestion?.explanation ? 3200 : 1400;
-    setTimeout(() => {
-      setGame(null);
-      setActiveQuestion(null);
-      setAnswer(null);
-      setGameStep(0);
-    }, delay);
+  };
+
+  const handleCloseGameModal = () => {
+    setGame(null);
+    setActiveQuestion(null);
+    setAnswer(null);
+    setGameStep(0);
+    if (pendingGameLevel) {
+      setLevelUp(pendingGameLevel);
+      setPendingGameLevel(null);
+    }
   };
 
   const resetDemo = () => {
@@ -1842,8 +1852,21 @@ export default function Home() {
             answer={answer}
             step={gameStep}
             setStep={setGameStep}
-            onClose={() => { setGame(null); setActiveQuestion(null); setAnswer(null); setGameStep(0); }}
+            onClose={handleCloseGameModal}
             onAnswer={finishGame}
+            onLoupeMax={() => {
+              if (!state.loupeMaxUsed || !state.trophies.includes("loupe-max")) {
+                setState((s) => ({
+                  ...s,
+                  loupeMaxUsed: true,
+                  trophies: s.trophies.includes("loupe-max") ? s.trophies : [...s.trophies, "loupe-max"],
+                  trophyTimestamps: {
+                    ...(s.trophyTimestamps || {}),
+                    "loupe-max": s.trophyTimestamps?.["loupe-max"] || new Date().toISOString(),
+                  },
+                }));
+              }
+            }}
             lang={lang}
           />
         )}
@@ -3091,88 +3114,16 @@ function TrophiesScreen({
 }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "earned" | "locked">("all");
   const [diffFilter, setDiffFilter] = useState<"all" | TrophyDifficulty>("all");
-  const [catFilter, setCatFilter] = useState<"all" | TrophyCategory>("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
 
   const storedTrophies: TrophyItem[] = useMemo(() => getStoredTrophies(), []);
+  const storedCategories: TrophyCategoryItem[] = useMemo(() => getStoredTrophyCategories(), []);
 
   function checkTrophy(t: TrophyItem): boolean {
-    if (state.trophies.includes(t.id)) return true;
-    switch (t.id) {
-      case "first-spark":
-        return state.packsOpened >= 1;
-      case "first-pack":
-        return Object.keys(state.collection).length >= 5;
-      case "collector":
-        return Object.keys(state.collection).length >= 10;
-      case "bibliophile":
-        return Object.keys(state.collection).length >= 20;
-      case "streak-7":
-        return state.streak >= 7;
-      case "streak":
-        return state.streak >= 16 || state.puzzle >= 16;
-      case "prague-scholar":
-        return (
-          cards.filter(
-            (c) =>
-              state.collection[c.id] &&
-              (c.place?.toLowerCase().includes("praha") ||
-                c.manuscript?.toLowerCase().includes("praha") ||
-                c.manuscript?.toLowerCase().includes("nkp"))
-          ).length >= 3
-        );
-      case "vyssi-brod":
-        return cards.some(
-          (c) =>
-            state.collection[c.id] &&
-            (c.place?.toLowerCase().includes("brod") ||
-              c.manuscript?.toLowerCase().includes("vb") ||
-              c.manuscript?.toLowerCase().includes("brod"))
-        );
-      case "cipher-breaker":
-        return cards.some(
-          (c) =>
-            state.collection[c.id] &&
-            ((c as any).features?.includes("Šifra") ||
-              (c as any).colophons?.features?.includes("Šifra") ||
-              c.rarity === "Rare" ||
-              c.rarity === "Epic")
-        );
-      case "verse-lover":
-        return cards.some(
-          (c) =>
-            state.collection[c.id] &&
-            ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše"))
-        );
-      case "initial-master":
-        return cards.some(
-          (c) =>
-            state.collection[c.id] &&
-            ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála"))
-        );
-      case "rare-seeker":
-        return cards.some(
-          (c) =>
-            state.collection[c.id] &&
-            (c.rarity === "Rare" || c.rarity === "Epic" || c.rarity === "Legendary" || c.rarity === "Unique")
-        );
-      case "unique":
-        return cards.some((c) => state.collection[c.id] && c.rarity === "Unique");
-      case "paleographer":
-        return state.gamesPlayed >= 5;
-      case "philanthropist":
-        return state.trophies.includes("philanthropist");
-      case "mosaic-master":
-        return state.puzzle >= 16 || Boolean(state.gallery && state.gallery.length > 0);
-      default:
-        if (t.requirement_type === "packs_opened") return state.packsOpened >= Number(t.requirement_value || 1);
-        if (t.requirement_type === "collection_count") return Object.keys(state.collection).length >= Number(t.requirement_value || 5);
-        if (t.requirement_type === "streak") return state.streak >= Number(t.requirement_value || 7);
-        if (t.requirement_type === "games_played") return state.gamesPlayed >= Number(t.requirement_value || 5);
-        if (t.requirement_type === "puzzle_completed") return state.puzzle >= 16;
-        if (t.requirement_type === "rarity_owned") return cards.some((c) => state.collection[c.id] && c.rarity === t.requirement_value);
-        if (t.requirement_type === "gift_sent") return state.trophies.includes(t.id);
-        return state.trophies.includes(t.id);
-    }
+    return evaluateTrophy(t, state, cards, {
+      nowHour: new Date().getHours(),
+      loupeMaxUsed: state.loupeMaxUsed,
+    });
   }
 
   function formatTrophyTimestamp(iso: string | undefined): string {
@@ -3293,16 +3244,15 @@ function TrophiesScreen({
           >
             {lang === "en" ? "All" : "Všechny"}
           </button>
-          {(["collection", "study", "palaeography", "community", "secrets"] as const).map((cat) => {
-            const meta = TROPHY_CATEGORY_META[cat];
+          {storedCategories.map((cat) => {
             return (
               <button
-                key={cat}
+                key={cat.id}
                 type="button"
-                onClick={() => setCatFilter(cat)}
-                className={`trophy-filter-btn ${catFilter === cat ? "active" : ""}`}
+                onClick={() => setCatFilter(cat.id)}
+                className={`trophy-filter-btn ${catFilter === cat.id ? "active" : ""}`}
               >
-                {meta.icon} {lang === "en" ? meta.label_en : meta.label_cs}
+                <span>{cat.icon}</span> <span>{lang === "en" ? cat.label_en : cat.label_cs}</span>
               </button>
             );
           })}
@@ -3318,14 +3268,24 @@ function TrophiesScreen({
         ) : (
           filteredTrophies.map((t) => {
             const diffMeta = TROPHY_DIFFICULTY_META[t.difficulty] || TROPHY_DIFFICULTY_META.medium;
-            const catMeta = TROPHY_CATEGORY_META[t.category] || TROPHY_CATEGORY_META.collection;
+            const catMeta = storedCategories.find((c) => c.id === t.category) || {
+              label_cs: t.category,
+              label_en: t.category,
+              icon: "📜",
+            };
             const title = lang === "en" ? (t.title_en || t.title) : t.title;
             const text = lang === "en" ? (t.text_en || t.text) : t.text;
             const ts = state.trophyTimestamps?.[t.id];
 
             return (
               <article key={t.id} className={t.earned ? "earned" : "locked"}>
-                <div className="illuminated-initial">{t.initial}</div>
+                {t.image_url ? (
+                  <div className="trophy-image-box">
+                    <img src={t.image_url} alt={title} />
+                  </div>
+                ) : (
+                  <div className="illuminated-initial">{t.initial}</div>
+                )}
                 <div className="min-w-0 pr-2">
                   <div className="flex flex-wrap items-center gap-1.5 mb-1">
                     <strong>{title}</strong>
@@ -5459,6 +5419,7 @@ function GameModal({
   onClose,
   onAnswer,
   lang = "cs",
+  onLoupeMax,
 }: {
   kind: GameKind;
   question: QuestionData;
@@ -5469,6 +5430,7 @@ function GameModal({
   onClose: () => void;
   onAnswer: (correct: boolean) => void;
   lang?: Language;
+  onLoupeMax?: () => void;
 }) {
   const challengeCard =
     (question.card_id
@@ -5589,10 +5551,13 @@ function GameModal({
       const delta = e.deltaY < 0 ? 0.25 : -0.25;
       setIsLoupeActive(true);
       setZoomLevel((z) => {
-        const next = Math.max(1.0, Math.min(5.0, Math.round((z + delta) * 10) / 10));
+        const next = Math.max(1.0, Math.min(10.0, Math.round((z + delta) * 10) / 10));
         if (next <= 1.0) {
           setIsLoupeActive(false);
           setPanOffset({ x: 0, y: 0 });
+        }
+        if (next >= 9.9) {
+          onLoupeMax?.();
         }
         return next;
       });
@@ -5686,7 +5651,15 @@ function GameModal({
                       </span>
                       <button
                         type="button"
-                        onClick={() => setZoomLevel((z) => Math.min(5.0, Math.round((z + 0.3) * 10) / 10))}
+                        onClick={() =>
+                          setZoomLevel((z) => {
+                            const next = Math.min(10.0, Math.round((z + 0.3) * 10) / 10);
+                            if (next >= 9.9) {
+                              onLoupeMax?.();
+                            }
+                            return next;
+                          })
+                        }
                         className="w-5 h-5 rounded hover:bg-[#2e2318] text-[#ffd580] flex items-center justify-center font-bold text-xs cursor-pointer"
                         title={lang === "en" ? "Zoom in" : "Přiblížit (+)"}
                       >
@@ -5937,11 +5910,23 @@ function GameModal({
               </p>
             )}
             {qExplanation && <p className="mt-1">{qExplanation}</p>}
+            <div className="mt-3 flex justify-end">
+              <button type="button" className="game-continue-btn" onClick={onClose}>
+                {lang === "en" ? "Continue & Claim Reward →" : "Rozumím, pokračovat k odměně →"}
+              </button>
+            </div>
           </div>
         )}
 
         {answer === "wrong" && !isTranscription && (
-          <p className="wrong-answer">{lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}</p>
+          <div className="mt-3">
+            <p className="wrong-answer">{lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}</p>
+            <div className="mt-2 flex justify-end">
+              <button type="button" className="game-continue-btn" onClick={onClose}>
+                {lang === "en" ? "Close Challenge" : "Zavřít výzvu"}
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 0 && !answer && qHint && (

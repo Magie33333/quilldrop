@@ -60,13 +60,18 @@ import {
 } from "../data/illuminations";
 import {
   DEFAULT_TROPHIES,
+  DEFAULT_TROPHY_CATEGORIES,
   type TrophyItem,
   type TrophyDifficulty,
-  type TrophyCategory,
+  type TrophyCategoryItem,
+  type TrophyCondition,
+  type TrophyConditionType,
   TROPHY_DIFFICULTY_META,
-  TROPHY_CATEGORY_META,
+  TROPHY_CONDITION_META,
   getStoredTrophies,
   saveStoredTrophies,
+  getStoredTrophyCategories,
+  saveStoredTrophyCategories,
 } from "../data/trophies";
 import HeuristCatalogModal from "./HeuristCatalogModal";
 import StudioHelpModal from "./StudioHelpModal";
@@ -851,9 +856,20 @@ export default function AdminPage() {
     setShowGameForm(true);
   }
 
-  // Správa výzev / achievementů
+  // Správa výzev / achievementů a kategorií
   const [showAchievementsModal, setShowAchievementsModal] = useState(false);
   const [trophiesList, setTrophiesList] = useState<TrophyItem[]>(DEFAULT_TROPHIES);
+  const [trophiesCategories, setTrophiesCategories] = useState<TrophyCategoryItem[]>(DEFAULT_TROPHY_CATEGORIES);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<TrophyCategoryItem | null>(null);
+  const [categoryForm, setCategoryForm] = useState<TrophyCategoryItem>({
+    id: "",
+    label_cs: "",
+    label_en: "",
+    icon: "📜",
+    description_cs: "",
+    description_en: "",
+  });
   const [editingTrophy, setEditingTrophy] = useState<TrophyItem | null>(null);
   const [trophySearch, setTrophySearch] = useState("");
   const [trophyDiffFilter, setTrophyDiffFilter] = useState("all");
@@ -867,21 +883,34 @@ export default function AdminPage() {
     text_en: "",
     xp: 75,
     initial: "🏆",
+    image_url: "",
     difficulty: "easy",
     category: "collection",
-    requirement_type: "custom",
-    requirement_value: "",
+    conditions: [{ type: "collection_count", value: 5 }],
+    requirement_type: "collection_count",
+    requirement_value: "5",
   });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setTrophiesList(getStoredTrophies());
+      setTrophiesCategories(getStoredTrophyCategories());
     }
   }, []);
 
   function handleSelectTrophyToEdit(t: TrophyItem) {
     setEditingTrophy(t);
-    setTrophyForm({ ...t });
+    const conditions =
+      t.conditions && t.conditions.length > 0
+        ? t.conditions
+        : t.requirement_type
+        ? [{ type: t.requirement_type as any, value: t.requirement_value, target: String(t.requirement_value || "") }]
+        : [{ type: "collection_count" as const, value: 5 }];
+    setTrophyForm({
+      ...t,
+      image_url: t.image_url || "",
+      conditions,
+    });
     setTrophySuccessMsg("");
   }
 
@@ -895,10 +924,12 @@ export default function AdminPage() {
       text_en: "",
       xp: 75,
       initial: "🏆",
+      image_url: "",
       difficulty: "easy",
-      category: "collection",
-      requirement_type: "custom",
-      requirement_value: "",
+      category: trophiesCategories[0]?.id || "collection",
+      conditions: [{ type: "collection_count", value: 5 }],
+      requirement_type: "collection_count",
+      requirement_value: "5",
     });
     setTrophySuccessMsg("");
   }
@@ -918,7 +949,9 @@ export default function AdminPage() {
       text: trophyForm.text.trim(),
       text_en: trophyForm.text_en.trim() || trophyForm.text.trim(),
       initial: trophyForm.initial.trim() || "🏆",
+      image_url: trophyForm.image_url?.trim() || undefined,
       xp: Number(trophyForm.xp) || 100,
+      conditions: trophyForm.conditions || [],
     };
 
     let nextList: TrophyItem[];
@@ -950,6 +983,109 @@ export default function AdminPage() {
     setTrophiesList(DEFAULT_TROPHIES);
     saveStoredTrophies(DEFAULT_TROPHIES);
     handleNewTrophyForm();
+  }
+
+  // Kategorie
+  function handleNewCategory() {
+    setEditingCategory(null);
+    setCategoryForm({
+      id: `cat-${Date.now().toString(36)}`,
+      label_cs: "",
+      label_en: "",
+      icon: "✨",
+      description_cs: "",
+      description_en: "",
+    });
+  }
+
+  function handleEditCategory(cat: TrophyCategoryItem) {
+    setEditingCategory(cat);
+    setCategoryForm({ ...cat });
+  }
+
+  function handleSaveCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!categoryForm.label_cs.trim()) {
+      alert("Vyplňte prosím český název kategorie.");
+      return;
+    }
+    const cleanId = categoryForm.id.trim() || `cat-${Date.now().toString(36)}`;
+    const updated: TrophyCategoryItem = {
+      ...categoryForm,
+      id: cleanId,
+      label_cs: categoryForm.label_cs.trim(),
+      label_en: categoryForm.label_en.trim() || categoryForm.label_cs.trim(),
+      icon: categoryForm.icon.trim() || "📜",
+      description_cs: categoryForm.description_cs?.trim() || "",
+      description_en: categoryForm.description_en?.trim() || "",
+    };
+
+    let nextCats: TrophyCategoryItem[];
+    if (editingCategory) {
+      nextCats = trophiesCategories.map((c) => (c.id === editingCategory.id ? updated : c));
+    } else {
+      nextCats = [...trophiesCategories, updated];
+    }
+    setTrophiesCategories(nextCats);
+    saveStoredTrophyCategories(nextCats);
+    setEditingCategory(null);
+    handleNewCategory();
+  }
+
+  function handleDeleteCategory(catId: string) {
+    if (!confirm("Opravdu chcete tuto kategorii smazat?")) return;
+    const nextCats = trophiesCategories.filter((c) => c.id !== catId);
+    setTrophiesCategories(nextCats);
+    saveStoredTrophyCategories(nextCats);
+    if (editingCategory?.id === catId) {
+      handleNewCategory();
+    }
+    if (trophyForm.category === catId && nextCats[0]) {
+      setTrophyForm((prev) => ({ ...prev, category: nextCats[0].id }));
+    }
+  }
+
+  function handleResetCategories() {
+    if (!confirm("Obnovit výchozí kategorie výzev?")) return;
+    setTrophiesCategories(DEFAULT_TROPHY_CATEGORIES);
+    saveStoredTrophyCategories(DEFAULT_TROPHY_CATEGORIES);
+    handleNewCategory();
+  }
+
+  function handleTrophyImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setTrophyForm((prev) => ({ ...prev, image_url: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleAddCondition() {
+    setTrophyForm((prev) => ({
+      ...prev,
+      conditions: [
+        ...(prev.conditions || []),
+        { type: "collection_count", value: 5 },
+      ],
+    }));
+  }
+
+  function handleRemoveCondition(index: number) {
+    setTrophyForm((prev) => ({
+      ...prev,
+      conditions: (prev.conditions || []).filter((_, i) => i !== index),
+    }));
+  }
+
+  function handleUpdateCondition(index: number, updated: TrophyCondition) {
+    setTrophyForm((prev) => {
+      const next = [...(prev.conditions || [])];
+      next[index] = updated;
+      return { ...prev, conditions: next };
+    });
   }
 
   // Kontrola přihlášení při načtení
@@ -5688,9 +5824,12 @@ export default function AdminPage() {
                   <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
                     {trophiesList.length} výzev v systému
                   </span>
+                  <span className="text-[11px] bg-[#1f1913] text-[#a89078] px-2 py-0.5 rounded border border-[#382b1d]">
+                    {trophiesCategories.length} kategorií
+                  </span>
                 </div>
                 <p className="text-xs text-[#8c7b6d] mt-1">
-                  Herní milníky, sběratelské pocty a paleografické zkoušky s odstupňovanou obtížností (Lehké, Střední, Těžké, Nemožné) a odpovídajícími XP odměnami.
+                  Herní milníky, sběratelské pocty a paleografické zkoušky s odstupňovanou obtížností, obrázky a libovolným počtem herních podmínek.
                 </p>
               </div>
               <button
@@ -5750,6 +5889,36 @@ export default function AdminPage() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Kategorie filtry */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setTrophyCatFilter("all")}
+                      className={`whitespace-nowrap px-2 py-0.5 rounded transition cursor-pointer border ${
+                        trophyCatFilter === "all"
+                          ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                          : "bg-[#18130f] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                      }`}
+                    >
+                      Všechny kategorie
+                    </button>
+                    {trophiesCategories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setTrophyCatFilter(cat.id)}
+                        className={`whitespace-nowrap px-2 py-0.5 rounded transition cursor-pointer border flex items-center gap-1 ${
+                          trophyCatFilter === cat.id
+                            ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                            : "bg-[#18130f] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label_cs}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Rolovatelný seznam výzev */}
@@ -5768,7 +5937,11 @@ export default function AdminPage() {
                     .map((t) => {
                       const isSelected = editingTrophy?.id === t.id;
                       const diffMeta = TROPHY_DIFFICULTY_META[t.difficulty] || TROPHY_DIFFICULTY_META.medium;
-                      const catMeta = TROPHY_CATEGORY_META[t.category] || TROPHY_CATEGORY_META.collection;
+                      const catMeta = trophiesCategories.find((c) => c.id === t.category) || {
+                        label_cs: t.category,
+                        icon: "📜",
+                      };
+                      const condCount = t.conditions?.length || (t.requirement_type ? 1 : 0);
 
                       return (
                         <div
@@ -5780,8 +5953,12 @@ export default function AdminPage() {
                               : "bg-[#16120e] border-[#2e2721] hover:border-[#4a3928] hover:bg-[#1e1813]"
                           }`}
                         >
-                          <div className="w-9 h-9 rounded bg-[#1f1913] border border-[#4a3928] flex items-center justify-center font-bold text-[#ffd580] text-sm shrink-0">
-                            {t.initial}
+                          <div className="w-10 h-10 rounded bg-[#1f1913] border border-[#4a3928] flex items-center justify-center font-bold text-[#ffd580] text-sm shrink-0 overflow-hidden">
+                            {t.image_url ? (
+                              <img src={t.image_url} alt={t.title} className="w-full h-full object-cover" />
+                            ) : (
+                              t.initial
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1 mb-0.5">
@@ -5795,8 +5972,14 @@ export default function AdminPage() {
                             <p className="text-[10.5px] text-[#8c7b6d] truncate">{t.text}</p>
                             <div className="flex items-center justify-between gap-1 mt-1 text-[10px]">
                               <span className="text-[#ffd580] font-bold">+{t.xp} XP</span>
-                              <span className="text-[#7d6f62] flex items-center gap-0.5">
-                                {catMeta.icon} {catMeta.label_cs}
+                              <span className="text-[#7d6f62] flex items-center gap-1">
+                                <span>{catMeta.icon}</span>
+                                <span>{catMeta.label_cs}</span>
+                                {condCount > 1 && (
+                                  <span className="text-[#d4af37] bg-[#292017] px-1 rounded">
+                                    ⚡ {condCount} podm.
+                                  </span>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -5806,241 +5989,578 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* PRAVÝ PANEL: Editor výzvy */}
+              {/* PRAVÝ PANEL: Editor výzvy a Správa kategorií */}
               <div className="md:col-span-7 flex flex-col min-h-0 bg-[#17130f] p-5 overflow-y-auto">
-                <form onSubmit={handleSaveTrophy} className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-[#2e2721]">
-                    <div>
-                      <h4 className="font-serif font-bold text-sm text-[#ffd580]">
-                        {editingTrophy ? "Úprava výzvy" : "Nová herní výzva"}
-                      </h4>
-                      <p className="text-xs text-[#8c7b6d]">
-                        {editingTrophy ? `ID: ${editingTrophy.id}` : "Zadejte parametry nové výzvy."}
-                      </p>
+                {/* SUB-MODÁL / PANEL: SPRÁVA KATEGORIÍ */}
+                {showCategoryManager ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#2e2721]">
+                      <div>
+                        <h4 className="font-serif font-bold text-sm text-[#ffd580] flex items-center gap-2">
+                          <span>⚙️</span> Správa tematických kategorií
+                        </h4>
+                        <p className="text-xs text-[#8c7b6d]">
+                          Vytvářejte, upravujte a mazejte kategorie výzev. Vše se okamžitě projeví ve hře i v adminu.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleResetCategories}
+                          className="text-xs text-[#8c7b6d] hover:text-[#ffd580] px-2 py-1 rounded hover:bg-[#241c16] transition cursor-pointer"
+                          title="Obnovit výchozí kategorie"
+                        >
+                          Obnovit výchozí
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowCategoryManager(false)}
+                          className="text-xs bg-[#241c16] hover:bg-[#32261e] text-[#ffd580] px-2.5 py-1 rounded transition cursor-pointer"
+                        >
+                          Zpět k výzvám
+                        </button>
+                      </div>
                     </div>
-                    {trophySuccessMsg && (
-                      <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/70 border border-emerald-700/60 px-2.5 py-1 rounded">
-                        {trophySuccessMsg}
+
+                    {/* Formulář kategorie */}
+                    <form onSubmit={handleSaveCategory} className="p-3 bg-[#130f0c] border border-[#3b2e21] rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#c9a96e]">
+                          {editingCategory ? `Úprava kategorie: ${editingCategory.label_cs}` : "Nová tematická kategorie"}
+                        </span>
+                        {editingCategory && (
+                          <button
+                            type="button"
+                            onClick={handleNewCategory}
+                            className="text-[11px] text-[#ffd580] hover:underline"
+                          >
+                            Zrušit úpravu
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-[#a89078] mb-0.5">Ikona / Emoji *</label>
+                          <input
+                            type="text"
+                            required
+                            maxLength={4}
+                            value={categoryForm.icon}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                            className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-center text-[#e8ded1] font-bold focus:outline-none focus:border-[#d4af37]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#a89078] mb-0.5">Identifikátor (ID)</label>
+                          <input
+                            type="text"
+                            value={categoryForm.id}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, id: e.target.value })}
+                            placeholder="např. secrets"
+                            className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#a89078] mb-0.5">Název (česky) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={categoryForm.label_cs}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, label_cs: e.target.value })}
+                            placeholder="např. Tajemství"
+                            className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-[#a89078] mb-0.5">Title (English)</label>
+                          <input
+                            type="text"
+                            value={categoryForm.label_en}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, label_en: e.target.value })}
+                            placeholder="e.g. Secrets"
+                            className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-[#a89078] mb-0.5">Podrobný popis kategorie</label>
+                        <input
+                          type="text"
+                          value={categoryForm.description_cs || ""}
+                          onChange={(e) => setCategoryForm({ ...categoryForm, description_cs: e.target.value })}
+                          placeholder="O čem výzvy v této kategorii pojednávají..."
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          className="px-3.5 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs rounded shadow transition cursor-pointer"
+                        >
+                          {editingCategory ? "Uložit změny kategorie" : "Vytvořit novou kategorii"}
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Seznam existujících kategorií */}
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-bold text-[#c9a96e] block">
+                        Dostupné kategorie ({trophiesCategories.length})
                       </span>
-                    )}
-                  </div>
-
-                  {/* Názvy CZ & EN */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Název výzvy (česky) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={trophyForm.title}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, title: e.target.value })}
-                        placeholder="např. Lamač pečetí"
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
-                        Title (English)
-                      </label>
-                      <input
-                        type="text"
-                        value={trophyForm.title_en}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, title_en: e.target.value })}
-                        placeholder="e.g. Seal Breaker"
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Popis výzvy CZ & EN */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Popis / úkol výzvy (česky) *
-                      </label>
-                      <textarea
-                        rows={2}
-                        required
-                        value={trophyForm.text}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, text: e.target.value })}
-                        placeholder="Získejte alespoň 5 různých kolofonů do své sbírky..."
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
-                        Description (English)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={trophyForm.text_en}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, text_en: e.target.value })}
-                        placeholder="Collect at least 5 different colophons in your library..."
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Volba obtížnosti */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1.5">
-                      Obtížnost výzvy & automatická XP hladina
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {(["easy", "medium", "hard", "impossible"] as const).map((diff) => {
-                        const meta = TROPHY_DIFFICULTY_META[diff];
-                        const isSel = trophyForm.difficulty === diff;
+                      {trophiesCategories.map((cat) => {
+                        const inUseCount = trophiesList.filter((t) => t.category === cat.id).length;
                         return (
-                          <button
-                            key={diff}
-                            type="button"
-                            onClick={() => {
-                              setTrophyForm({
-                                ...trophyForm,
-                                difficulty: diff,
-                                xp: meta.defaultXp,
-                              });
-                            }}
-                            className={`py-2 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
-                              isSel
-                                ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37] shadow-xs"
-                                : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
-                            }`}
+                          <div
+                            key={cat.id}
+                            className="p-2.5 bg-[#14100c] border border-[#2e2721] rounded-lg flex items-center justify-between gap-3"
                           >
-                            <span className="block font-bold">{meta.label_cs}</span>
-                            <span className="text-[10px] opacity-75">{meta.defaultXp} XP</span>
-                          </button>
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-xl shrink-0">{cat.icon}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-[#e8ded1]">{cat.label_cs}</span>
+                                  <span className="text-[10px] text-[#7d6f62]">({cat.label_en})</span>
+                                  <span className="text-[10px] bg-[#221a14] text-[#c9a96e] px-1.5 py-0.2 rounded border border-[#3b2e21]">
+                                    ID: {cat.id}
+                                  </span>
+                                  <span className="text-[10px] text-[#8c7b6d]">
+                                    · {inUseCount} {inUseCount === 1 ? "výzva" : "výzev"}
+                                  </span>
+                                </div>
+                                {cat.description_cs && (
+                                  <p className="text-[11px] text-[#8c7b6d] truncate mt-0.5">
+                                    {cat.description_cs}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditCategory(cat)}
+                                className="px-2 py-1 bg-[#241c16] hover:bg-[#32261e] text-[#ffd580] rounded text-xs transition cursor-pointer"
+                              >
+                                Upravit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                className="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-rose-950/40 transition cursor-pointer"
+                                title="Smazat kategorii"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
+                ) : (
+                  <form onSubmit={handleSaveTrophy} className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#2e2721]">
+                      <div>
+                        <h4 className="font-serif font-bold text-sm text-[#ffd580]">
+                          {editingTrophy ? "Úprava výzvy" : "Nová herní výzva"}
+                        </h4>
+                        <p className="text-xs text-[#8c7b6d]">
+                          {editingTrophy ? `ID: ${editingTrophy.id}` : "Zadejte parametry nové výzvy a její podmínky."}
+                        </p>
+                      </div>
+                      {trophySuccessMsg && (
+                        <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/70 border border-emerald-700/60 px-2.5 py-1 rounded">
+                          {trophySuccessMsg}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Kategorie výzvy */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1.5">
-                      Tematická kategorie
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                      {(["collection", "study", "palaeography", "community", "secrets"] as const).map((cat) => {
-                        const meta = TROPHY_CATEGORY_META[cat];
-                        const isSel = trophyForm.category === cat;
-                        return (
+                    {/* Názvy CZ & EN */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                          Název výzvy (česky) *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={trophyForm.title}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, title: e.target.value })}
+                          placeholder="např. Lamač pečetí"
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
+                          Title (English)
+                        </label>
+                        <input
+                          type="text"
+                          value={trophyForm.title_en}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, title_en: e.target.value })}
+                          placeholder="e.g. Seal Breaker"
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Popis výzvy CZ & EN */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                          Popis / úkol výzvy (česky) *
+                        </label>
+                        <textarea
+                          rows={2}
+                          required
+                          value={trophyForm.text}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, text: e.target.value })}
+                          placeholder="Získejte alespoň 5 různých kolofonů do své sbírky..."
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
+                          Description (English)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={trophyForm.text_en}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, text_en: e.target.value })}
+                          placeholder="Collect at least 5 different colophons in your library..."
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Volba obtížnosti */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1.5">
+                        Obtížnost výzvy & automatická XP hladina
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(["easy", "medium", "hard", "impossible"] as const).map((diff) => {
+                          const meta = TROPHY_DIFFICULTY_META[diff];
+                          const isSel = trophyForm.difficulty === diff;
+                          return (
+                            <button
+                              key={diff}
+                              type="button"
+                              onClick={() => {
+                                setTrophyForm({
+                                  ...trophyForm,
+                                  difficulty: diff,
+                                  xp: meta.defaultXp,
+                                });
+                              }}
+                              className={`py-2 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                                isSel
+                                  ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37] shadow-xs"
+                                  : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
+                              }`}
+                            >
+                              <span className="block font-bold">{meta.label_cs}</span>
+                              <span className="text-[10px] opacity-75">{meta.defaultXp} XP</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Kategorie výzvy s možností správy */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-bold text-[#c9a96e]">
+                          Tematická kategorie
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCategoryManager(true);
+                            handleNewCategory();
+                          }}
+                          className="text-[11px] text-[#ffd580] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>⚙️</span> Spravovat kategorie ({trophiesCategories.length})
+                        </button>
+                      </div>
+
+                      {/* Flexibilní, plně rozepsané kategorie bez usekávání */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {trophiesCategories.map((cat) => {
+                          const isSel = trophyForm.category === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setTrophyForm({ ...trophyForm, category: cat.id })}
+                              className={`py-1.5 px-2.5 rounded-md text-xs font-semibold border transition cursor-pointer flex items-center gap-1.5 ${
+                                isSel
+                                  ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37] shadow-xs"
+                                  : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580] hover:border-[#4a3928]"
+                              }`}
+                              title={cat.description_cs || cat.label_cs}
+                            >
+                              <span>{cat.icon}</span>
+                              <span>{cat.label_cs}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Obrázek výzvy & iniciála */}
+                    <div className="p-3 bg-[#130f0c] border border-[#2e2721] rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-[#c9a96e] flex items-center gap-1.5">
+                          <ImageIcon size={13} className="text-[#ffd580]" /> Obrázek výzvy / miniatura
+                        </label>
+                        {trophyForm.image_url && (
                           <button
-                            key={cat}
                             type="button"
-                            onClick={() => setTrophyForm({ ...trophyForm, category: cat })}
-                            className={`py-1.5 px-1.5 rounded text-[11px] font-semibold border transition cursor-pointer text-center truncate ${
-                              isSel
-                                ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
-                                : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
-                            }`}
+                            onClick={() => setTrophyForm({ ...trophyForm, image_url: "" })}
+                            className="text-[10px] text-rose-400 hover:text-rose-300 cursor-pointer"
                           >
-                            <span>{meta.icon} {meta.label_cs}</span>
+                            Odstranit obrázek
                           </button>
-                        );
-                      })}
+                        )}
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-16 h-16 rounded-md border-2 border-dashed border-[#4a3928] bg-[#1a1410] flex items-center justify-center overflow-hidden shrink-0 relative">
+                          {trophyForm.image_url ? (
+                            <img
+                              src={trophyForm.image_url}
+                              alt="Náhled výzvy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="font-bold text-2xl text-[#ffd580]">{trophyForm.initial || "🏆"}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={trophyForm.image_url || ""}
+                            onChange={(e) => setTrophyForm({ ...trophyForm, image_url: e.target.value })}
+                            placeholder="URL obrázku (např. /cards/...) nebo nahrajte soubor níže"
+                            className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                          />
+                          <div className="flex items-center gap-2">
+                            <label className="px-2.5 py-1 bg-[#241c16] hover:bg-[#32261e] border border-[#423323] text-[#c9a96e] rounded text-[11px] font-semibold cursor-pointer flex items-center gap-1.5 transition">
+                              <Upload size={12} /> Nahrát obrázek z disku
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleTrophyImageUpload}
+                              />
+                            </label>
+                            <span className="text-[10px] text-[#7d6f62]">Nebo nechte prázdné pro iniciálu</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Odměna XP a iniciála */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Odměna (XP) *
-                      </label>
-                      <input
-                        type="number"
-                        min={10}
-                        step={25}
-                        required
-                        value={trophyForm.xp}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, xp: Number(e.target.value) || 50 })}
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      />
+                    {/* Odměna XP a iniciála */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                          Odměna (XP) *
+                        </label>
+                        <input
+                          type="number"
+                          min={10}
+                          step={25}
+                          required
+                          value={trophyForm.xp}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, xp: Number(e.target.value) || 50 })}
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                          Zástupná iniciála (1–2 znaky nebo emoji)
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={3}
+                          value={trophyForm.initial}
+                          onChange={(e) => setTrophyForm({ ...trophyForm, initial: e.target.value })}
+                          placeholder="🏆"
+                          className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] text-center font-bold"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Vstupní iniciála (1–2 znaky)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={3}
-                        value={trophyForm.initial}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, initial: e.target.value })}
-                        placeholder="Q"
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] text-center font-bold"
-                      />
-                    </div>
-                  </div>
 
-                  {/* Podmínka pro odemčení */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Typ herní podmínky
-                      </label>
-                      <select
-                        value={trophyForm.requirement_type || "custom"}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, requirement_type: e.target.value as any })}
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      >
-                        <option value="collection_count">Počet karet ve sbírce</option>
-                        <option value="packs_opened">Počet otevřených balíčků</option>
-                        <option value="streak">Délka denního streaku</option>
-                        <option value="games_played">Počet splněných miniher</option>
-                        <option value="puzzle_completed">Dokončení mozaiky (16 dílků)</option>
-                        <option value="rarity_owned">Vlastnictví karty určité rarity</option>
-                        <option value="gift_sent">Darování karty kolegovi</option>
-                        <option value="custom">Vlastní / Speciální kritérium</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
-                        Hodnota podmínky
-                      </label>
-                      <input
-                        type="text"
-                        value={String(trophyForm.requirement_value ?? "")}
-                        onChange={(e) => setTrophyForm({ ...trophyForm, requirement_value: e.target.value })}
-                        placeholder="např. 5, 10, Rare, initial"
-                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                      />
-                    </div>
-                  </div>
+                    {/* BUILDER HERNÍCH PODMÍNEK */}
+                    <div className="p-3 bg-[#130f0c] border border-[#2e2721] rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-[11px] font-bold text-[#c9a96e] flex items-center gap-1.5">
+                            ⚡ Herní podmínky pro odemčení ({trophyForm.conditions?.length || 0})
+                          </label>
+                          <p className="text-[10.5px] text-[#8c7b6d]">
+                            Výzva se automaticky odemkne, jakmile hráč splní <b>všechny</b> zadané podmínky (pravidlo AND).
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddCondition}
+                          className="px-2.5 py-1 bg-[#2e241b] hover:bg-[#3d3023] text-[#ffd580] border border-[#523f2b] rounded text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <PlusCircle size={13} /> Přidat podmínku
+                        </button>
+                      </div>
 
-                  {/* Akční tlačítka */}
-                  <div className="flex items-center justify-between pt-3 border-t border-[#2e2721]">
-                    {editingTrophy ? (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTrophy(editingTrophy.id)}
-                        className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 size={13} /> Smazat výzvu
-                      </button>
-                    ) : (
-                      <div />
-                    )}
+                      {(!trophyForm.conditions || trophyForm.conditions.length === 0) ? (
+                        <div className="text-center p-3 text-xs italic text-[#7d6f62] border border-dashed border-[#3a2d20] rounded">
+                          Zatím nejsou nastaveny žádné podmínky. Klikněte na „Přidat podmínku“.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {trophyForm.conditions.map((cond, idx) => {
+                            const meta = TROPHY_CONDITION_META[cond.type] || TROPHY_CONDITION_META.custom;
+                            return (
+                              <div
+                                key={idx}
+                                className="p-2.5 bg-[#1a1410] border border-[#3b2e21] rounded-md space-y-2 relative"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#ffd580]">
+                                    <span>{meta.icon}</span>
+                                    <span>Podmínka #{idx + 1}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCondition(idx)}
+                                    className="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-[#2e1d1d] transition cursor-pointer"
+                                    title="Odstranit tuto podmínku"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAchievementsModal(false)}
-                        className="px-3.5 py-1.5 bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] rounded text-xs transition cursor-pointer"
-                      >
-                        Zavřít
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs rounded shadow transition cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Check size={14} /> Uložit výzvu
-                      </button>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="block text-[10px] text-[#a89078] mb-0.5">Typ podmínky</label>
+                                    <select
+                                      value={cond.type}
+                                      onChange={(e) => {
+                                        const nextType = e.target.value as TrophyConditionType;
+                                        const nextMeta = TROPHY_CONDITION_META[nextType];
+                                        const defVal = nextMeta.value_type === "number" ? 5 : nextMeta.options?.[0]?.value || "";
+                                        handleUpdateCondition(idx, {
+                                          ...cond,
+                                          type: nextType,
+                                          value: defVal,
+                                          target: String(defVal),
+                                        });
+                                      }}
+                                      className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                                    >
+                                      {Object.entries(TROPHY_CONDITION_META).map(([key, cMeta]) => (
+                                        <option key={key} value={key}>
+                                          {cMeta.icon} {cMeta.label_cs}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Vstup hodnoty dle typu */}
+                                  <div>
+                                    <label className="block text-[10px] text-[#a89078] mb-0.5">
+                                      Cílová hodnota {meta.unit_cs ? `(${meta.unit_cs})` : ""}
+                                    </label>
+                                    {meta.value_type === "none" ? (
+                                      <div className="text-[11px] text-[#7d6f62] italic py-1">
+                                        Sepne se automaticky při vykonání této akce.
+                                      </div>
+                                    ) : meta.value_type === "select" ? (
+                                      <select
+                                        value={cond.target || cond.value || ""}
+                                        onChange={(e) =>
+                                          handleUpdateCondition(idx, {
+                                            ...cond,
+                                            value: e.target.value,
+                                            target: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                                      >
+                                        {meta.options?.map((opt) => (
+                                          <option key={opt.value} value={opt.value}>
+                                            {opt.label_cs}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type={meta.value_type === "number" ? "number" : "text"}
+                                          min={meta.value_type === "number" ? 1 : undefined}
+                                          value={cond.value ?? ""}
+                                          onChange={(e) =>
+                                            handleUpdateCondition(idx, {
+                                              ...cond,
+                                              value: meta.value_type === "number" ? Number(e.target.value) || 0 : e.target.value,
+                                              target: e.target.value,
+                                            })
+                                          }
+                                          placeholder={meta.unit_cs || "Hodnota"}
+                                          className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                                        />
+                                        {meta.unit_cs && (
+                                          <span className="text-[10px] text-[#8c7b6d] shrink-0 font-medium">{meta.unit_cs}</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <p className="text-[10px] text-[#8c7b6d] italic">
+                                  ℹ️ {meta.description_cs}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </form>
+
+                    {/* Akční tlačítka */}
+                    <div className="flex items-center justify-between pt-3 border-t border-[#2e2721]">
+                      {editingTrophy ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTrophy(editingTrophy.id)}
+                          className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 size={13} /> Smazat výzvu
+                        </button>
+                      ) : (
+                        <div />
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAchievementsModal(false)}
+                          className="px-3.5 py-1.5 bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] rounded text-xs transition cursor-pointer"
+                        >
+                          Zavřít
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs rounded shadow transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check size={14} /> Uložit výzvu
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
           </div>

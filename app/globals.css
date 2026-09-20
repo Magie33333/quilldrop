@@ -172,6 +172,11 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 .trophy-list { display: grid; gap: 9px; }
 .trophy-list article { display: grid; grid-template-columns: 49px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid #9c6b31; background: #f3e2bd; border-radius: 4px; }
 .illuminated-initial { width: 47px; height: 55px; display: grid; place-items: center; background: var(--blue); border: 4px double #dba72c; color: #ffe179; font-size: 30px; font-weight: 800; border-radius: 3px; flex-shrink: 0; }
+.trophy-image-box { width: 47px; height: 55px; border-radius: 3px; border: 4px double #dba72c; overflow: hidden; background: #2a1f16; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.trophy-image-box img { width: 100%; height: 100%; object-fit: cover; }
+.game-continue-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(180deg, #b8860b, #7a5205); color: #fff9e6; font-family: var(--font-cinzel), Georgia, serif; font-size: 12.5px; font-weight: 800; border: 1px solid #4a3203; border-radius: 6px; cursor: pointer; box-shadow: inset 0 0 0 1.5px #d4af37, 0 3px 8px rgba(0, 0, 0, 0.25); transition: all 0.2s ease; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.game-continue-btn:hover { background: linear-gradient(180deg, #cf9815, #8f6007); box-shadow: inset 0 0 0 1.5px #ffd700, 0 5px 12px rgba(0, 0, 0, 0.35); transform: translateY(-1px); }
+.game-continue-btn:active { transform: translateY(1px); box-shadow: inset 0 0 0 1.5px #b8860b, 0 2px 4px rgba(0, 0, 0, 0.2); }
 .trophy-list strong { color: var(--brown); font-size: 13px; display: inline-block; }
 .trophy-list p { margin: 2px 0 4px; font-size: 10.5px; line-height: 1.35; color: #4a331c; }
 .trophy-list small { color: var(--blue); font-size: 10px; font-weight: 700; }
