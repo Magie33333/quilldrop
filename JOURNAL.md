@@ -620,3 +620,19 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - V Quilldrop Studiu i v herní paleografické lupě rámeček dokonale lemuje pouze 3 červené řádky kolofonu bez jakéhokoliv dotyku černého textu nad ním.
 3. **Komfortní zobrazení vysokých folií:**
    - Výškový limit obrázku v editoru nastaven na `max-h-[calc(100vh-260px)]`, čímž je zaručeno, že i na menších displejích je vidět 100 % výšky pergamenu včetně spodního okraje i panelu nápovědy bez jakéhokoliv oříznutí.
+
+---
+
+## 📅 Záznam ze dne 20. 9. 2026 — Zjednodušení editoru miniher: Odstranění manuální volby obtížnosti
+
+**Cíl etapy:** Zjednodušit formulář pro tvorbu a editaci miniher v Quilldrop Studiu (`/admin`) a odstranit matoucí volbu obtížnosti (*Snadná* / *Střední* / *Expert*), protože odměny i náročnost jsou jednoznačně dány samotnou disciplínou (Nálada písaře → Běžný balíček, Šifra a Poznej písmo → Učencův balíček, Paleografický mistr → Královský balíček).
+
+**Provedené úpravy:**
+1. **Odstranění voliče z formuláře (`app/admin/page.tsx`):**
+   - Z editoru miniher byla kompletně odstraněna sekce *„Obtížnost výzvy“* (tlačítka Snadná / Střední / Expert).
+   - Editor ani brigádník se již nemusí zdržovat rozhodováním o obtížnosti.
+2. **Automatické nastavení pro databázi:**
+   - Při uložení otázky se hodnota pro sloupec `difficulty` odvodí automaticky z vybraného herního režimu (`mood` → `easy`, `cipher`/`script` → `medium`, `transcription` → `expert`), takže databázové schéma a integrita zůstávají 100% zachovány.
+3. **Zpřehlednění seznamu miniher v postranním panelu:**
+   - V seznamu miniher u vybrané karty byl odstraněn štítek obtížnosti, čímž se rozhraní odlehčilo a zůstaly pouze klíčové informace (typ disciplíny, jazyková lokalizace CZ/EN a akční tlačítka).
+

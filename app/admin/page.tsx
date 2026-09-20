@@ -283,7 +283,6 @@ export default function AdminPage() {
   const [builderExplanationEn, setBuilderExplanationEn] = useState("");
   const [builderHint, setBuilderHint] = useState("");
   const [builderHintEn, setBuilderHintEn] = useState("");
-  const [builderDifficulty, setBuilderDifficulty] = useState<"easy" | "medium" | "expert">("easy");
   const [builderOptions, setBuilderOptions] = useState<[string, string][]>([
     ["😌", "Úleva a vděčnost za dokončení díla"],
     ["🍺", "Touha po dobrém vínu či pivu a odpočinku"],
@@ -1211,7 +1210,6 @@ export default function AdminPage() {
       setBuilderTitleEn("Scribe's Disposition");
       setBuilderIntro("Jak se písař cítil při psaní tohoto kolofonu?");
       setBuilderIntroEn("What was the scribe's state of mind when penning this colophon?");
-      setBuilderDifficulty("easy");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
       setBuilderTranslationEn(trEnText);
@@ -1237,7 +1235,6 @@ export default function AdminPage() {
       setBuilderTitleEn("Decipher the Enigma");
       setBuilderIntro("Odhalte zašifrovaný text nebo skryté jméno písaře:");
       setBuilderIntroEn("Reveal the encrypted passage or the scribe's concealed name:");
-      setBuilderDifficulty("medium");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
       setBuilderTranslationEn(trEnText);
@@ -1263,7 +1260,6 @@ export default function AdminPage() {
       setBuilderTitleEn("Identify the Medieval Script");
       setBuilderIntro("Určete, jakým typem písma je tento kolofon zapsán:");
       setBuilderIntroEn("Determine which historical bookhand or script was employed:");
-      setBuilderDifficulty("medium");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
       setBuilderTranslationEn(trEnText);
@@ -1289,7 +1285,6 @@ export default function AdminPage() {
       setBuilderTitleEn("Palaeographical Master");
       setBuilderIntro("Přepište označené řádky rukopisu s lupou přesně podle originálu:");
       setBuilderIntroEn("Transcribe the highlighted manuscript lines faithfully using the magnifying lens:");
-      setBuilderDifficulty("expert");
       setBuilderQuote(qText);
       setBuilderTranslation(trText);
       setBuilderTranslationEn(trEnText);
@@ -1695,7 +1690,6 @@ export default function AdminPage() {
     setBuilderExplanationEn(q.explanation_en || "");
     setBuilderHint(q.hint || "");
     setBuilderHintEn(q.hint_en || "");
-    setBuilderDifficulty(q.difficulty || "medium");
     setBuilderCorrectIndex(q.correct_index ?? 0);
 
     // Options mapping
@@ -1762,6 +1756,10 @@ export default function AdminPage() {
       hint_en: builderHintEn.trim() || undefined,
     };
 
+    const dbDifficulty =
+      builderMode === "mood" ? "easy" :
+      builderMode === "transcription" ? "expert" : "medium";
+
     const questionPayload = {
       card_id: selectedCard.id,
       game_kind: dbGameKind,
@@ -1772,7 +1770,7 @@ export default function AdminPage() {
       correct_index: builderCorrectIndex,
       explanation: builderExplanation.trim(),
       hint: builderHint.trim(),
-      difficulty: builderDifficulty,
+      difficulty: dbDifficulty,
       is_active: true,
     };
 
@@ -3191,19 +3189,6 @@ export default function AdminPage() {
                           >
                             {q.title_en ? "CZ · EN" : "CZ"}
                           </span>
-                          {q.difficulty && (
-                            <span
-                              className={`text-[9.5px] px-1.5 py-0.5 rounded font-semibold ${
-                                q.difficulty === "easy"
-                                  ? "bg-emerald-950/60 text-emerald-300 border border-emerald-800/40"
-                                  : q.difficulty === "expert"
-                                  ? "bg-rose-950/60 text-rose-300 border border-rose-800/40"
-                                  : "bg-amber-950/60 text-amber-300 border border-amber-800/40"
-                              }`}
-                            >
-                              {q.difficulty === "easy" ? "Snadná" : q.difficulty === "expert" ? "Expert" : "Střední"}
-                            </span>
-                          )}
                           {q.id && (
                             <div className="flex items-center gap-1">
                               <button
@@ -3878,37 +3863,6 @@ export default function AdminPage() {
                         </div>
                       </div>
                     )}
-
-                    {/* Volba obtížnosti výzvy */}
-                    <div>
-                      <label className="text-[10.5px] font-semibold text-[#c9a96e] block mb-1">
-                        Obtížnost výzvy
-                      </label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {(["easy", "medium", "expert"] as const).map((diff) => {
-                          const labels = { easy: "Snadná", medium: "Střední", expert: "Expert" };
-                          const isSel = builderDifficulty === diff;
-                          return (
-                            <button
-                              key={diff}
-                              type="button"
-                              onClick={() => setBuilderDifficulty(diff)}
-                              className={`py-1 rounded text-xs font-semibold border transition cursor-pointer ${
-                                isSel
-                                    ? diff === "easy"
-                                      ? "bg-emerald-950 text-emerald-300 border-emerald-500 shadow"
-                                      : diff === "expert"
-                                      ? "bg-rose-950 text-rose-300 border-rose-500 shadow"
-                                      : "bg-amber-950 text-amber-300 border-amber-500 shadow"
-                                    : "bg-[#14110f] text-[#8c7b6d] border-[#2e2620] hover:text-[#ffd580] hover:bg-[#1e1813]"
-                              }`}
-                            >
-                              {labels[diff]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
 
                     {/* Nápověda a vysvětlení */}
                     <div className="space-y-2.5 pt-1">
