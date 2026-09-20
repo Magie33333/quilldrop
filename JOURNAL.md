@@ -692,4 +692,29 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Přidáno zlaté iluminované tlačítko *„Rozumím, pokračovat k odměně →“* (nebo *„Zavřít výzvu“* při neúspěchu).
    - Případné oznámení o novém levelu (`pendingGameLevel`) je odloženo a zobrazí se až po ručním zavření minihry hráčem.
 
+---
+
+## 📅 Záznam ze dne 20. 9. 2026 (Závěr) — Revize a rozšíření systému výzev: 42 achievementů a kalibrace obtížností
+
+**Cíl etapy:** Provést generální revizi všech achievementů ve hře, rozšířit nabídku na minimálně 30 výzev (vytvořeno celkem 42) a precizně nakalibrovat obtížnosti tak, aby Nemožné byly monumentální a extrémně náročné, Střední vyžadovaly reálné soustředěné úsilí a Lehké sloužily pro seznámení se hrou.
+
+**Provedené úpravy:**
+1. **Rozšíření na 42 plnohodnotných výzev (`app/data/trophies.ts`):**
+   - 🟢 **Lehká (12 výzev, 75–100 XP):** První balíček, 5 a 10 karet, první minihra, iniciála, verše, lupa na 1000 %, noční bádání, první dar, 100 zlaťáků, Level 3, odemknutí 3 glos.
+   - 🔵 **Střední (13 výzev, 200–250 XP):** 25 unikátních kodexů, 7denní streak, 3 vzácné (Rare+) karty, 1 Epická karta, 5 kodexů z Prahy, kodexy ze 3 různých lokalit, 15 splněných miniher, 5 transkripcí, 5 určení písem, Level 8, 500 zlaťáků, 15 balíčků, 5 darovaných karet.
+   - 🟣 **Těžká (11 výzev, 400–500 XP):** 45 unikátních kodexů, 3 Epické/Legendární karty, nalezení Unikátní (Unique) památky, 30denní streak, 35 splněných miniher, 2 nalezené šifry, Level 15, 1 500 zlaťáků, 40 balíčků, 2 kodexy z Vyššího Brodu, 100% dokonalý přepis.
+   - 🔴 **Nemožná (6 výzev, 1000–1500 XP):**
+     - *Legenda skriptorií:* 60+ kodexů + 5 Legendárních/Unikátních karet (1 500 XP).
+     - *Sto dní u pultu:* 100 dní nepřetržitého každodenního bádání / streak 100 (1 500 XP).
+     - *Kronikář věků:* Level 30 + 5 000 celkových XP (1 200 XP).
+     - *Královský paleograf:* 75 vyřešených miniher (1 200 XP).
+     - *Opatský pokladník:* 5 000 zlaťáků v pokladnici + 50 otevřených balíčků (1 000 XP).
+     - *Velmistr iluminací:* složená celá 16dílná mozaika + Level 20 (1 000 XP).
+2. **Technická optimalizace vyhodnocování (`evaluateCondition`):**
+   - Zpřesněno počítání sbírky na pouze reálně vlastněné karty (`count > 0`).
+   - Podpora kombinovaných dotazů na rarity (`LegendaryOrUnique`, `EpicOrHigher`, `RareOrHigher`).
+   - Přesný výpočet úrovně hráče i z celkových zkušeností (`Math.floor(xp / 100) + 1`).
+   - Dynamické sloučení nových výchozích výzev do stávajícího `localStorage` v `getStoredTrophies()`.
+
+
 

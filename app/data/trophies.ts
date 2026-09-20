@@ -347,6 +347,7 @@ export const TROPHY_CATEGORY_META: Record<string, { label_cs: string; label_en: 
 };
 
 export const DEFAULT_TROPHIES: TrophyItem[] = [
+  // 🟢 LEHKÁ (EASY) – 12 výzev (75–100 XP)
   {
     id: "first-spark",
     title: "První jiskra",
@@ -363,17 +364,45 @@ export const DEFAULT_TROPHIES: TrophyItem[] = [
   },
   {
     id: "first-pack",
-    title: "Lamač pečetí",
-    title_en: "Seal Breaker",
+    title: "Novic skriptoria",
+    title_en: "Scriptorium Novice",
     text: "Získejte alespoň 5 různých kolofonů do své sbírky",
     text_en: "Collect at least 5 different colophons in your library",
-    xp: 100,
+    xp: 75,
     initial: "S",
     difficulty: "easy",
     category: "collection",
     conditions: [{ type: "collection_count", value: 5 }],
     requirement_type: "collection_count",
     requirement_value: 5,
+  },
+  {
+    id: "apprentice-scribe",
+    title: "Písařský tovaryš",
+    title_en: "Apprentice Scribe",
+    text: "Shromážděte alespoň 10 různých středověkých kodexů",
+    text_en: "Gather at least 10 unique medieval codices",
+    xp: 100,
+    initial: "A",
+    difficulty: "easy",
+    category: "collection",
+    conditions: [{ type: "collection_count", value: 10 }],
+    requirement_type: "collection_count",
+    requirement_value: 10,
+  },
+  {
+    id: "first-trial",
+    title: "První zkouška",
+    title_en: "First Trial",
+    text: "Úspěšně absolvujte svou první písařskou minihru",
+    text_en: "Successfully pass your first scribal minigame",
+    xp: 75,
+    initial: "✍️",
+    difficulty: "easy",
+    category: "palaeography",
+    conditions: [{ type: "games_played", value: 1 }],
+    requirement_type: "games_played",
+    requirement_value: 1,
   },
   {
     id: "initial-master",
@@ -390,18 +419,106 @@ export const DEFAULT_TROPHIES: TrophyItem[] = [
     requirement_value: "initial",
   },
   {
-    id: "collector",
-    title: "Zkušený tovaryš",
-    title_en: "Journeyman Scribe",
-    text: "Shromážděte alespoň 10 různých středověkých kodexů",
-    text_en: "Gather at least 10 unique medieval codices",
+    id: "verse-lover",
+    title: "Pěvec latinský",
+    title_en: "Latin Versifier",
+    text: "Získejte veršovaný či rýmovaný kolofon do své sbírky",
+    text_en: "Acquire a rhymed or metrical colophon into your collection",
+    xp: 100,
+    initial: "C",
+    difficulty: "easy",
+    category: "collection",
+    conditions: [{ type: "custom", target: "verse", value: "verse" }],
+    requirement_type: "custom",
+    requirement_value: "verse",
+  },
+  {
+    id: "loupe-glance",
+    title: "Oko ostříže",
+    title_en: "Hawk's Eye",
+    text: "Prozkoumejte písařské tahy s paleografickou lupou při 1000% zvětšení",
+    text_en: "Examine scribal strokes with the palaeographical loupe at 1000% zoom",
+    xp: 75,
+    initial: "🔎",
+    difficulty: "easy",
+    category: "palaeography",
+    conditions: [{ type: "loupe_zoom" }],
+  },
+  {
+    id: "night-owl",
+    title: "Noční písař",
+    title_en: "Midnight Scribe",
+    text: "Bádejte ve skriptoriu při svitu svíčky v nočních hodinách (mezi 22:00 a 4:00)",
+    text_en: "Study in the scriptorium by candlelight at night (between 10 PM and 4 AM)",
+    xp: 100,
+    initial: "🌙",
+    difficulty: "easy",
+    category: "secrets",
+    conditions: [{ type: "night_scribe" }],
+  },
+  {
+    id: "first-gift",
+    title: "Štědrý tovaryš",
+    title_en: "Generous Fellow",
+    text: "Darujte či směňte kartu se svým kolegou ve skriptoriu",
+    text_en: "Gift or trade a colophon card with a colleague",
+    xp: 75,
+    initial: "🤝",
+    difficulty: "easy",
+    category: "community",
+    conditions: [{ type: "gift_sent", value: 1 }],
+    requirement_type: "gift_sent",
+    requirement_value: 1,
+  },
+  {
+    id: "first-savings",
+    title: "První groše",
+    title_en: "First Groschen",
+    text: "Ušetřete alespoň 100 zlaťáků v písařské pokladnici",
+    text_en: "Save at least 100 gold coins in your treasury",
+    xp: 75,
+    initial: "🪙",
+    difficulty: "easy",
+    category: "study",
+    conditions: [{ type: "player_coins", value: 100 }],
+  },
+  {
+    id: "apprentice-level",
+    title: "Krok k mistrovství",
+    title_en: "Step to Mastery",
+    text: "Dosáhněte 3. písařské úrovně (Level 3)",
+    text_en: "Reach scribal Level 3",
+    xp: 100,
+    initial: "🌟",
+    difficulty: "easy",
+    category: "study",
+    conditions: [{ type: "player_level", value: 3 }],
+  },
+  {
+    id: "glossa-reader",
+    title: "Čtenář na okraji",
+    title_en: "Marginalia Reader",
+    text: "Prozkoumejte písařské marginálie a odemkněte alespoň 3 glosy",
+    text_en: "Explore scribal marginalia and unlock at least 3 glosses",
+    xp: 100,
+    initial: "📖",
+    difficulty: "easy",
+    category: "secrets",
+    conditions: [{ type: "curio_unlocked", value: 3 }],
+  },
+
+  // 🔵 STŘEDNÍ (MEDIUM) – 13 výzev (200–250 XP) – vyžaduje reálné úsilí
+  {
+    id: "collector-25",
+    title: "Zkušený sběratel",
+    title_en: "Experienced Collector",
+    text: "Shromážděte alespoň 25 různých středověkých kodexů",
+    text_en: "Gather at least 25 unique medieval codices",
     xp: 250,
-    initial: "A",
+    initial: "📚",
     difficulty: "medium",
     category: "collection",
-    conditions: [{ type: "collection_count", value: 10 }],
-    requirement_type: "collection_count",
-    requirement_value: 10,
+    conditions: [{ type: "collection_count", value: 25 }],
   },
   {
     id: "streak-7",
@@ -410,7 +527,7 @@ export const DEFAULT_TROPHIES: TrophyItem[] = [
     text: "Udržte 7 dní nepřetržitého každodenního bádání",
     text_en: "Maintain a continuous 7-day daily study streak",
     xp: 200,
-    initial: "T",
+    initial: "🕯️",
     difficulty: "medium",
     category: "study",
     conditions: [{ type: "streak_days", value: 7 }],
@@ -418,182 +535,358 @@ export const DEFAULT_TROPHIES: TrophyItem[] = [
     requirement_value: 7,
   },
   {
+    id: "rare-connoisseur",
+    title: "Klenotník pergamenu",
+    title_en: "Parchment Jeweler",
+    text: "Získejte do sbírky alespoň 3 vzácné (Rare či vyšší) kodexy",
+    text_en: "Acquire at least 3 Rare or higher codices into your collection",
+    xp: 250,
+    initial: "💎",
+    difficulty: "medium",
+    category: "collection",
+    conditions: [{ type: "rarity_count", target: "RareOrHigher", value: 3 }],
+  },
+  {
+    id: "epic-discovery",
+    title: "Dotek mistra",
+    title_en: "Master's Touch",
+    text: "Získejte alespoň jednu Epickou (Epic) iluminovanou památku",
+    text_en: "Acquire at least one Epic illuminated relic",
+    xp: 250,
+    initial: "✨",
+    difficulty: "medium",
+    category: "collection",
+    conditions: [{ type: "rarity_owned", target: "Epic", value: "Epic" }],
+  },
+  {
     id: "prague-scholar",
     title: "Pražský magistr",
     title_en: "Prague Magister",
-    text: "Získejte alespoň 3 kodexy z pražských skriptorií",
-    text_en: "Collect at least 3 codices from Prague scriptoria",
+    text: "Získejte alespoň 5 kodexů z pražských skriptorií (NK ČR, Karlov)",
+    text_en: "Collect at least 5 codices from Prague scriptoria",
     xp: 250,
-    initial: "P",
+    initial: "🏛️",
     difficulty: "medium",
     category: "secrets",
-    conditions: [{ type: "scriptorium_place", target: "praha", value: 3 }],
+    conditions: [{ type: "scriptorium_place", target: "praha", value: 5 }],
     requirement_type: "custom",
     requirement_value: "praha",
   },
   {
-    id: "verse-lover",
-    title: "Pěvec latinský",
-    title_en: "Latin Versifier",
-    text: "Získejte veršovaný či rýmovaný kolofon do sbírky",
-    text_en: "Acquire a rhymed or metrical colophon into your collection",
-    xp: 200,
-    initial: "C",
-    difficulty: "medium",
-    category: "collection",
-    conditions: [{ type: "custom", target: "verse", value: "verse" }],
-    requirement_type: "custom",
-    requirement_value: "verse",
-  },
-  {
-    id: "rare-seeker",
-    title: "Sběratel kuriozit",
-    title_en: "Curio Collector",
-    text: "Získejte alespoň jednu vzácnou (Rare) či epickou (Epic) kartu",
-    text_en: "Acquire at least one Rare or Epic colophon card",
+    id: "monastery-traveler",
+    title: "Poutník klášterů",
+    title_en: "Monastery Pilgrim",
+    text: "Vlastněte kodexy pocházející alespoň ze 3 různých měst či klášterů",
+    text_en: "Possess codices originating from at least 3 different towns or abbeys",
     xp: 250,
-    initial: "E",
+    initial: "🗺️",
     difficulty: "medium",
     category: "collection",
-    conditions: [{ type: "rarity_owned", target: "Rare", value: "Rare" }],
-    requirement_type: "rarity_owned",
-    requirement_value: "Rare",
+    conditions: [{ type: "custom", target: "multiple_places", value: 3 }],
   },
   {
-    id: "philanthropist",
-    title: "Štědrý tovaryš",
-    title_en: "Generous Fellow",
-    text: "Darujte duplicitní kartu svému kolegovi ve skriptoriu",
-    text_en: "Gift a duplicate colophon to a colleague in the scriptorium",
+    id: "games-15",
+    title: "Zkušený luštitel",
+    title_en: "Seasoned Decipherer",
+    text: "Úspěšně absolvujte alespoň 15 písařských zkoušek a miniher",
+    text_en: "Successfully complete at least 15 scribal trials and minigames",
+    xp: 250,
+    initial: "📜",
+    difficulty: "medium",
+    category: "palaeography",
+    conditions: [{ type: "games_played", value: 15 }],
+  },
+  {
+    id: "diligent-transcriber",
+    title: "Pečlivý kaligraf",
+    title_en: "Diligent Calligrapher",
+    text: "Úspěšně absolvujte alespoň 5 transkripčních přepisů v paleografickém režimu",
+    text_en: "Successfully complete at least 5 transcription challenges in palaeographical mode",
+    xp: 250,
+    initial: "✒️",
+    difficulty: "medium",
+    category: "palaeography",
+    conditions: [{ type: "game_mode_played", target: "transcription", value: 5 }],
+  },
+  {
+    id: "script-connoisseur",
+    title: "Znalec duktu",
+    title_en: "Connoisseur of Duct",
+    text: "Správně rozpoznejte písma v 5 paleografických výzvách",
+    text_en: "Correctly recognize scripts in 5 paleographical challenges",
     xp: 200,
-    initial: "F",
+    initial: "🔤",
+    difficulty: "medium",
+    category: "palaeography",
+    conditions: [{ type: "game_mode_played", target: "script", value: 5 }],
+  },
+  {
+    id: "level-8",
+    title: "Učený bakalář",
+    title_en: "Scholarly Bachelor",
+    text: "Dosáhněte 8. písařské úrovně a prokažte své znalosti",
+    text_en: "Reach scribal Level 8 and prove your knowledge",
+    xp: 250,
+    initial: "🎓",
+    difficulty: "medium",
+    category: "study",
+    conditions: [{ type: "player_level", value: 8 }],
+  },
+  {
+    id: "wealthy-scribe",
+    title: "Zámožný tovaryš",
+    title_en: "Prosperous Fellow",
+    text: "Nashromážděte alespoň 500 zlaťáků v písařské pokladnici",
+    text_en: "Accumulate at least 500 gold coins in your scribal treasury",
+    xp: 200,
+    initial: "💰",
+    difficulty: "medium",
+    category: "study",
+    conditions: [{ type: "player_coins", value: 500 }],
+  },
+  {
+    id: "fifteen-packs",
+    title: "Patnáct pečetí",
+    title_en: "Fifteen Seals",
+    text: "Prolomte pečeť a otevřete alespoň 15 balíčků ve skriptoriu",
+    text_en: "Break the seals and open at least 15 packs in the scriptorium",
+    xp: 200,
+    initial: "📦",
+    difficulty: "medium",
+    category: "study",
+    conditions: [{ type: "packs_opened", value: 15 }],
+  },
+  {
+    id: "benefactor",
+    title: "Mecenáš skriptoria",
+    title_en: "Scriptorium Benefactor",
+    text: "Darujte či vyměňte alespoň 5 duplicitních karet s kolegy",
+    text_en: "Gift or trade at least 5 duplicate cards with colleagues",
+    xp: 250,
+    initial: "🎁",
     difficulty: "medium",
     category: "community",
-    conditions: [{ type: "gift_sent", value: 1 }],
-    requirement_type: "gift_sent",
-    requirement_value: 1,
+    conditions: [{ type: "gift_sent", value: 5 }],
   },
+
+  // 🟣 TĚŽKÁ (HARD) – 11 výzev (400–500 XP) – vyžaduje vysokou vytrvalost a zručnost
   {
-    id: "bibliophile",
+    id: "bibliophile-50",
     title: "Knihovník Klementina",
     title_en: "Clementinum Librarian",
-    text: "Vlastněte alespoň 20 různých kodexů a pergamenů",
-    text_en: "Possess at least 20 unique codices and charters",
+    text: "Vlastněte alespoň 45 různých kodexů a historických pergamenů",
+    text_en: "Possess at least 45 unique codices and historical parchments",
     xp: 500,
     initial: "K",
     difficulty: "hard",
     category: "collection",
-    conditions: [{ type: "collection_count", value: 20 }],
-    requirement_type: "collection_count",
-    requirement_value: 20,
+    conditions: [{ type: "collection_count", value: 45 }],
   },
   {
-    id: "streak",
-    title: "Vytrvalý iluminátor",
-    title_en: "Steadfast Illuminator",
-    text: "Udržte 16 dní nepřetržité návštěvy a složte mozaiku",
-    text_en: "Maintain a 16-day streak and assemble the full mosaic",
-    xp: 400,
-    initial: "I",
+    id: "golden-fund",
+    title: "Zlatý fond",
+    title_en: "Golden Fund",
+    text: "Vlastněte alespoň 3 Epické či Legendární kodexy současně",
+    text_en: "Possess at least 3 Epic or Legendary codices simultaneously",
+    xp: 450,
+    initial: "👑",
     difficulty: "hard",
-    category: "study",
-    conditions: [{ type: "streak_days", value: 16 }],
-    requirement_type: "streak",
-    requirement_value: 16,
+    category: "collection",
+    conditions: [{ type: "rarity_count", target: "EpicOrHigher", value: 3 }],
   },
   {
-    id: "vyssi-brod",
-    title: "Vyšebrodský mnich",
-    title_en: "Monk of Vyšší Brod",
-    text: "Vlastněte kodex z cisterciáckého kláštera Vyšší Brod",
-    text_en: "Own a codex from the Cistercian monastery of Vyšší Brod",
-    xp: 350,
-    initial: "V",
-    difficulty: "hard",
-    category: "secrets",
-    conditions: [{ type: "scriptorium_place", target: "vyssi-brod", value: 1 }],
-    requirement_type: "custom",
-    requirement_value: "vyssi-brod",
-  },
-  {
-    id: "cipher-breaker",
-    title: "Lamač šifer",
-    title_en: "Cipher Breaker",
-    text: "Najděte a vlastněte kolofon se šifrou či kryptogramem",
-    text_en: "Discover and own a colophon containing a cipher or cryptogram",
-    xp: 400,
-    initial: "X",
-    difficulty: "hard",
-    category: "secrets",
-    conditions: [{ type: "custom", target: "cipher", value: "cipher" }],
-    requirement_type: "custom",
-    requirement_value: "cipher",
-  },
-  {
-    id: "paleographer",
-    title: "Písařský mistr",
-    title_en: "Master Palaeographer",
-    text: "Úspěšně absolvujte alespoň 5 písařských výzev",
-    text_en: "Successfully pass at least 5 scribal challenges",
-    xp: 400,
-    initial: "D",
-    difficulty: "hard",
-    category: "palaeography",
-    conditions: [{ type: "games_played", value: 5 }],
-    requirement_type: "games_played",
-    requirement_value: 5,
-  },
-  {
-    id: "loupe-max",
-    title: "Oko ostříže",
-    title_en: "Hawk's Eye",
-    text: "Prozkoumejte písařské tahy s paleografickou lupou při 1000% zvětšení",
-    text_en: "Examine scribal strokes with the palaeographical loupe at 1000% zoom",
-    xp: 200,
-    initial: "🔎",
-    difficulty: "medium",
-    category: "palaeography",
-    conditions: [{ type: "loupe_zoom" }],
-  },
-  {
-    id: "night-owl",
-    title: "Noční písař",
-    title_en: "Midnight Scribe",
-    text: "Bádejte ve skriptoriu při svitu svíčky mezi půlnocí a 4. hodinou ranní",
-    text_en: "Study in the scriptorium by candlelight between midnight and 4 AM",
-    xp: 300,
-    initial: "🌙",
-    difficulty: "hard",
-    category: "secrets",
-    conditions: [{ type: "night_scribe" }],
-  },
-  {
-    id: "unique",
+    id: "gilded-mystery",
     title: "Zlacené tajemství",
     title_en: "Gilded Mystery",
-    text: "Najděte Unikátní (Unique) monumentální kolofon",
-    text_en: "Discover a Unique monumental colophon",
+    text: "Najděte a vlastněte monumentální Unikátní (Unique) kolofon",
+    text_en: "Discover and possess a monumental Unique colophon",
     xp: 500,
     initial: "G",
     difficulty: "hard",
     category: "collection",
     conditions: [{ type: "rarity_owned", target: "Unique", value: "Unique" }],
-    requirement_type: "rarity_owned",
-    requirement_value: "Unique",
   },
   {
-    id: "mosaic-master",
-    title: "Mistr iluminátor",
-    title_en: "Master Illuminator",
-    text: "Složte celou 16dílnou mozaiku alespoň jednoho cyklu",
-    text_en: "Complete the full 16-piece mosaic of at least one cycle",
-    xp: 1000,
-    initial: "Z",
+    id: "streak-30",
+    title: "Měsíční vigilance",
+    title_en: "Monthly Vigil",
+    text: "Udržte 30 dní nepřetržitého každodenního bádání ve skriptoriu",
+    text_en: "Maintain a continuous 30-day daily study streak in the scriptorium",
+    xp: 450,
+    initial: "🕯️",
+    difficulty: "hard",
+    category: "study",
+    conditions: [{ type: "streak_days", value: 30 }],
+  },
+  {
+    id: "master-palaeographer",
+    title: "Písařský mistr",
+    title_en: "Master Palaeographer",
+    text: "Úspěšně absolvujte alespoň 35 písařských zkoušek a miniher",
+    text_en: "Successfully complete at least 35 scribal trials and minigames",
+    xp: 400,
+    initial: "D",
+    difficulty: "hard",
+    category: "palaeography",
+    conditions: [{ type: "games_played", value: 35 }],
+  },
+  {
+    id: "cipher-breaker",
+    title: "Vrchní šifrant",
+    title_en: "Master Cryptographer",
+    text: "Najděte a vlastněte alespoň 2 kolofony se středověkou šifrou či kryptogramem",
+    text_en: "Discover and own at least 2 colophons with a medieval cipher or cryptogram",
+    xp: 400,
+    initial: "X",
+    difficulty: "hard",
+    category: "secrets",
+    conditions: [{ type: "custom", target: "cipher", value: 2 }],
+  },
+  {
+    id: "guild-master",
+    title: "Mistr cechu písařů",
+    title_en: "Guild Master Scribe",
+    text: "Dosáhněte 15. písařské úrovně (Level 15) a prokažte své mistrovství",
+    text_en: "Reach scribal Level 15 and prove your master craftsmanship",
+    xp: 450,
+    initial: "🏅",
+    difficulty: "hard",
+    category: "study",
+    conditions: [{ type: "player_level", value: 15 }],
+  },
+  {
+    id: "monastery-treasury",
+    title: "Klášterní pokladnice",
+    title_en: "Monastery Treasury",
+    text: "Shromážděte alespoň 1 500 zlaťáků v pokladnici skriptoria",
+    text_en: "Accumulate at least 1,500 gold coins in the scriptorium treasury",
+    xp: 400,
+    initial: "🏦",
+    difficulty: "hard",
+    category: "study",
+    conditions: [{ type: "player_coins", value: 1500 }],
+  },
+  {
+    id: "forty-packs",
+    title: "Archivář kodexů",
+    title_en: "Archivist of Codices",
+    text: "Prolomte pečeť a otevřete alespoň 40 balíčků ve skriptoriu",
+    text_en: "Break the seals and open at least 40 packs in the scriptorium",
+    xp: 400,
+    initial: "🗃️",
+    difficulty: "hard",
+    category: "study",
+    conditions: [{ type: "packs_opened", value: 40 }],
+  },
+  {
+    id: "vyssi-brod-monk",
+    title: "Vyšebrodský archivář",
+    title_en: "Vyšší Brod Archivist",
+    text: "Vlastněte alespoň 2 kodexy z cisterciáckého kláštera Vyšší Brod",
+    text_en: "Own at least 2 codices from the Cistercian monastery of Vyšší Brod",
+    xp: 400,
+    initial: "V",
+    difficulty: "hard",
+    category: "secrets",
+    conditions: [{ type: "scriptorium_place", target: "vyssi-brod", value: 2 }],
+  },
+  {
+    id: "perfect-hand",
+    title: "Nezachvějná ruka",
+    title_en: "Unwavering Hand",
+    text: "Dosáhněte dokonalé přesnosti (100 % shoda) v paleografické transkripci",
+    text_en: "Achieve flawless accuracy (100% match) in paleographical transcription",
+    xp: 400,
+    initial: "🎯",
+    difficulty: "hard",
+    category: "palaeography",
+    conditions: [{ type: "transcription_accuracy", value: 100 }],
+  },
+
+  // 🔴 NEMOŽNÁ (IMPOSSIBLE) – 6 výzev (1000–1500 XP) – skutečně monumentální písařské mety
+  {
+    id: "legend-of-scriptoria",
+    title: "Legenda skriptorií",
+    title_en: "Legend of Scriptoria",
+    text: "Dosáhněte naprostého věhlasu: shromážděte alespoň 60 kodexů ve sbírce a vlastněte alespoň 5 Legendárních či Unikátních památek",
+    text_en: "Attain supreme renown: gather at least 60 codices and possess at least 5 Legendary or Unique relics",
+    xp: 1500,
+    initial: "👑",
+    difficulty: "impossible",
+    category: "collection",
+    conditions: [
+      { type: "collection_count", value: 60 },
+      { type: "rarity_count", target: "LegendaryOrUnique", value: 5 },
+    ],
+  },
+  {
+    id: "hundred-days-streak",
+    title: "Sto dní u pultu",
+    title_en: "Hundred Days at the Desk",
+    text: "Předveďte nadlidskou vytrvalost: udržte 100 dní nepřetržitého každodenního bádání bez jediného přerušení",
+    text_en: "Demonstrate superhuman endurance: maintain a continuous 100-day daily streak without a single break",
+    xp: 1500,
+    initial: "🔥",
     difficulty: "impossible",
     category: "study",
-    conditions: [{ type: "mosaic_pieces", value: 16 }],
-    requirement_type: "puzzle_completed",
-    requirement_value: 16,
+    conditions: [{ type: "streak_days", value: 100 }],
+  },
+  {
+    id: "grandmaster-scribe",
+    title: "Kronikář věků",
+    title_en: "Chronicler of Ages",
+    text: "Dosáhněte 30. písařské úrovně (Level 30) a získejte více než 5 000 zkušeností (XP)",
+    text_en: "Reach scribal Level 30 and accumulate over 5,000 experience points (XP)",
+    xp: 1200,
+    initial: "📜",
+    difficulty: "impossible",
+    category: "study",
+    conditions: [
+      { type: "player_level", value: 30 },
+      { type: "player_xp", value: 5000 },
+    ],
+  },
+  {
+    id: "royal-palaeographer",
+    title: "Královský paleograf",
+    title_en: "Royal Palaeographer",
+    text: "Završte celoživotní učené dílo: úspěšně vyřešte alespoň 75 písařských miniher napříč všemi disciplínami",
+    text_en: "Complete a scholarly lifetime: successfully solve at least 75 scribal minigames across all disciplines",
+    xp: 1200,
+    initial: "🏛️",
+    difficulty: "impossible",
+    category: "palaeography",
+    conditions: [{ type: "games_played", value: 75 }],
+  },
+  {
+    id: "abbots-treasury",
+    title: "Opatský pokladník",
+    title_en: "Abbot's Treasurer",
+    text: "Naplňte pokladnici kláštera jako skutečný opat: shromážděte 5 000 zlaťáků a otevřete alespoň 50 balíčků ve skriptoriu",
+    text_en: "Fill the abbey treasury: accumulate 5,000 gold coins and open at least 50 packs in the scriptorium",
+    xp: 1000,
+    initial: "💰",
+    difficulty: "impossible",
+    category: "study",
+    conditions: [
+      { type: "player_coins", value: 5000 },
+      { type: "packs_opened", value: 50 },
+    ],
+  },
+  {
+    id: "mosaic-grandmaster",
+    title: "Velmistr iluminací",
+    title_en: "Grandmaster Illuminator",
+    text: "Složte celou 16dílnou mozaiku a zároveň dosáhněte alespoň 20. písařské úrovně (Level 20)",
+    text_en: "Complete the full 16-piece mosaic while reaching at least scribal Level 20",
+    xp: 1000,
+    initial: "🎨",
+    difficulty: "impossible",
+    category: "study",
+    conditions: [
+      { type: "mosaic_pieces", value: 16 },
+      { type: "player_level", value: 20 },
+    ],
   },
 ];
 
@@ -633,7 +926,12 @@ export function getStoredTrophies(): TrophyItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_TROPHIES;
 
-    return parsed.map((item: any) => {
+    // Zachovat existující upravené trofeje, ale doplnit nové výchozí trofeje, které uživatel ještě nemá
+    const existingIds = new Set(parsed.map((item: any) => item.id));
+    const missingDefaults = DEFAULT_TROPHIES.filter((d) => !existingIds.has(d.id));
+    const combined = [...parsed, ...missingDefaults];
+
+    return combined.map((item: any) => {
       const def = DEFAULT_TROPHIES.find((d) => d.id === item.id);
       return {
         id: item.id || def?.id || `trophy-${Date.now()}`,
@@ -685,34 +983,48 @@ export function evaluateCondition(
   const numVal = Number(cond.value || 0);
 
   switch (cond.type) {
-    case "collection_count":
-      return Object.keys(state?.collection || {}).length >= (numVal || 1);
+    case "collection_count": {
+      const count = Object.entries(state?.collection || {}).filter(([_, cnt]) => Number(cnt) > 0).length;
+      return count >= (numVal || 1);
+    }
 
     case "specific_card": {
       const cardKey = String(cond.target || cond.value || "").toLowerCase();
       if (!cardKey) return false;
       return cards.some(
         (c) =>
-          state?.collection?.[c.id] &&
+          (Number(state?.collection?.[c.id]) || 0) > 0 &&
           (String(c.id).toLowerCase() === cardKey ||
             c.uuid?.toLowerCase() === cardKey ||
+            c.title?.toLowerCase().includes(cardKey) ||
             c.manuscript?.toLowerCase().includes(cardKey))
       );
     }
 
     case "rarity_owned": {
       const targetRarity = cond.target || cond.value || "Rare";
-      return cards.some(
-        (c) =>
-          state?.collection?.[c.id] &&
-          (c.rarity === targetRarity || (targetRarity === "Rare" && ["Rare", "Epic", "Legendary", "Unique"].includes(c.rarity)))
-      );
+      return cards.some((c) => {
+        if ((Number(state?.collection?.[c.id]) || 0) <= 0) return false;
+        if (targetRarity === "Rare") return ["Rare", "Epic", "Legendary", "Unique"].includes(c.rarity);
+        if (targetRarity === "Epic") return ["Epic", "Legendary", "Unique"].includes(c.rarity);
+        if (targetRarity === "Legendary") return ["Legendary", "Unique"].includes(c.rarity);
+        return c.rarity === targetRarity;
+      });
     }
 
     case "rarity_count": {
       const targetRarity = cond.target || "Rare";
-      const count = cards.filter((c) => state?.collection?.[c.id] && c.rarity === targetRarity).length;
-      return count >= (numVal || 1);
+      let matches = 0;
+      if (targetRarity === "LegendaryOrUnique" || targetRarity === "Legendary+") {
+        matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && (c.rarity === "Legendary" || c.rarity === "Unique")).length;
+      } else if (targetRarity === "EpicOrHigher" || targetRarity === "Epic+") {
+        matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ["Epic", "Legendary", "Unique"].includes(c.rarity)).length;
+      } else if (targetRarity === "RareOrHigher" || targetRarity === "Rare+" || targetRarity === "Rare") {
+        matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ["Rare", "Epic", "Legendary", "Unique"].includes(c.rarity)).length;
+      } else {
+        matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === targetRarity).length;
+      }
+      return matches >= (numVal || 1);
     }
 
     case "packs_opened":
@@ -728,7 +1040,6 @@ export function evaluateCondition(
       return (state?.gamesPlayed || 0) >= (numVal || 1);
 
     case "game_mode_played": {
-      // V historii her nebo extra kontextu
       if (extraContext?.gameMode && extraContext.gameMode === cond.target) return true;
       return (state?.gamesPlayed || 0) >= (numVal || 1);
     }
@@ -744,8 +1055,10 @@ export function evaluateCondition(
     case "mosaic_pieces":
       return (state?.puzzle || 0) >= (numVal || 16) || Boolean(state?.gallery && state.gallery.length > 0);
 
-    case "player_level":
-      return (state?.level || 1) >= (numVal || 1);
+    case "player_level": {
+      const currentLevel = state?.level || Math.floor((state?.xp || 0) / 100) + 1;
+      return currentLevel >= (numVal || 1);
+    }
 
     case "player_xp":
       return (state?.xp || 0) >= (numVal || 100);
@@ -754,25 +1067,25 @@ export function evaluateCondition(
       return (state?.coins || 0) >= (numVal || 100);
 
     case "gift_sent":
-      return (state?.dailyTradedPartners?.length || 0) >= (numVal || 1) || Boolean(state?.trophies?.includes("philanthropist"));
+      return (state?.dailyTradedPartners?.length || 0) >= (numVal || 1) || Boolean(state?.trophies?.includes("philanthropist") || state?.trophies?.includes("first-gift"));
 
     case "loupe_zoom":
-      return Boolean(extraContext?.loupeMaxUsed || state?.loupeMaxUsed || state?.trophies?.includes("loupe-max"));
+      return Boolean(extraContext?.loupeMaxUsed || state?.loupeMaxUsed || state?.trophies?.includes("loupe-max") || state?.trophies?.includes("loupe-glance"));
 
     case "night_scribe": {
       const hour = extraContext?.nowHour !== undefined ? extraContext.nowHour : new Date().getHours();
-      return (hour >= 0 && hour < 4) || Boolean(state?.trophies?.includes("night-owl"));
+      return (hour >= 0 && hour < 4) || (hour >= 22) || Boolean(state?.trophies?.includes("night-owl"));
     }
 
     case "scriptorium_place": {
       const placeKey = String(cond.target || cond.value || "").toLowerCase();
       const count = cards.filter(
         (c) =>
-          state?.collection?.[c.id] &&
+          (Number(state?.collection?.[c.id]) || 0) > 0 &&
           (c.place?.toLowerCase().includes(placeKey) ||
             c.manuscript?.toLowerCase().includes(placeKey) ||
-            (placeKey === "praha" && c.manuscript?.toLowerCase().includes("nkp")) ||
-            (placeKey === "vyssi-brod" && c.manuscript?.toLowerCase().includes("vb")))
+            (placeKey === "praha" && (c.manuscript?.toLowerCase().includes("nkp") || c.place?.toLowerCase().includes("prague"))) ||
+            (placeKey === "vyssi-brod" && (c.manuscript?.toLowerCase().includes("vb") || c.place?.toLowerCase().includes("brod"))))
       ).length;
       return count >= (numVal || 1);
     }
@@ -781,21 +1094,24 @@ export function evaluateCondition(
       return (state?.curiosUnlocked?.length || 0) >= (numVal || 1);
 
     case "custom": {
-      const val = String(cond.target || cond.value || "");
+      const val = String(cond.target || cond.value || "").toLowerCase();
       if (val === "initial") {
-        return cards.some((c) => state?.collection?.[c.id] && ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála")));
+        return cards.some((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála") || c.features?.some?.((f: string) => f.toLowerCase().includes("iniciál"))));
       }
       if (val === "verse") {
-        return cards.some((c) => state?.collection?.[c.id] && ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše")));
+        return cards.some((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše") || c.features?.some?.((f: string) => f.toLowerCase().includes("verš"))));
       }
       if (val === "cipher") {
-        return cards.some((c) => state?.collection?.[c.id] && ((c as any).features?.includes("Šifra") || (c as any).colophons?.features?.includes("Šifra")));
+        const count = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Šifra") || (c as any).colophons?.features?.includes("Šifra") || c.features?.some?.((f: string) => f.toLowerCase().includes("šifr")))).length;
+        return count >= (numVal || 1);
       }
-      if (val === "praha") {
-        return cards.filter((c) => state?.collection?.[c.id] && (c.place?.toLowerCase().includes("praha") || c.manuscript?.toLowerCase().includes("praha") || c.manuscript?.toLowerCase().includes("nkp"))).length >= 3;
-      }
-      if (val === "vyssi-brod") {
-        return cards.some((c) => state?.collection?.[c.id] && (c.place?.toLowerCase().includes("brod") || c.manuscript?.toLowerCase().includes("vb")));
+      if (val === "multiple_places" || val === "places_count") {
+        const ownedPlaces = new Set(
+          cards
+            .filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.place && !c.place.toLowerCase().includes("unknown"))
+            .map((c) => c.place.toLowerCase().trim())
+        );
+        return ownedPlaces.size >= (numVal || 3);
       }
       return Boolean(state?.trophies?.includes(cond.target || cond.value));
     }
