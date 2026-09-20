@@ -65,6 +65,14 @@ import {
   playTriumphFanfare,
   playSoftClick,
 } from "./audio";
+import {
+  type TrophyItem,
+  type TrophyDifficulty,
+  type TrophyCategory,
+  TROPHY_DIFFICULTY_META,
+  TROPHY_CATEGORY_META,
+  getStoredTrophies,
+} from "./data/trophies";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
@@ -139,6 +147,7 @@ type GameState = {
   streak: number;
   puzzle: number;
   trophies: string[];
+  trophyTimestamps?: Record<string, string>;
   lastPlayed: string;
   gamesPlayed: number;
   dailyGamesHistory?: ("success" | "fail")[];
@@ -176,6 +185,7 @@ const INITIAL_STATE: GameState = {
   streak: 1,
   puzzle: 1,
   trophies: ["first-spark"],
+  trophyTimestamps: { "first-spark": new Date().toISOString() },
   lastPlayed: "",
   gamesPlayed: 0,
   dailyGamesHistory: [],
@@ -197,6 +207,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   streak: 1,
   puzzle: 1,
   trophies: [],
+  trophyTimestamps: {},
   lastPlayed: "",
   gamesPlayed: 0,
   dailyGamesHistory: [],
@@ -279,6 +290,7 @@ function loadState(userId?: string): GameState {
       ...(saved || {}),
       bonusPacks: saved?.bonusPacks || [],
       gallery: saved?.gallery || [],
+      trophyTimestamps: saved?.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
       dailyGamesHistory: Array.isArray(saved?.dailyGamesHistory) ? saved.dailyGamesHistory : [],
       completedQuestionsToday: saved?.completedQuestionsToday || [],
       dailyTradedPartners: saved?.dailyTradedPartners || [],
@@ -580,6 +592,7 @@ export default function Home() {
         puzzle: profile?.puzzle_progress !== undefined ? Math.max(local.puzzle, profile.puzzle_progress) : local.puzzle,
         bonusPacks: Array.isArray(profile?.bonus_packs) && profile.bonus_packs.length > 0 ? (profile.bonus_packs as PackQuality[]) : local.bonusPacks,
         trophies: Array.isArray(profile?.trophies) && profile.trophies.length > 0 ? Array.from(new Set([...local.trophies, ...profile.trophies])) : local.trophies,
+        trophyTimestamps: local.trophyTimestamps || {},
         avatarArt: profile?.avatar_id || local.avatarArt,
         collection: mergedCollection,
         hasSeenTutorial: local.hasSeenTutorial ?? false,
@@ -3076,225 +3089,276 @@ function TrophiesScreen({
   activeIllumination: IlluminationMosaicItem;
   lang?: Language;
 }) {
-  const trophies: {
-    id: string;
-    title: string;
-    text: string;
-    xp: string;
-    initial: string;
-    check: () => boolean;
-  }[] = [
-    {
-      id: "first-spark",
-      title: lang === "en" ? "First Spark" : "První jiskra",
-      text: lang === "en" ? "Enter the scriptorium and open your first pack" : "Vstupte do skriptoria a otevřete svůj první balíček",
-      xp: "100 XP",
-      initial: "Q",
-      check: () => state.packsOpened >= 1 || state.trophies.includes("first-spark"),
-    },
-    {
-      id: "first-pack",
-      title: lang === "en" ? "Seal Breaker" : "Lamač pečetí",
-      text: lang === "en" ? "Collect at least 5 different colophons in your library" : "Získejte alespoň 5 různých kolofonů do své sbírky",
-      xp: "150 XP",
-      initial: "S",
-      check: () => Object.keys(state.collection).length >= 5 || state.trophies.includes("first-pack"),
-    },
-    {
-      id: "collector",
-      title: lang === "en" ? "Journeyman Scribe" : "Zkušený tovaryš",
-      text: lang === "en" ? "Gather at least 10 unique medieval codices" : "Shromážděte alespoň 10 různých středověkých kodexů",
-      xp: "250 XP",
-      initial: "A",
-      check: () => Object.keys(state.collection).length >= 10 || state.trophies.includes("collector"),
-    },
-    {
-      id: "bibliophile",
-      title: lang === "en" ? "Clementinum Librarian" : "Knihovník Klementina",
-      text: lang === "en" ? "Possess at least 20 unique codices and charters" : "Vlastněte alespoň 20 různých kodexů a pergamenů",
-      xp: "500 XP",
-      initial: "K",
-      check: () => Object.keys(state.collection).length >= 20 || state.trophies.includes("bibliophile"),
-    },
-    {
-      id: "streak-7",
-      title: lang === "en" ? "Week in the Scriptorium" : "Týden ve skriptoriu",
-      text: lang === "en" ? "Maintain a continuous 7-day daily study streak" : "Udržte 7 dní nepřetržitého každodenního bádání",
-      xp: "200 XP",
-      initial: "T",
-      check: () => state.streak >= 7 || state.trophies.includes("streak-7"),
-    },
-    {
-      id: "streak",
-      title: lang === "en" ? "Steadfast Illuminator" : "Vytrvalý iluminátor",
-      text: lang === "en" ? "Maintain a 16-day streak and assemble the full mosaic" : "Udržte 16 dní nepřetržité návštěvy a složte mozaiku",
-      xp: "400 XP",
-      initial: "I",
-      check: () => state.streak >= 16 || state.puzzle >= 16 || state.trophies.includes("streak"),
-    },
-    {
-      id: "prague-scholar",
-      title: lang === "en" ? "Prague Magister" : "Pražský magistr",
-      text: lang === "en" ? "Collect at least 3 codices from Prague scriptoria" : "Získejte alespoň 3 kodexy z pražských skriptorií",
-      xp: "250 XP",
-      initial: "P",
-      check: () =>
-        state.trophies.includes("prague-scholar") ||
-        cards.filter(
-          (c) =>
-            state.collection[c.id] &&
-            (c.place?.toLowerCase().includes("praha") ||
-              c.manuscript?.toLowerCase().includes("praha") ||
-              c.manuscript?.toLowerCase().includes("nkp"))
-        ).length >= 3,
-    },
-    {
-      id: "vyssi-brod",
-      title: lang === "en" ? "Monk of Vyšší Brod" : "Vyšebrodský mnich",
-      text: lang === "en" ? "Own a codex from the Cistercian monastery of Vyšší Brod" : "Vlastněte kodex z cisterciáckého kláštera Vyšší Brod",
-      xp: "300 XP",
-      initial: "V",
-      check: () =>
-        state.trophies.includes("vyssi-brod") ||
-        cards.some(
+  const [statusFilter, setStatusFilter] = useState<"all" | "earned" | "locked">("all");
+  const [diffFilter, setDiffFilter] = useState<"all" | TrophyDifficulty>("all");
+  const [catFilter, setCatFilter] = useState<"all" | TrophyCategory>("all");
+
+  const storedTrophies: TrophyItem[] = useMemo(() => getStoredTrophies(), []);
+
+  function checkTrophy(t: TrophyItem): boolean {
+    if (state.trophies.includes(t.id)) return true;
+    switch (t.id) {
+      case "first-spark":
+        return state.packsOpened >= 1;
+      case "first-pack":
+        return Object.keys(state.collection).length >= 5;
+      case "collector":
+        return Object.keys(state.collection).length >= 10;
+      case "bibliophile":
+        return Object.keys(state.collection).length >= 20;
+      case "streak-7":
+        return state.streak >= 7;
+      case "streak":
+        return state.streak >= 16 || state.puzzle >= 16;
+      case "prague-scholar":
+        return (
+          cards.filter(
+            (c) =>
+              state.collection[c.id] &&
+              (c.place?.toLowerCase().includes("praha") ||
+                c.manuscript?.toLowerCase().includes("praha") ||
+                c.manuscript?.toLowerCase().includes("nkp"))
+          ).length >= 3
+        );
+      case "vyssi-brod":
+        return cards.some(
           (c) =>
             state.collection[c.id] &&
             (c.place?.toLowerCase().includes("brod") ||
               c.manuscript?.toLowerCase().includes("vb") ||
               c.manuscript?.toLowerCase().includes("brod"))
-        ),
-    },
-    {
-      id: "cipher-breaker",
-      title: lang === "en" ? "Cipher Breaker" : "Lamač šifer",
-      text: lang === "en" ? "Discover and own a colophon containing a cipher or cryptogram" : "Najděte a vlastněte kolofon se šifrou či kryptogramem",
-      xp: "350 XP",
-      initial: "X",
-      check: () =>
-        state.trophies.includes("cipher-breaker") ||
-        cards.some(
+        );
+      case "cipher-breaker":
+        return cards.some(
           (c) =>
             state.collection[c.id] &&
             ((c as any).features?.includes("Šifra") ||
               (c as any).colophons?.features?.includes("Šifra") ||
               c.rarity === "Rare" ||
               c.rarity === "Epic")
-        ),
-    },
-    {
-      id: "verse-lover",
-      title: lang === "en" ? "Latin Versifier" : "Pěvec latinský",
-      text: lang === "en" ? "Acquire a rhymed or metrical colophon into your collection" : "Získejte veršovaný či rýmovaný kolofon do sbírky",
-      xp: "250 XP",
-      initial: "C",
-      check: () =>
-        state.trophies.includes("verse-lover") ||
-        cards.some(
+        );
+      case "verse-lover":
+        return cards.some(
           (c) =>
             state.collection[c.id] &&
             ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše"))
-        ),
-    },
-    {
-      id: "initial-master",
-      title: lang === "en" ? "Golden Initial" : "Zlatá iniciála",
-      text: lang === "en" ? "Acquire a colophon card adorned with an illuminated initial" : "Získejte kartu kolofonu zdobenou iluminovanou iniciálou",
-      xp: "200 XP",
-      initial: "M",
-      check: () =>
-        state.trophies.includes("initial-master") ||
-        cards.some(
+        );
+      case "initial-master":
+        return cards.some(
           (c) =>
             state.collection[c.id] &&
             ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála"))
-        ),
-    },
-    {
-      id: "rare-seeker",
-      title: lang === "en" ? "Curio Collector" : "Sběratel kuriozit",
-      text: lang === "en" ? "Acquire at least one Rare or Epic colophon card" : "Získejte alespoň jednu vzácnou (Rare) či epickou (Epic) kartu",
-      xp: "250 XP",
-      initial: "E",
-      check: () =>
-        state.trophies.includes("rare-seeker") ||
-        cards.some(
+        );
+      case "rare-seeker":
+        return cards.some(
           (c) =>
             state.collection[c.id] &&
             (c.rarity === "Rare" || c.rarity === "Epic" || c.rarity === "Legendary" || c.rarity === "Unique")
-        ),
-    },
-    {
-      id: "unique",
-      title: lang === "en" ? "Gilded Mystery" : "Zlacené tajemství",
-      text: lang === "en" ? "Discover a Unique monumental colophon" : "Najděte Unikátní (Unique) monumentální kolofon",
-      xp: "500 XP",
-      initial: "G",
-      check: () =>
-        state.trophies.includes("unique") ||
-        cards.some((c) => state.collection[c.id] && c.rarity === "Unique"),
-    },
-    {
-      id: "paleographer",
-      title: lang === "en" ? "Master Palaeographer" : "Písařský mistr",
-      text: lang === "en" ? "Successfully pass at least 5 scribal challenges" : "Úspěšně absolvujte alespoň 5 písařských výzev",
-      xp: "300 XP",
-      initial: "D",
-      check: () => state.gamesPlayed >= 5 || state.trophies.includes("paleographer"),
-    },
-    {
-      id: "philanthropist",
-      title: lang === "en" ? "Generous Fellow" : "Štědrý tovaryš",
-      text: lang === "en" ? "Gift a duplicate colophon to a colleague in the scriptorium" : "Darujte duplicitní kartu svému kolegovi ve skriptoriu",
-      xp: "200 XP",
-      initial: "F",
-      check: () => state.trophies.includes("philanthropist"),
-    },
-    {
-      id: "mosaic-master",
-      title: lang === "en" ? "Master Illuminator" : "Mistr iluminátor",
-      text: lang === "en" ? "Complete the full 16-piece mosaic of at least one cycle" : "Složte celou 16dílnou mozaiku alespoň jednoho cyklu",
-      xp: "600 XP",
-      initial: "Z",
-      check: () => state.puzzle >= 16 || (state.gallery && state.gallery.length > 0) || state.trophies.includes("mosaic-master"),
-    },
-  ];
-
-  const earnedCount = trophies.filter((t) => t.check()).length;
-
-  return <div className="screen trophies-screen">
-    <PageTitle kicker={lang === "en" ? "Pilgrim's Milestones" : "Poutníkovy milníky"}>
-      {lang === "en" ? "Scribal Honors" : "Písařská ocenění"}
-    </PageTitle>
-    <section className="puzzle-board">
-      <div className="puzzle-copy">
-        <p>{lang === "en" ? `16-day illuminated mosaic · Cycle ${activeIllumination.cycle}` : `16denní iluminovaná mozaika · Cyklus ${activeIllumination.cycle}`}</p>
-        <h2>{state.puzzle}/16 {lang === "en" ? "days" : "dní"}</h2>
-        <small>{lang === "en" ? "Daily streak reveals:" : "Denní přihlašování v řadě odhaluje:"} <strong>{getIlluminationTitle(activeIllumination, lang)}</strong> ({activeIllumination.rarity}).</small>
-        <div className="progress"><i style={{ width: `${(state.puzzle / 16) * 100}%` }} /></div>
-      </div>
-      <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
-    </section>
-    <div className="section-title">
-      <h2>{lang === "en" ? "Earned Honors" : "Získané pocty"}</h2>
-      <span>{earnedCount}/{trophies.length} {lang === "en" ? "completed" : "splněno"}</span>
-    </div>
-    <div className="trophy-list">
-      {trophies.map((t) => {
-        const earned = t.check();
-        return (
-          <article key={t.id} className={earned ? "earned" : "locked"}>
-            <div className="illuminated-initial">{t.initial}</div>
-            <div>
-              <strong>{t.title}</strong>
-              <p>{t.text}</p>
-              <small>{earned ? (lang === "en" ? "Completed" : "Splněno") : t.xp}</small>
-            </div>
-            <span>{earned ? <Award size={18} /> : <LockKeyhole size={16} />}</span>
-          </article>
         );
-      })}
+      case "unique":
+        return cards.some((c) => state.collection[c.id] && c.rarity === "Unique");
+      case "paleographer":
+        return state.gamesPlayed >= 5;
+      case "philanthropist":
+        return state.trophies.includes("philanthropist");
+      case "mosaic-master":
+        return state.puzzle >= 16 || Boolean(state.gallery && state.gallery.length > 0);
+      default:
+        if (t.requirement_type === "packs_opened") return state.packsOpened >= Number(t.requirement_value || 1);
+        if (t.requirement_type === "collection_count") return Object.keys(state.collection).length >= Number(t.requirement_value || 5);
+        if (t.requirement_type === "streak") return state.streak >= Number(t.requirement_value || 7);
+        if (t.requirement_type === "games_played") return state.gamesPlayed >= Number(t.requirement_value || 5);
+        if (t.requirement_type === "puzzle_completed") return state.puzzle >= 16;
+        if (t.requirement_type === "rarity_owned") return cards.some((c) => state.collection[c.id] && c.rarity === t.requirement_value);
+        if (t.requirement_type === "gift_sent") return state.trophies.includes(t.id);
+        return state.trophies.includes(t.id);
+    }
+  }
+
+  function formatTrophyTimestamp(iso: string | undefined): string {
+    if (!iso) return lang === "en" ? "Unlocked" : "Splněno";
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return lang === "en" ? "Unlocked" : "Splněno";
+      return lang === "en"
+        ? `Unlocked: ${d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+        : `Získáno: ${d.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric", year: "numeric" })} ${d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}`;
+    } catch {
+      return lang === "en" ? "Unlocked" : "Splněno";
+    }
+  }
+
+  const trophiesWithStatus = useMemo(() => {
+    return storedTrophies.map((t) => ({
+      ...t,
+      earned: checkTrophy(t),
+    }));
+  }, [storedTrophies, state, cards]);
+
+  const earnedCount = trophiesWithStatus.filter((t) => t.earned).length;
+
+  const filteredTrophies = useMemo(() => {
+    return trophiesWithStatus.filter((t) => {
+      if (statusFilter === "earned" && !t.earned) return false;
+      if (statusFilter === "locked" && t.earned) return false;
+      if (diffFilter !== "all" && t.difficulty !== diffFilter) return false;
+      if (catFilter !== "all" && t.category !== catFilter) return false;
+      return true;
+    });
+  }, [trophiesWithStatus, statusFilter, diffFilter, catFilter]);
+
+  return (
+    <div className="screen trophies-screen">
+      <PageTitle kicker={lang === "en" ? "Pilgrim's Milestones" : "Poutníkovy milníky"}>
+        {lang === "en" ? "Scribal Honors & Challenges" : "Písařská ocenění & výzvy"}
+      </PageTitle>
+
+      <section className="puzzle-board">
+        <div className="puzzle-copy">
+          <p>{lang === "en" ? `16-day illuminated mosaic · Cycle ${activeIllumination.cycle}` : `16denní iluminovaná mozaika · Cyklus ${activeIllumination.cycle}`}</p>
+          <h2>{state.puzzle}/16 {lang === "en" ? "days" : "dní"}</h2>
+          <small>{lang === "en" ? "Daily streak reveals:" : "Denní přihlašování v řadě odhaluje:"} <strong>{getIlluminationTitle(activeIllumination, lang)}</strong> ({activeIllumination.rarity}).</small>
+          <div className="progress"><i style={{ width: `${(state.puzzle / 16) * 100}%` }} /></div>
+        </div>
+        <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
+      </section>
+
+      <div className="section-title">
+        <h2>{lang === "en" ? "Scribal Honors" : "Získané pocty"}</h2>
+        <span>{earnedCount}/{storedTrophies.length} {lang === "en" ? "completed" : "splněno"}</span>
+      </div>
+
+      {/* Filtry výzev */}
+      <div className="space-y-2 mb-3">
+        {/* Filtr podle stavu */}
+        <div className="trophy-filters">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`trophy-filter-btn ${statusFilter === "all" ? "active" : ""}`}
+          >
+            {lang === "en" ? "All" : "Vše"} ({storedTrophies.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("earned")}
+            className={`trophy-filter-btn ${statusFilter === "earned" ? "active" : ""}`}
+          >
+            🏆 {lang === "en" ? "Completed" : "Získané"} ({earnedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("locked")}
+            className={`trophy-filter-btn ${statusFilter === "locked" ? "active" : ""}`}
+          >
+            🔒 {lang === "en" ? "Locked" : "K odemčení"} ({storedTrophies.length - earnedCount})
+          </button>
+        </div>
+
+        {/* Filtr podle obtížnosti a kategorie */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[11px] font-bold text-[#725433] uppercase mr-1">
+            {lang === "en" ? "Tier:" : "Obtížnost:"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setDiffFilter("all")}
+            className={`trophy-filter-btn ${diffFilter === "all" ? "active" : ""}`}
+          >
+            {lang === "en" ? "All" : "Všechny"}
+          </button>
+          {(["easy", "medium", "hard", "impossible"] as const).map((df) => {
+            const meta = TROPHY_DIFFICULTY_META[df];
+            return (
+              <button
+                key={df}
+                type="button"
+                onClick={() => setDiffFilter(df)}
+                className={`trophy-filter-btn ${diffFilter === df ? "active" : ""}`}
+              >
+                {lang === "en" ? meta.label_en : meta.label_cs}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[11px] font-bold text-[#725433] uppercase mr-1">
+            {lang === "en" ? "Category:" : "Kategorie:"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCatFilter("all")}
+            className={`trophy-filter-btn ${catFilter === "all" ? "active" : ""}`}
+          >
+            {lang === "en" ? "All" : "Všechny"}
+          </button>
+          {(["collection", "study", "palaeography", "community", "secrets"] as const).map((cat) => {
+            const meta = TROPHY_CATEGORY_META[cat];
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCatFilter(cat)}
+                className={`trophy-filter-btn ${catFilter === cat ? "active" : ""}`}
+              >
+                {meta.icon} {lang === "en" ? meta.label_en : meta.label_cs}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Seznam výzev */}
+      <div className="trophy-list">
+        {filteredTrophies.length === 0 ? (
+          <div className="p-6 text-center text-sm italic text-[#725433] border border-dashed border-[#a88258] rounded bg-[#f5e8cd]">
+            {lang === "en" ? "No challenges match the selected filters." : "Žádné výzvy neodpovídají vybraným filtrům."}
+          </div>
+        ) : (
+          filteredTrophies.map((t) => {
+            const diffMeta = TROPHY_DIFFICULTY_META[t.difficulty] || TROPHY_DIFFICULTY_META.medium;
+            const catMeta = TROPHY_CATEGORY_META[t.category] || TROPHY_CATEGORY_META.collection;
+            const title = lang === "en" ? (t.title_en || t.title) : t.title;
+            const text = lang === "en" ? (t.text_en || t.text) : t.text;
+            const ts = state.trophyTimestamps?.[t.id];
+
+            return (
+              <article key={t.id} className={t.earned ? "earned" : "locked"}>
+                <div className="illuminated-initial">{t.initial}</div>
+                <div className="min-w-0 pr-2">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <strong>{title}</strong>
+                    <span className={`trophy-badge trophy-badge-${t.difficulty}`}>
+                      {lang === "en" ? diffMeta.label_en : diffMeta.label_cs}
+                    </span>
+                    <span className="text-[10px] text-[#725433] bg-[#ebdab7] px-1.5 py-0.5 rounded border border-[#d6be90] font-medium flex items-center gap-1">
+                      <span>{catMeta.icon}</span>
+                      <span>{lang === "en" ? catMeta.label_en : catMeta.label_cs}</span>
+                    </span>
+                  </div>
+                  <p>{text}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+                    <small className="text-[#1039a0] font-bold text-[11px]">
+                      +{t.xp} XP
+                    </small>
+                    {t.earned && (
+                      <span className="trophy-timestamp">
+                        🕒 {formatTrophyTimestamp(ts)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="flex items-center justify-center pl-1">
+                  {t.earned ? <Award size={20} className="text-[#a07412]" /> : <LockKeyhole size={18} className="text-[#8c745b]" />}
+                </span>
+              </article>
+            );
+          })
+        )}
+      </div>
     </div>
-  </div>;
+  );
 }
 
 function ProfileScreen({
@@ -5525,7 +5589,7 @@ function GameModal({
       const delta = e.deltaY < 0 ? 0.25 : -0.25;
       setIsLoupeActive(true);
       setZoomLevel((z) => {
-        const next = Math.max(1.0, Math.min(4.0, Math.round((z + delta) * 10) / 10));
+        const next = Math.max(1.0, Math.min(5.0, Math.round((z + delta) * 10) / 10));
         if (next <= 1.0) {
           setIsLoupeActive(false);
           setPanOffset({ x: 0, y: 0 });
@@ -5622,7 +5686,7 @@ function GameModal({
                       </span>
                       <button
                         type="button"
-                        onClick={() => setZoomLevel((z) => Math.min(4.0, Math.round((z + 0.3) * 10) / 10))}
+                        onClick={() => setZoomLevel((z) => Math.min(5.0, Math.round((z + 0.3) * 10) / 10))}
                         className="w-5 h-5 rounded hover:bg-[#2e2318] text-[#ffd580] flex items-center justify-center font-bold text-xs cursor-pointer"
                         title={lang === "en" ? "Zoom in" : "Přiblížit (+)"}
                       >
@@ -5863,16 +5927,16 @@ function GameModal({
           <div className="game-explanation">
             <strong>{lang === "en" ? "Scribal Insight & Solution:" : "Písařský vhled & řešení:"}</strong>
             {isTranscription && (
-              <p className="font-serif italic text-sm text-[#ffd580] my-1">
+              <p className="game-transcription-solution">
                 „{question.target_transcription || question.quote}“
               </p>
             )}
             {qTranslation && (
-              <p className="text-xs text-[#dcd3c7] mb-1">
+              <p className="game-translation-box">
                 <b>{lang === "en" ? "Translation:" : "Překlad:"}</b> „{qTranslation}“
               </p>
             )}
-            {qExplanation && <p>{qExplanation}</p>}
+            {qExplanation && <p className="mt-1">{qExplanation}</p>}
           </div>
         )}
 

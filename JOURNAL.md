@@ -9,6 +9,36 @@
 
 ---
 
+## 📅 Záznam ze dne 20. 9. 2026 — Paleografická lupa 500 %, čitelnost řešení, přehled všech miniher a správa Výzev
+
+**Realizované úpravy:**
+1. **Paleografická lupa až na 500 % (`app/page.tsx`):**
+   - Hranice maximálního zoomu navýšena z 400 % (4.0×) na **500 %** (5.0×) jak při scrollování kolečkem myši s vypnutým scrollem podkladu, tak při klikání na tlačítko `+` v nástrojové liště lupy.
+2. **Dokonalá čitelnost písařského řešení a překladu (`app/page.tsx`, `app/globals.css`):**
+   - Vyřešen problém se špatně čitelným žlutým textem na světlém pergamenu v `.game-explanation`.
+   - Zaveden vysoký kontrast: tmavý písařský inkoustový text (`#1e1005` / `#2c1908`), zvýrazněný podkladový rámeček pro přepis (`.game-transcription-solution`, `#dec28c` s lemováním `#b89758`) a zřetelný styl pro překlad (`.game-translation-box`).
+3. **Zkrácení položek horního menu v Quilldrop Studiu (`app/admin/page.tsx`):**
+   - *„Glosy & moudra“* zkráceno na **„Glosy“**.
+   - *„Iluminace & streaky“* zkráceno na **„Denní iluminace“**.
+4. **Globální soupis a správa všech miniher (`app/admin/page.tsx`):**
+   - Přidáno modální okno `AllMiniGamesModal` s přehledem všech `game_questions` napříč všemi kodexy.
+   - Filtrování podle disciplíny (Nálada písaře, Šifra, Písmo, Paleografický přepis) i podle konkrétního rukopisu.
+   - Vyhledávání podle názvu výzvy, textu, přepisu, signatury i názvu kodexu.
+   - Tlačítko **Upravit v editoru**: okamžitě přepne Studio na daný rukopis, otevře vizuální vyznačení řádků (strips) a otevře editační formulář.
+   - Tlačítko **+ Vytvořit minihru**: dialog s výběrem cílového rukopisu z fondu karet a volbou disciplíny, který okamžitě otevře tvůrce pro zvolený rukopis.
+   - Tlačítko **Smazat**: bezpečné odstranění minihry z databáze i lokálního seznamu.
+5. **Systém Výzev & Achievementů (`app/data/trophies.ts`, `app/page.tsx`, `app/admin/page.tsx`):**
+   - Vytvořen samostatný datový modul `app/data/trophies.ts` se 4 stupni obtížnosti (*Lehké* 75 XP, *Střední* 200 XP, *Těžké* 400 XP, *Nemožné* 1000 XP) a 5 tematickými kategoriemi (*Sběratelství*, *Bádání & streaky*, *Paleografie & výzvy*, *Společenství*, *Tajemství & kuriozity*).
+   - Herní záložka **Výzvy**:
+     - Filtrování: Stav (Vše, Získané, K odemčení), Obtížnost (Lehké, Střední, Těžké, Nemožné) a Kategorie.
+     - Záznam a zobrazení přesného data a času odemčení (timestamp: např. *„Získáno: 20. 9. 2026, 14:32“*).
+     - Barevné medieval odznaky obtížnosti a ikonické štítky kategorií.
+   - Administrační studio:
+     - Přidáno tlačítko `Výzvy` do horní lišty.
+     - Kompletní správce výzev `AchievementsModal` umožňující přidávat nové výzvy, editovat stávající, upravovat kritéria a hodnoty odemčení, měnit iniciály i resetovat na výchozí katalog.
+
+---
+
 ## 📅 Záznam ze dne 14. 9. 2026 — Převod na plnohodnotnou webovou multiplatformní aplikaci (Desktop & Mobil)
 
 **Cíl etapy:** Převést původní mobilní rozložení (430px) na plnohodnotnou multiplatformní webovou aplikaci pro studenty FF UK i veřejnost, aniž by došlo k narušení oblíbeného pergamenového vizuálu, barev rarit a luxusních animací odhalování karet.

@@ -44,6 +44,10 @@ import {
   Upload,
   Image as ImageIcon,
   Radio,
+  Gamepad2,
+  Trophy,
+  Search,
+  Filter,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -54,6 +58,16 @@ import {
   getStoredIlluminations,
   saveStoredIlluminations,
 } from "../data/illuminations";
+import {
+  DEFAULT_TROPHIES,
+  type TrophyItem,
+  type TrophyDifficulty,
+  type TrophyCategory,
+  TROPHY_DIFFICULTY_META,
+  TROPHY_CATEGORY_META,
+  getStoredTrophies,
+  saveStoredTrophies,
+} from "../data/trophies";
 import HeuristCatalogModal from "./HeuristCatalogModal";
 import StudioHelpModal from "./StudioHelpModal";
 
@@ -729,6 +743,215 @@ export default function AdminPage() {
     reader.readAsDataURL(file);
   };
 
+  // Správa všech miniher napříč rukopisy
+  const [showAllGamesModal, setShowAllGamesModal] = useState(false);
+  const [allGamesList, setAllGamesList] = useState<GameQuestion[]>([]);
+  const [allGamesLoading, setAllGamesLoading] = useState(false);
+  const [allGamesSearch, setAllGamesSearch] = useState("");
+  const [allGamesModeFilter, setAllGamesModeFilter] = useState<string>("all");
+  const [allGamesCardFilter, setAllGamesCardFilter] = useState<string>("all");
+  const [showNewGamePicker, setShowNewGamePicker] = useState(false);
+  const [newGamePickerSearch, setNewGamePickerSearch] = useState("");
+  const [newGamePickerMode, setNewGamePickerMode] = useState<GameBuilderMode>("mood");
+
+  async function fetchAllGames() {
+    setAllGamesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("game_questions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        const parsed = data.map((q: any) => {
+          let choices = q.options;
+          let choicesEn = q.options_en;
+          let mode = q.game_kind;
+          let highlightRegions = undefined;
+          let targetTranscription = undefined;
+          let acceptedVariants = undefined;
+          let translationCs = q.translation_cs;
+          let translationEn = q.translation_en;
+          let titleEn = q.title_en;
+          let introEn = q.intro_en;
+          let explanationEn = q.explanation_en;
+          let hintEn = q.hint_en;
+
+          if (q.options && typeof q.options === "object" && !Array.isArray(q.options)) {
+            if (q.options.choices) choices = q.options.choices;
+            if (q.options.choices_en) choicesEn = q.options.choices_en;
+            if (q.options.mode) mode = q.options.mode;
+            if (q.options.highlight_regions) highlightRegions = q.options.highlight_regions;
+            if (q.options.target_transcription) targetTranscription = q.options.target_transcription;
+            if (q.options.accepted_variants) acceptedVariants = q.options.accepted_variants;
+            if (q.options.translation_cs) translationCs = q.options.translation_cs;
+            if (q.options.translation_en) translationEn = q.options.translation_en;
+            if (q.options.title_en) titleEn = q.options.title_en;
+            if (q.options.intro_en) introEn = q.options.intro_en;
+            if (q.options.explanation_en) explanationEn = q.options.explanation_en;
+            if (q.options.hint_en) hintEn = q.options.hint_en;
+          }
+
+          if (!mode) {
+            if (highlightRegions || targetTranscription) mode = "transcription";
+            else if (q.game_kind === "paleo") mode = "script";
+            else mode = q.game_kind;
+          }
+
+          return {
+            ...q,
+            mode,
+            title_en: titleEn,
+            intro_en: introEn,
+            explanation_en: explanationEn,
+            hint_en: hintEn,
+            options: choices || [],
+            options_en: choicesEn || [],
+            highlight_regions: highlightRegions,
+            target_transcription: targetTranscription,
+            accepted_variants: acceptedVariants,
+            translation_cs: translationCs,
+            translation_en: translationEn,
+          };
+        });
+        setAllGamesList(parsed as GameQuestion[]);
+      }
+    } catch (e) {
+      console.warn("Chyba při načítání všech miniher:", e);
+    } finally {
+      setAllGamesLoading(false);
+    }
+  }
+
+  function handleStartEditFromAllGames(q: GameQuestion) {
+    setShowAllGamesModal(false);
+    const targetCard = cards.find((c) => c.id === q.card_id);
+    if (targetCard) {
+      selectCard(targetCard);
+    }
+    setRightSidebarTab("minigames");
+    if (q.mode === "transcription") {
+      setCenterMode("strips");
+    }
+    handleStartEditGame(q);
+  }
+
+  function handleCreateGameForCard(cardId: string, mode: GameBuilderMode) {
+    const targetCard = cards.find((c) => c.id === cardId);
+    if (!targetCard) return;
+    setShowAllGamesModal(false);
+    setShowNewGamePicker(false);
+    selectCard(targetCard);
+    setRightSidebarTab("minigames");
+    if (mode === "transcription") {
+      setCenterMode("strips");
+    }
+    setEditingGameId(null);
+    applyBuilderMode(mode, targetCard);
+    setShowGameForm(true);
+  }
+
+  // Správa výzev / achievementů
+  const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+  const [trophiesList, setTrophiesList] = useState<TrophyItem[]>(DEFAULT_TROPHIES);
+  const [editingTrophy, setEditingTrophy] = useState<TrophyItem | null>(null);
+  const [trophySearch, setTrophySearch] = useState("");
+  const [trophyDiffFilter, setTrophyDiffFilter] = useState("all");
+  const [trophyCatFilter, setTrophyCatFilter] = useState("all");
+  const [trophySuccessMsg, setTrophySuccessMsg] = useState("");
+  const [trophyForm, setTrophyForm] = useState<TrophyItem>({
+    id: "",
+    title: "",
+    title_en: "",
+    text: "",
+    text_en: "",
+    xp: 75,
+    initial: "🏆",
+    difficulty: "easy",
+    category: "collection",
+    requirement_type: "custom",
+    requirement_value: "",
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setTrophiesList(getStoredTrophies());
+    }
+  }, []);
+
+  function handleSelectTrophyToEdit(t: TrophyItem) {
+    setEditingTrophy(t);
+    setTrophyForm({ ...t });
+    setTrophySuccessMsg("");
+  }
+
+  function handleNewTrophyForm() {
+    setEditingTrophy(null);
+    setTrophyForm({
+      id: `trophy-${Date.now().toString(36)}`,
+      title: "",
+      title_en: "",
+      text: "",
+      text_en: "",
+      xp: 75,
+      initial: "🏆",
+      difficulty: "easy",
+      category: "collection",
+      requirement_type: "custom",
+      requirement_value: "",
+    });
+    setTrophySuccessMsg("");
+  }
+
+  function handleSaveTrophy(e: React.FormEvent) {
+    e.preventDefault();
+    if (!trophyForm.title.trim()) {
+      alert("Vyplňte prosím název výzvy.");
+      return;
+    }
+    const cleanId = trophyForm.id.trim() || `trophy-${Date.now().toString(36)}`;
+    const updated: TrophyItem = {
+      ...trophyForm,
+      id: cleanId,
+      title: trophyForm.title.trim(),
+      title_en: trophyForm.title_en.trim() || trophyForm.title.trim(),
+      text: trophyForm.text.trim(),
+      text_en: trophyForm.text_en.trim() || trophyForm.text.trim(),
+      initial: trophyForm.initial.trim() || "🏆",
+      xp: Number(trophyForm.xp) || 100,
+    };
+
+    let nextList: TrophyItem[];
+    if (editingTrophy) {
+      nextList = trophiesList.map((t) => (t.id === editingTrophy.id ? updated : t));
+    } else {
+      nextList = [updated, ...trophiesList];
+    }
+
+    setTrophiesList(nextList);
+    saveStoredTrophies(nextList);
+    setEditingTrophy(updated);
+    setTrophySuccessMsg("Výzva byla úspěšně uložena!");
+    setTimeout(() => setTrophySuccessMsg(""), 3000);
+  }
+
+  function handleDeleteTrophy(id: string) {
+    if (!confirm("Opravdu chcete tuto výzvu smazat?")) return;
+    const nextList = trophiesList.filter((t) => t.id !== id);
+    setTrophiesList(nextList);
+    saveStoredTrophies(nextList);
+    if (editingTrophy?.id === id) {
+      handleNewTrophyForm();
+    }
+  }
+
+  function handleResetTrophies() {
+    if (!confirm("Opravdu si přejete obnovit všechny výzvy na výchozí sadu?")) return;
+    setTrophiesList(DEFAULT_TROPHIES);
+    saveStoredTrophies(DEFAULT_TROPHIES);
+    handleNewTrophyForm();
+  }
+
   // Kontrola přihlášení při načtení
   useEffect(() => {
     checkUser();
@@ -1088,6 +1311,7 @@ export default function AdminPage() {
       }
     }
     setLoading(false);
+    fetchAllGames();
   }
 
   function selectCard(card: CardData) {
@@ -1806,6 +2030,7 @@ export default function AdminPage() {
         setLastSavedSummary("Minihra byla úspěšně upravena v databázi");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
+        fetchAllGames();
       } else {
         alert("Chyba při úpravě minihry v databázi: " + (error?.message || "Neznámá chyba"));
       }
@@ -1840,6 +2065,7 @@ export default function AdminPage() {
         setLastSavedSummary("Nová minihra byla uložena do databáze");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
+        fetchAllGames();
       } else {
         alert("Chyba při ukládání minihry do databáze: " + (error?.message || "Neznámá chyba"));
       }
@@ -1851,6 +2077,7 @@ export default function AdminPage() {
     const { error } = await supabase.from("game_questions").delete().eq("id", qId);
     if (!error) {
       setQuestions(questions.filter((q) => q.id !== qId));
+      setAllGamesList((prev) => prev.filter((q) => q.id !== qId));
     } else {
       alert("Chyba při mazání minihry: " + error.message);
     }
@@ -2061,13 +2288,13 @@ export default function AdminPage() {
         </div>
 
         {/* STŘEDNÍ ČÁST: Nástroje a akce */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-1.5">
           <button
             onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-1.5 text-xs bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] px-3.5 py-1.5 rounded-lg font-bold shadow transition cursor-pointer"
+            className="flex items-center gap-1.5 text-xs bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] px-3 py-1.5 rounded-lg font-bold shadow transition cursor-pointer"
             title="Přidat nový kolofon z 3 640 digitalizátů Heurist"
           >
-            <PlusCircle size={14} /> + Přidat kolofon (Heurist)
+            <PlusCircle size={14} /> + Přidat kolofon
           </button>
 
           <button
@@ -2075,10 +2302,10 @@ export default function AdminPage() {
               setShowCuriosModal(true);
               setEditingCurio(null);
             }}
-            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
             title="Správa historických glos, mouder a zajímavostí z knižní kultury"
           >
-            <BookOpen size={13} /> Glosy & moudra ({curios.length})
+            <BookOpen size={13} /> Glosy ({curios.length})
           </button>
 
           <button
@@ -2086,15 +2313,37 @@ export default function AdminPage() {
               setShowMosaicsModal(true);
               setEditingMosaic(null);
             }}
-            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
             title="Správa 16dílných iluminací a denních streaků (Cesta písaře)"
           >
-            <Puzzle size={13} /> Iluminace & streaky ({illuminations.length})
+            <Puzzle size={13} /> Denní iluminace ({illuminations.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setShowAllGamesModal(true);
+              fetchAllGames();
+            }}
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+            title="Katalog a správa všech miniher a výzev v databázi"
+          >
+            <Gamepad2 size={13} /> Minihry ({allGamesList.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setShowAchievementsModal(true);
+              handleNewTrophyForm();
+            }}
+            className="flex items-center gap-1.5 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] hover:text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+            title="Správa herních výzev, ocenění a achievementů"
+          >
+            <Trophy size={13} /> Výzvy ({trophiesList.length})
           </button>
 
           <button
             onClick={() => setShowHelpModal(true)}
-            className="flex items-center gap-1.5 text-xs bg-[#2e2316] hover:bg-[#3d301f] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#5c4627] cursor-pointer transition font-medium shadow-xs"
+            className="flex items-center gap-1.5 text-xs bg-[#2e2316] hover:bg-[#3d301f] text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#5c4627] cursor-pointer transition font-medium shadow-xs"
             title="Metodická příručka pro editory a instrukce od prof. Lucie Doležalové"
           >
             <HelpCircle size={14} className="text-[#ffd580]" /> Příručka editora
@@ -5082,6 +5331,716 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODÁL: SOUPIS A SPRÁVA VŠECH MINIHER */}
+      {showAllGamesModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#16120e] border border-[#3d3226] rounded-xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+            {/* Záhlaví modalu */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2721] bg-[#1d1712]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Gamepad2 size={20} className="text-[#ffd580]" />
+                  <h3 className="font-serif font-bold text-base text-[#ffd580] tracking-wide">
+                    Soupis a správa všech miniher
+                  </h3>
+                  <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
+                    {allGamesList.length} miniher v databázi
+                  </span>
+                </div>
+                <p className="text-xs text-[#8c7b6d] mt-1">
+                  Katalog všech písařských výzev (nálady, šifry, písma i paleografické přepisy) napříč všemi rukopisy s možností okamžité editace i vytvoření nové minihry.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAllGamesModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] transition cursor-pointer"
+                title="Zavřít okno"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Ovládací panel a filtry */}
+            <div className="p-4 border-b border-[#2e2721] bg-[#14100d] space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7d6f62]" />
+                  <input
+                    type="text"
+                    placeholder="Vyhledat v minihrách (název, text, přepis, rukopis, signatura)..."
+                    value={allGamesSearch}
+                    onChange={(e) => setAllGamesSearch(e.target.value)}
+                    className="w-full bg-[#1c1612] border border-[#3b3025] rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewGamePicker(!showNewGamePicker)}
+                    className="flex items-center gap-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs py-1.5 px-3.5 rounded-lg shadow transition cursor-pointer whitespace-nowrap"
+                  >
+                    <PlusCircle size={14} /> + Vytvořit minihru
+                  </button>
+                  <button
+                    type="button"
+                    onClick={fetchAllGames}
+                    disabled={allGamesLoading}
+                    className="p-1.5 text-[#a89887] hover:text-[#ffd580] bg-[#1e1813] border border-[#3b3025] rounded-lg cursor-pointer transition"
+                    title="Obnovit seznam z databáze"
+                  >
+                    <RefreshCw size={14} className={allGamesLoading ? "animate-spin" : ""} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filtry podle disciplíny a rukopisu */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-[11px] font-bold text-[#c9a96e] flex items-center gap-1">
+                  <Filter size={12} /> Režim:
+                </span>
+                {[
+                  { id: "all", label: "Všechny" },
+                  { id: "mood", label: "😌 Nálada" },
+                  { id: "cipher", label: "🔑 Šifra" },
+                  { id: "script", label: "📜 Písmo" },
+                  { id: "transcription", label: "🔍 Přepis" },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setAllGamesModeFilter(mode.id)}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition cursor-pointer ${
+                      allGamesModeFilter === mode.id
+                        ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                        : "bg-[#1a1410] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+
+                <span className="text-[11px] font-bold text-[#c9a96e] ml-2">Rukopis:</span>
+                <select
+                  value={allGamesCardFilter}
+                  onChange={(e) => setAllGamesCardFilter(e.target.value)}
+                  className="bg-[#1c1612] border border-[#3b3025] text-xs text-[#e8ded1] rounded px-2 py-1 max-w-[220px] truncate focus:outline-none focus:border-[#d4af37]"
+                >
+                  <option value="all">Všechny rukopisy</option>
+                  {cards.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.colophons?.manuscript_shelfmark ? `${c.colophons.manuscript_shelfmark} – ` : ""}{c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Výběr rukopisu pro novou minihru */}
+              {showNewGamePicker && (
+                <div className="bg-[#1e1711] border border-[#523d24] rounded-lg p-3 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#ffd580] flex items-center gap-1.5">
+                      <Sparkles size={14} /> Krok 1: Vyberte rukopis a disciplínu pro novou minihru
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewGamePicker(false)}
+                      className="text-[#8c7b6d] hover:text-white text-xs"
+                    >
+                      Zavřít
+                    </button>
+                  </div>
+
+                  {/* Volba disciplíny */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-[#c9a96e] font-semibold">Disciplína:</span>
+                    {[
+                      { id: "mood", label: "😌 Nálada" },
+                      { id: "cipher", label: "🔑 Šifra" },
+                      { id: "script", label: "📜 Písmo" },
+                      { id: "transcription", label: "🔍 Přepis s lupou" },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setNewGamePickerMode(m.id as GameBuilderMode)}
+                        className={`px-2.5 py-1 rounded text-xs font-semibold border transition cursor-pointer ${
+                          newGamePickerMode === m.id
+                            ? "bg-[#d4af37] text-[#120f0c] border-[#d4af37] shadow"
+                            : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Vyhledání rukopisu */}
+                  <input
+                    type="text"
+                    placeholder="Vyhledat rukopis / signaturu..."
+                    value={newGamePickerSearch}
+                    onChange={(e) => setNewGamePickerSearch(e.target.value)}
+                    className="w-full bg-[#14100c] border border-[#3b3025] rounded px-2.5 py-1 text-xs text-[#e8ded1] placeholder-[#6b5c4f] focus:outline-none focus:border-[#d4af37]"
+                  />
+
+                  {/* Grid dostupných rukopisů */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {cards
+                      .filter((c) => {
+                        if (!newGamePickerSearch.trim()) return true;
+                        const s = newGamePickerSearch.toLowerCase();
+                        return (
+                          c.title.toLowerCase().includes(s) ||
+                          (c.colophons?.manuscript_shelfmark && c.colophons.manuscript_shelfmark.toLowerCase().includes(s)) ||
+                          (c.colophons?.place && c.colophons.place.toLowerCase().includes(s))
+                        );
+                      })
+                      .map((c) => {
+                        const existingCount = allGamesList.filter((g) => g.card_id === c.id).length;
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => handleCreateGameForCard(c.id, newGamePickerMode)}
+                            className="p-2 rounded bg-[#16120e] hover:bg-[#251d16] border border-[#382b1e] hover:border-[#d4af37] cursor-pointer transition flex items-center gap-2"
+                          >
+                            <div className="w-8 h-8 rounded bg-[#0d0a08] border border-[#4a3928] overflow-hidden shrink-0">
+                              <img
+                                src={c.image_url}
+                                alt={c.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="font-serif font-bold text-xs text-[#e8ded1] truncate">{c.title}</h5>
+                              <p className="text-[10px] text-[#8c7b6d] truncate">
+                                {c.colophons?.manuscript_shelfmark || "Bez signatury"} · {existingCount} miniher
+                              </p>
+                            </div>
+                            <span className="text-xs text-[#d4af37] font-bold">Vybrat →</span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Seznam všech miniher */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {(() => {
+                const filteredGames = allGamesList.filter((g) => {
+                  const targetCard = cards.find((c) => c.id === g.card_id);
+                  const cardTitle = targetCard?.title || "";
+                  const shelfmark = targetCard?.colophons?.manuscript_shelfmark || "";
+                  const matchSearch =
+                    !allGamesSearch ||
+                    g.title.toLowerCase().includes(allGamesSearch.toLowerCase()) ||
+                    (g.title_en && g.title_en.toLowerCase().includes(allGamesSearch.toLowerCase())) ||
+                    g.quote.toLowerCase().includes(allGamesSearch.toLowerCase()) ||
+                    (g.target_transcription && g.target_transcription.toLowerCase().includes(allGamesSearch.toLowerCase())) ||
+                    cardTitle.toLowerCase().includes(allGamesSearch.toLowerCase()) ||
+                    shelfmark.toLowerCase().includes(allGamesSearch.toLowerCase());
+
+                  const matchMode = allGamesModeFilter === "all" || g.mode === allGamesModeFilter;
+                  const matchCard = allGamesCardFilter === "all" || g.card_id === allGamesCardFilter;
+                  return matchSearch && matchMode && matchCard;
+                });
+
+                if (filteredGames.length === 0) {
+                  return (
+                    <div className="p-12 text-center text-sm text-[#8c7b6d] italic border border-dashed border-[#3b3025] rounded-xl bg-[#120f0c]">
+                      {allGamesList.length === 0
+                        ? "V databázi zatím nejsou žádné minihry. Vytvořte první tlačítkem „+ Vytvořit minihru“."
+                        : "Žádné minihry neodpovídají zadaným filtrům."}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredGames.map((g) => {
+                      const targetCard = cards.find((c) => c.id === g.card_id);
+                      const modeLabels: Record<string, { label: string; bg: string; text: string; border: string }> = {
+                        mood: { label: "😌 Nálada písaře", bg: "bg-emerald-950/60", text: "text-emerald-300", border: "border-emerald-800/40" },
+                        cipher: { label: "🔑 Rozlušti šifru", bg: "bg-amber-950/60", text: "text-amber-300", border: "border-amber-800/40" },
+                        script: { label: "📜 Poznej písmo", bg: "bg-blue-950/60", text: "text-blue-300", border: "border-blue-800/40" },
+                        transcription: { label: "🔍 Paleografický přepis", bg: "bg-purple-950/60", text: "text-purple-300", border: "border-purple-800/40" },
+                      };
+                      const modeInfo = modeLabels[g.mode || "mood"] || modeLabels.mood;
+
+                      return (
+                        <div
+                          key={g.id}
+                          className="p-3.5 rounded-xl border border-[#3b3025] bg-[#17120e] hover:border-[#544331] transition flex flex-col justify-between gap-2 shadow-xs"
+                        >
+                          <div>
+                            {/* Horní řádek: Rukopis + Režim */}
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${modeInfo.bg} ${modeInfo.text} ${modeInfo.border}`}>
+                                {modeInfo.label}
+                              </span>
+                              <span className="text-[10px] font-mono text-[#8c7b6d] bg-[#110e0b] px-1.5 py-0.5 rounded border border-[#2e2620]">
+                                {g.title_en ? "CZ · EN" : "CZ"}
+                              </span>
+                            </div>
+
+                            {/* Informace o navázaném kodexu */}
+                            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#29221b]">
+                              <div className="w-7 h-7 rounded bg-[#0d0a08] border border-[#3b3025] overflow-hidden shrink-0">
+                                <img
+                                  src={targetCard?.image_url || "/colophons/placeholder.jpg"}
+                                  alt={targetCard?.title || "Rukopis"}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";
+                                  }}
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10.5px] font-bold text-[#d4af37] block truncate">
+                                  {targetCard?.colophons?.manuscript_shelfmark || "Neznámá signatura"}
+                                </span>
+                                <span className="text-[11px] text-[#e8ded1] block truncate">
+                                  {targetCard?.title || "Neznámý rukopis"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Název a intro minihry */}
+                            <h4 className="font-serif font-bold text-sm text-[#ffd580] mb-1">
+                              {g.title}
+                            </h4>
+                            <p className="text-xs text-[#8c7b6d] line-clamp-2 italic mb-2">
+                              „{g.intro}“
+                            </p>
+
+                            {/* Náhled přepisu / citace */}
+                            {g.mode === "transcription" && g.target_transcription && (
+                              <div className="bg-[#120f0c] border border-[#3b3025] rounded p-2 text-xs mb-2">
+                                <span className="text-[10px] uppercase font-bold text-[#c9a96e] block mb-0.5">
+                                  Cílový přepis:
+                                </span>
+                                <span className="font-serif italic text-[#e8ded1] block truncate">
+                                  „{g.target_transcription}“
+                                </span>
+                                {Array.isArray(g.highlight_regions) && (
+                                  <span className="text-[10px] text-[#7d6f62] block mt-1">
+                                    Vyznačeno řádků: {g.highlight_regions.length}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Akce: Upravit & Smazat */}
+                          <div className="flex items-center justify-between pt-2 border-t border-[#29221b] mt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditFromAllGames(g)}
+                              className="flex items-center gap-1.5 text-xs font-semibold bg-[#292017] hover:bg-[#3d301f] text-[#ffd580] px-3 py-1.5 rounded-lg border border-[#4a3a25] transition cursor-pointer"
+                            >
+                              <Pencil size={12} /> Upravit v editoru
+                            </button>
+                            {g.id && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGame(g.id!)}
+                                className="text-[#8c7b6d] hover:text-rose-400 p-1.5 rounded hover:bg-rose-950/40 transition cursor-pointer"
+                                title="Smazat minihru"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODÁL: SPRÁVA VÝZEV & ACHIEVEMENTŮ */}
+      {showAchievementsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#16120e] border border-[#3d3226] rounded-xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+            {/* Záhlaví modalu */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2e2721] bg-[#1d1712]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Trophy size={20} className="text-[#ffd580]" />
+                  <h3 className="font-serif font-bold text-base text-[#ffd580] tracking-wide">
+                    Správa výzev & achievementů
+                  </h3>
+                  <span className="text-[11px] bg-[#292017] text-[#c9a96e] px-2 py-0.5 rounded border border-[#4a3928]">
+                    {trophiesList.length} výzev v systému
+                  </span>
+                </div>
+                <p className="text-xs text-[#8c7b6d] mt-1">
+                  Herní milníky, sběratelské pocty a paleografické zkoušky s odstupňovanou obtížností (Lehké, Střední, Těžké, Nemožné) a odpovídajícími XP odměnami.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAchievementsModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] transition cursor-pointer"
+                title="Zavřít okno"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Split layout */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-0 overflow-hidden">
+              {/* LEVÝ PANEL: Seznam výzev a filtry */}
+              <div className="md:col-span-5 border-r border-[#2e2721] flex flex-col min-h-0 bg-[#120f0c]">
+                <div className="p-3 border-b border-[#2e2721] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleNewTrophyForm}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs py-1.5 px-3 rounded shadow transition cursor-pointer"
+                    >
+                      <PlusCircle size={14} /> Přidat novou výzvu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetTrophies}
+                      className="text-[#8c7b6d] hover:text-[#ffd580] p-1.5 rounded hover:bg-[#1e1813] transition cursor-pointer"
+                      title="Obnovit výchozí sadu výzev"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Filtrovat výzvy dle názvu, popisu..."
+                    value={trophySearch}
+                    onChange={(e) => setTrophySearch(e.target.value)}
+                    className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
+                  />
+
+                  {/* Obtížnost filtry */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-0.5 text-[10px]">
+                    {["all", "easy", "medium", "hard", "impossible"].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setTrophyDiffFilter(d)}
+                        className={`whitespace-nowrap px-2 py-0.5 rounded transition cursor-pointer border ${
+                          trophyDiffFilter === d
+                            ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                            : "bg-[#18130f] text-[#8c7b6d] border-[#2e2721] hover:text-[#c9a96e]"
+                        }`}
+                      >
+                        {d === "all" ? "Všechny obtížnosti" : TROPHY_DIFFICULTY_META[d as TrophyDifficulty]?.label_cs}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rolovatelný seznam výzev */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {trophiesList
+                    .filter((t) => {
+                      const matchesSearch =
+                        !trophySearch ||
+                        t.title.toLowerCase().includes(trophySearch.toLowerCase()) ||
+                        (t.title_en && t.title_en.toLowerCase().includes(trophySearch.toLowerCase())) ||
+                        t.text.toLowerCase().includes(trophySearch.toLowerCase());
+                      const matchesDiff = trophyDiffFilter === "all" || t.difficulty === trophyDiffFilter;
+                      const matchesCat = trophyCatFilter === "all" || t.category === trophyCatFilter;
+                      return matchesSearch && matchesDiff && matchesCat;
+                    })
+                    .map((t) => {
+                      const isSelected = editingTrophy?.id === t.id;
+                      const diffMeta = TROPHY_DIFFICULTY_META[t.difficulty] || TROPHY_DIFFICULTY_META.medium;
+                      const catMeta = TROPHY_CATEGORY_META[t.category] || TROPHY_CATEGORY_META.collection;
+
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => handleSelectTrophyToEdit(t)}
+                          className={`p-2.5 rounded-lg border text-left cursor-pointer transition flex items-center gap-2.5 ${
+                            isSelected
+                              ? "bg-[#282017] border-[#d4af37] shadow-xs"
+                              : "bg-[#16120e] border-[#2e2721] hover:border-[#4a3928] hover:bg-[#1e1813]"
+                          }`}
+                        >
+                          <div className="w-9 h-9 rounded bg-[#1f1913] border border-[#4a3928] flex items-center justify-center font-bold text-[#ffd580] text-sm shrink-0">
+                            {t.initial}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="font-serif font-bold text-xs text-[#e8ded1] truncate">
+                                {t.title}
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border trophy-badge-${t.difficulty}`}>
+                                {diffMeta.label_cs}
+                              </span>
+                            </div>
+                            <p className="text-[10.5px] text-[#8c7b6d] truncate">{t.text}</p>
+                            <div className="flex items-center justify-between gap-1 mt-1 text-[10px]">
+                              <span className="text-[#ffd580] font-bold">+{t.xp} XP</span>
+                              <span className="text-[#7d6f62] flex items-center gap-0.5">
+                                {catMeta.icon} {catMeta.label_cs}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* PRAVÝ PANEL: Editor výzvy */}
+              <div className="md:col-span-7 flex flex-col min-h-0 bg-[#17130f] p-5 overflow-y-auto">
+                <form onSubmit={handleSaveTrophy} className="space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#2e2721]">
+                    <div>
+                      <h4 className="font-serif font-bold text-sm text-[#ffd580]">
+                        {editingTrophy ? "Úprava výzvy" : "Nová herní výzva"}
+                      </h4>
+                      <p className="text-xs text-[#8c7b6d]">
+                        {editingTrophy ? `ID: ${editingTrophy.id}` : "Zadejte parametry nové výzvy."}
+                      </p>
+                    </div>
+                    {trophySuccessMsg && (
+                      <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/70 border border-emerald-700/60 px-2.5 py-1 rounded">
+                        {trophySuccessMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Názvy CZ & EN */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Název výzvy (česky) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={trophyForm.title}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, title: e.target.value })}
+                        placeholder="např. Lamač pečetí"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
+                        Title (English)
+                      </label>
+                      <input
+                        type="text"
+                        value={trophyForm.title_en}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, title_en: e.target.value })}
+                        placeholder="e.g. Seal Breaker"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Popis výzvy CZ & EN */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Popis / úkol výzvy (česky) *
+                      </label>
+                      <textarea
+                        rows={2}
+                        required
+                        value={trophyForm.text}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, text: e.target.value })}
+                        placeholder="Získejte alespoň 5 různých kolofonů do své sbírky..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#ffd580] mb-1">
+                        Description (English)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={trophyForm.text_en}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, text_en: e.target.value })}
+                        placeholder="Collect at least 5 different colophons in your library..."
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded p-2 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Volba obtížnosti */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1.5">
+                      Obtížnost výzvy & automatická XP hladina
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(["easy", "medium", "hard", "impossible"] as const).map((diff) => {
+                        const meta = TROPHY_DIFFICULTY_META[diff];
+                        const isSel = trophyForm.difficulty === diff;
+                        return (
+                          <button
+                            key={diff}
+                            type="button"
+                            onClick={() => {
+                              setTrophyForm({
+                                ...trophyForm,
+                                difficulty: diff,
+                                xp: meta.defaultXp,
+                              });
+                            }}
+                            className={`py-2 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                              isSel
+                                ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37] shadow-xs"
+                                : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
+                            }`}
+                          >
+                            <span className="block font-bold">{meta.label_cs}</span>
+                            <span className="text-[10px] opacity-75">{meta.defaultXp} XP</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Kategorie výzvy */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#c9a96e] mb-1.5">
+                      Tematická kategorie
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                      {(["collection", "study", "palaeography", "community", "secrets"] as const).map((cat) => {
+                        const meta = TROPHY_CATEGORY_META[cat];
+                        const isSel = trophyForm.category === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setTrophyForm({ ...trophyForm, category: cat })}
+                            className={`py-1.5 px-1.5 rounded text-[11px] font-semibold border transition cursor-pointer text-center truncate ${
+                              isSel
+                                ? "bg-[#3d3120] text-[#ffd580] border-[#d4af37]"
+                                : "bg-[#14100c] text-[#8c7b6d] border-[#2e2721] hover:text-[#ffd580]"
+                            }`}
+                          >
+                            <span>{meta.icon} {meta.label_cs}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Odměna XP a iniciála */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Odměna (XP) *
+                      </label>
+                      <input
+                        type="number"
+                        min={10}
+                        step={25}
+                        required
+                        value={trophyForm.xp}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, xp: Number(e.target.value) || 50 })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Vstupní iniciála (1–2 znaky)
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={3}
+                        value={trophyForm.initial}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, initial: e.target.value })}
+                        placeholder="Q"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37] text-center font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Podmínka pro odemčení */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Typ herní podmínky
+                      </label>
+                      <select
+                        value={trophyForm.requirement_type || "custom"}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, requirement_type: e.target.value as any })}
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      >
+                        <option value="collection_count">Počet karet ve sbírce</option>
+                        <option value="packs_opened">Počet otevřených balíčků</option>
+                        <option value="streak">Délka denního streaku</option>
+                        <option value="games_played">Počet splněných miniher</option>
+                        <option value="puzzle_completed">Dokončení mozaiky (16 dílků)</option>
+                        <option value="rarity_owned">Vlastnictví karty určité rarity</option>
+                        <option value="gift_sent">Darování karty kolegovi</option>
+                        <option value="custom">Vlastní / Speciální kritérium</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#c9a96e] mb-1">
+                        Hodnota podmínky
+                      </label>
+                      <input
+                        type="text"
+                        value={String(trophyForm.requirement_value ?? "")}
+                        onChange={(e) => setTrophyForm({ ...trophyForm, requirement_value: e.target.value })}
+                        placeholder="např. 5, 10, Rare, initial"
+                        className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Akční tlačítka */}
+                  <div className="flex items-center justify-between pt-3 border-t border-[#2e2721]">
+                    {editingTrophy ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTrophy(editingTrophy.id)}
+                        className="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 size={13} /> Smazat výzvu
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAchievementsModal(false)}
+                        className="px-3.5 py-1.5 bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] rounded text-xs transition cursor-pointer"
+                      >
+                        Zavřít
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#120f0c] font-bold text-xs rounded shadow transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Check size={14} /> Uložit výzvu
+                      </button>
+                    </div>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
