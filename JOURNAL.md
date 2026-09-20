@@ -36,6 +36,16 @@
    - Administrační studio:
      - Přidáno tlačítko `Výzvy` do horní lišty.
      - Kompletní správce výzev `AchievementsModal` umožňující přidávat nové výzvy, editovat stávající, upravovat kritéria a hodnoty odemčení, měnit iniciály i resetovat na výchozí katalog.
+6. **Bloková stavebnice podmínek Výzev a optimalizace operátorů (`app/data/trophies.ts`, `app/admin/page.tsx`):**
+   - Odstraněn matoucí operátor „Maximálně (<=)“.
+   - Pro 99 % výzev je nastaven automatický operátor „Alespoň (>=)“, který odpovídá logice narůstajícího postupu hráče.
+   - Možnost „Přesně (=)“ ponechána selektivně pouze u domén, kde dává reálný smysl (zlaťáky pro easter eggy, procentuální přesnost transkripce, vlastní podmínka).
+   - Vytvořena přehledná 4bloková stavebnice v administračním studiu s dynamickým živým lidským shrnutím podmínky v češtině v reálném čase.
+7. **Kompletní aktualizace sekce miniher v Příručce editora (`app/admin/StudioHelpModal.tsx`, `docs/NAVOD_PRO_BRIGADNIKY.md`):**
+   - Detailní rozepsání všech 4 herních disciplín (Nálada písaře, Rozlušti šifru, Poznej středověké písmo, Paleografický přepis) včetně výukového cíle, nastavení v editoru a balíčků odměn (Běžný, Učencův, Královský).
+   - Dokumentace dvoucestné tvorby miniher: centrální správce z horní lišty vs. záložka „Písařské výzvy“ v pravém panelu u konkrétní karty.
+   - Dokumentace paleografické lupy až na 1000 % pro detailní čtení duktů a ligatur.
+   - Dokumentace povinného ručního potvrzení výsledku hráčem (tlačítko „Pokračovat“), aby nedocházelo k nechtěnému přeskočení didaktického řešení a komentáře novým dialogem.
 
 ---
 

@@ -233,30 +233,136 @@ export default function StudioHelpModal({
                   <Gamepad2 size={16} className="text-[#d4af37]" /> Tvorba výukových miniher a centrální správa
                 </h4>
                 <p className="text-[#c9b8a3]">
-                  Minihry můžete tvořit buď přímo u konkrétního rukopisu v pravém panelu (záložka <strong>„Písařské výzvy“</strong>), nebo centrálně přes horní lištu <strong>„Minihry“</strong>, kde máte kompletní přehled všech vytvořených her s možností přiřazení k libovolnému kodexu.
+                  Výukové minihry tvoří didaktické jádro Quilldropu. Umožňují studentům aktivně proniknout do tajů středověkých kolofonů, nálad písařů, kryptogramů a paleografie.
                 </p>
               </div>
 
+              {/* 2 ZPŮSOBY TVORBY A SPRÁVY */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">1. Nálada písaře (Mood quiz)</strong>
-                  <p className="text-[#8c7b6d]">
-                    Student poznává citové rozpoložení písaře z textu. Odměna: <strong>📦 Běžný balíček</strong>.
+                <div className="bg-[#17120e] p-3 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] text-xs block mb-1 flex items-center gap-1.5">
+                    🏛️ 1. Centrální okno miniher (Horní lišta)
+                  </strong>
+                  <p className="text-[#8c7b6d] text-[11.5px]">
+                    Kliknutím na tlačítko <strong>„Minihry“</strong> v horní liště administrace otevřete centrální manažer. Zde můžete procházet a spravovat <strong>všechny vytvořené minihry</strong> na jednom místě, filtrovat je podle disciplíny či rukopisu, bleskově je upravovat a vytvářet nové minihry s přiřazením k libovolnému kodexu.
                   </p>
                 </div>
-
-                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">2. Rozlušti kolofon (Šifry & Písmo)</strong>
-                  <p className="text-[#8c7b6d]">
-                    Otázky na zkratky, chronogramy, tajná písma či styl písma. Odměna: <strong>📜 Učencův balíček (Refined)</strong>.
+                <div className="bg-[#17120e] p-3 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] text-xs block mb-1 flex items-center gap-1.5">
+                    📜 2. Tvorba u konkrétní karty (Pravý panel)
+                  </strong>
+                  <p className="text-[#8c7b6d] text-[11.5px]">
+                    Při úpravě konkrétního rukopisu klikněte v pravém panelu na záložku <strong>„Písařské výzvy“</strong>. Minihra se automaticky prováže s právě otevřenou kartou a můžete rovnou pracovat s jejím obrazovým výřezem a transkripcí.
                   </p>
                 </div>
+              </div>
 
-                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] md:col-span-2">
-                  <strong className="text-[#ffd580] block mb-1">3. Paleografický přepis (Master transcription)</strong>
-                  <p className="text-[#8c7b6d]">
-                    Vyznačení řádků písma s maximálním zvětšením lupy až na <strong>1000 %</strong>. Po dokončení musí hráč výsledek ručně potvrdit, aby si stihl v klidu přečíst řešení. Odměna: <strong>👑 Královský balíček (Masterwork)</strong>.
-                  </p>
+              {/* 4 SAMOSTATNÉ DISCIPLÍNY */}
+              <div>
+                <h5 className="text-xs font-bold uppercase tracking-wider text-[#d4af37] mb-2 flex items-center gap-1.5">
+                  <Sparkles size={13} /> 4 herní disciplíny a systém odměn
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* 1. NÁLADA */}
+                  <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <strong className="text-[#ffd580] text-xs">
+                          1. Nálada písaře (Mood quiz)
+                        </strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 shrink-0">
+                          📦 Běžný balíček
+                        </span>
+                      </div>
+                      <p className="text-[#8c7b6d] text-[11.5px] mb-2">
+                        Student zkoumá text kolofonu a odhaduje citové rozpoložení písaře v momentu dopsání díla (únava ruky, touha po pivu/vínu, radost z dokončení, pokora před Bohem, vztek na zimu či nekvalitní pergamen).
+                      </p>
+                      <div className="bg-[#120e0a] p-2 rounded border border-[#261e16] text-[11px] text-[#c9b8a3] space-y-1">
+                        <div><strong>Nastavení v editoru:</strong> 4 možnosti s tematickými emoji, 1 správná volba.</div>
+                        <div><strong>Didaktika:</strong> Do vysvětlení uveďte citaci z kolofonu, která náladu dokládá.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. ŠIFRA */}
+                  <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <strong className="text-[#ffd580] text-xs">
+                          2. Rozlušti šifru (Cipher challenge)
+                        </strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/50 shrink-0">
+                          📜 Učencův balíček
+                        </span>
+                      </div>
+                      <p className="text-[#8c7b6d] text-[11.5px] mb-2">
+                        Dešifrování středověkých kryptogramů, tajných písem, substitučních šifer (tečky místo samohlásek: . = a, : = e, :. = i...), chronogramů s římskými číslicemi, přesmyček, kleteb na zloděje knih či skrytých jmen písařů.
+                      </p>
+                      <div className="bg-[#120e0a] p-2 rounded border border-[#261e16] text-[11px] text-[#c9b8a3] space-y-1">
+                        <div><strong>Nastavení v editoru:</strong> Otázka, typ šifry, správné rozluštění a záchranná nápověda pro hráče.</div>
+                        <div><strong>Didaktika:</strong> Ukažte princip středověkého šifrování a logiku písaře.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. PÍSMO */}
+                  <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <strong className="text-[#ffd580] text-xs">
+                          3. Poznej středověké písmo (Script identification)
+                        </strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/50 shrink-0">
+                          📜 Učencův balíček
+                        </span>
+                      </div>
+                      <p className="text-[#8c7b6d] text-[11.5px] mb-2">
+                        Určování duktu a stylu písma podle paleografických pravidel: Gotická textura formalis, Gotická bastarda, Gotická kurzíva / notula, Humanistická antikva, Karolinská minuskula atd.
+                      </p>
+                      <div className="bg-[#120e0a] p-2 rounded border border-[#261e16] text-[11px] text-[#c9b8a3] space-y-1">
+                        <div><strong>Nastavení v editoru:</strong> Výběr stylu písma, správná odpověď a 3 distraktory.</div>
+                        <div><strong>Didaktika:</strong> Popište charakteristické rysy (lámání dříků, bříška, ligatury, smyčky).</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. PŘEPIS */}
+                  <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <strong className="text-[#ffd580] text-xs">
+                          4. Paleografický přepis (Master transcription)
+                        </strong>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/50 shrink-0">
+                          👑 Královský balíček
+                        </span>
+                      </div>
+                      <p className="text-[#8c7b6d] text-[11.5px] mb-2">
+                        Vrcholná disciplína: student samostatně přepisuje 1 až 3 řádky přímo z digitálního originálu. Trénuje čtení zkracovacích znamének, ligatur a historické ortografie.
+                      </p>
+                      <div className="bg-[#120e0a] p-2 rounded border border-[#261e16] text-[11px] text-[#c9b8a3] space-y-1">
+                        <div><strong>Nastavení v editoru:</strong> Výběr řádků na foliu, vzorový přepis a alternativní znění.</div>
+                        <div><strong>Didaktika:</strong> Zadejte i běžné varianty (rozepsané abreviatury, u/v, i/j).</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* DŮLEŽITÉ FUNKCE PRO HRÁČE A EDITORY */}
+              <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] space-y-2.5">
+                <strong className="text-[#ffd580] text-xs block">
+                  🔍 Paleografická lupa na 1000 % a ergonomie vyhodnocení
+                </strong>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11.5px] text-[#8c7b6d]">
+                  <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
+                    <span className="text-[#ffd580] font-bold block mb-1">🔬 Přiblížení až 1000 %:</span>
+                    V minihře přepisu má student k dispozici interaktivní lupu s plynulým zvětšením od 100 % do 1000 % s kontrastním vykreslením. Umožňuje bezpečně rozpoznat i ty nejjemnější diakritické a zkracovací tečky či háčky.
+                  </div>
+                  <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
+                    <span className="text-[#ffd580] font-bold block mb-1">⏸️ Ruční potvrzení výsledku:</span>
+                    Po dokončení jakékoliv minihry se okno <em>nikdy nezavře automaticky</em> ani nepřebije hráče vyskakovacím oknem s novým levelem. Hráč musí výsledek potvrdit tlačítkem <strong>„Pokračovat“</strong>, aby si stihl v klidu prostudovat správné řešení, vzorový přepis a didaktický komentář.
+                  </div>
                 </div>
               </div>
             </div>
