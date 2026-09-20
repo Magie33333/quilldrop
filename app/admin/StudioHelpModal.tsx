@@ -14,6 +14,7 @@ import {
   Users,
   ShieldCheck,
   Search,
+  Award,
 } from "lucide-react";
 
 export default function StudioHelpModal({
@@ -23,7 +24,7 @@ export default function StudioHelpModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"heurist" | "crop" | "metadata" | "games" | "workflow">("heurist");
+  const [activeTab, setActiveTab] = useState<"heurist" | "crop" | "metadata" | "games" | "trophies" | "workflow">("heurist");
 
   if (!isOpen) return null;
 
@@ -61,7 +62,8 @@ export default function StudioHelpModal({
             { id: "crop", label: "2. Ořez folia (4:3)", icon: Crop },
             { id: "metadata", label: "3. Překlad a data", icon: FileText },
             { id: "games", label: "4. Tvorba miniher", icon: Gamepad2 },
-            { id: "workflow", label: "5. Stavy a schvalování", icon: ShieldCheck },
+            { id: "trophies", label: "5. Výzvy & Achievementy", icon: Award },
+            { id: "workflow", label: "6. Stavy a schvalování", icon: ShieldCheck },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -228,33 +230,103 @@ export default function StudioHelpModal({
             <div className="space-y-4">
               <div className="bg-[#1c1611] p-4 rounded-lg border border-[#3b2f23]">
                 <h4 className="font-serif font-bold text-sm text-[#ffd580] mb-1 flex items-center gap-2">
-                  <Gamepad2 size={16} className="text-[#d4af37]" /> Tvorba výukových miniher k rukopisu
+                  <Gamepad2 size={16} className="text-[#d4af37]" /> Tvorba výukových miniher a centrální správa
                 </h4>
                 <p className="text-[#c9b8a3]">
-                  V pravém panelu přepněte na záložku <strong>„Písařské výzvy“</strong>. Každá karta může mít jednu nebo více otázek, které studenti denně řeší.
+                  Minihry můžete tvořit buď přímo u konkrétního rukopisu v pravém panelu (záložka <strong>„Písařské výzvy“</strong>), nebo centrálně přes horní lištu <strong>„Minihry“</strong>, kde máte kompletní přehled všech vytvořených her s možností přiřazení k libovolnému kodexu.
                 </p>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
                   <strong className="text-[#ffd580] block mb-1">1. Nálada písaře (Mood quiz)</strong>
                   <p className="text-[#8c7b6d]">
-                    Student má podle latinského textu poznat, jak se písař cítil (např. <em>Vyčerpaný / Toužící po odměně / Hrdý / Pobožný / Vtipkující</em>). Vyberte 3 možnosti s emotikony a označte správnou.
+                    Student poznává citové rozpoložení písaře z textu. Odměna: <strong>📦 Běžný balíček</strong>.
                   </p>
                 </div>
 
                 <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
-                  <strong className="text-[#ffd580] block mb-1">2. Rozlušti kolofon (Cipher quiz)</strong>
+                  <strong className="text-[#ffd580] block mb-1">2. Rozlušti kolofon (Šifry & Písmo)</strong>
                   <p className="text-[#8c7b6d]">
-                    Pokud kolofon obsahuje zkratky, chronogram, rým nebo tajné písmo, vytvořte otázku na rozluštění významu či skrytého roku.
+                    Otázky na zkratky, chronogramy, tajná písma či styl písma. Odměna: <strong>📜 Učencův balíček (Refined)</strong>.
                   </p>
                 </div>
 
-                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] md:col-span-2">
                   <strong className="text-[#ffd580] block mb-1">3. Paleografický přepis (Master transcription)</strong>
                   <p className="text-[#8c7b6d]">
-                    Přepněte střední panel na režim <em>„Vyznačení řádků k přepisu“</em>. Myší označte 1 až 3 proužky přímo přes řádky písma na foliu a zadejte vzorový přepis. Student pak dostane za úkol písmo přesně přepsat!
+                    Vyznačení řádků písma s maximálním zvětšením lupy až na <strong>1000 %</strong>. Po dokončení musí hráč výsledek ručně potvrdit, aby si stihl v klidu přečíst řešení. Odměna: <strong>👑 Královský balíček (Masterwork)</strong>.
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "trophies" && (
+            <div className="space-y-4">
+              <div className="bg-[#1c1611] p-4 rounded-lg border border-[#3b2f23]">
+                <h4 className="font-serif font-bold text-sm text-[#ffd580] mb-1 flex items-center gap-2">
+                  <Award size={16} className="text-[#d4af37]" /> Tvorba Výzev a Achievementů (Modulární stavebnice)
+                </h4>
+                <p className="text-[#c9b8a3]">
+                  V horní liště administrace otevřete sekci <strong>„Výzvy“</strong>. Můžete spravovat kategorie i tvořit výzvy se 4 stupni obtížnosti a libovolnou kombinací herních podmínek.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] text-xs block mb-1.5">🧱 4 bloky podmínky (Stavebnice)</strong>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11.5px] text-[#c9b8a3]">
+                    <div className="bg-[#14100c] p-2.5 rounded border border-[#261d15]">
+                      <span className="text-[#ffd580] font-bold block">1. Co se sleduje (Doména):</span>
+                      Karty podle rarity, celková sbírka, minihry, balíčky, úroveň, XP, zlaťáky, streak, mozaika, města...
+                    </div>
+                    <div className="bg-[#14100c] p-2.5 rounded border border-[#261d15]">
+                      <span className="text-[#ffd580] font-bold block">2. Kritérium množství:</span>
+                      99 % výzev funguje automaticky na <em>„Alespoň (≥)“</em>. Možnost <em>„Přesně (=)“</em> se nabízí pouze tam, kde má smysl (easter eggy zlaťáků, přesnost v %).
+                    </div>
+                    <div className="bg-[#14100c] p-2.5 rounded border border-[#261d15]">
+                      <span className="text-[#ffd580] font-bold block">3. Počet s jednotkou:</span>
+                      Číslo s automatickým štítkem (např. 10 <em>karet</em>, 5 <em>miniher</em>, 500 <em>XP</em>, 7 <em>dní</em>).
+                    </div>
+                    <div className="bg-[#14100c] p-2.5 rounded border border-[#261d15]">
+                      <span className="text-[#ffd580] font-bold block">4. Filtr / Rarita / Skriptorium:</span>
+                      Výběr konkrétní rarity, módu, města nebo kombinací (např. <em>„Buď N Legendárních NEBO N Unikátních“</em>).
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] text-xs block mb-1">💡 Živé lidské shrnutí v reálném čase</strong>
+                  <p className="text-[#8c7b6d] text-[11.5px]">
+                    Přímo pod nastavenými bloky se v zeleném panelu ihned zobrazuje přesné znění podmínky v češtině (např. <em>„💡 Hráč musí: Vlastnit alespoň 10 karet rarity: Vzácná“</em>). Vždy tak přesně víte, jak se podmínka ve hře vyhodnotí.
+                  </p>
+                </div>
+
+                <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d]">
+                  <strong className="text-[#ffd580] text-xs block mb-1">🎯 4 stupně obtížnosti a vyvážení XP</strong>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs mt-2">
+                    <div className="p-2 rounded bg-[#1e2a1e] border border-[#2e7d32]/40 text-emerald-300">
+                      <strong className="block text-[11px]">🟢 Lehká</strong>
+                      <span className="text-[10px] text-emerald-400/80">75–100 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">První balíček, 5 karet, 1. minihra, noc</p>
+                    </div>
+                    <div className="p-2 rounded bg-[#2e2416] border border-[#b26a00]/40 text-amber-300">
+                      <strong className="block text-[11px]">🔵 Střední</strong>
+                      <span className="text-[10px] text-amber-400/80">200–250 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">25 kodexů, 7 dní streak, 3 vzácné</p>
+                    </div>
+                    <div className="p-2 rounded bg-[#2d1b1b] border border-[#c62828]/40 text-rose-300">
+                      <strong className="block text-[11px]">🟣 Těžká</strong>
+                      <span className="text-[10px] text-rose-400/80">400–500 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">45 kodexů, 30 dní streak, 2 šifry</p>
+                    </div>
+                    <div className="p-2 rounded bg-[#291730] border border-[#6a1b9a]/40 text-purple-300">
+                      <strong className="block text-[11px]">🔴 Nemožná</strong>
+                      <span className="text-[10px] text-purple-400/80">1000–1500 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">60 kodexů + 5 legend, 100 dní streak</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -758,3 +758,25 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
      - **Živé shrnutí:** Panel `💡 Hráč musí: ...` aktualizující se při každé změně.
 3. **Ověření:**
    - Produkční build Next.js proběhl s kódem 0 bez chyb.
+
+---
+
+## 📅 Záznam ze dne 20. 9. 2026 (Dodatek 3) — Zjednodušení operátorů a aktualizace příručky editora
+
+**Cíl etapy:** Odstranit operátor „Maximálně (≤)“, ponechat volbu „Přesně (=)“ pouze u domén, kde má logický smysl (zlaťáky, přesnost přepisu v %), a reflektovat veškeré novinky v příručkách pro editory.
+
+**Provedené úpravy:**
+1. **Vyčištění a zpřesnění operátorů (`app/data/trophies.ts`):**
+   - Odstraněn operátor `Maximálně (<=)` z `TROPHY_OPERATOR_OPTIONS`, `formatConditionHuman` a `compareValues`.
+   - `has_operator` ponechán na `true` pouze pro:
+     - `player_coins` (množství zlaťáků v pokladnici – např. pro easter eggy typu přesně 777 zlaťáků)
+     - `transcription_accuracy` (přesnost paleografického přepisu v %)
+     - `custom` (vlastní specifické podmínky)
+   - U všech ostatních domén (karty, balíčky, minihry, streaky, levely, XP...) je operátor skryt a automaticky nastaven na výchozí `Alespoň (>=)`.
+2. **Aktualizace vestavěné příručky v administraci (`app/admin/StudioHelpModal.tsx`):**
+   - Přidána nová samostatná záložka **„5. Výzvy & Achievementy“** s detailním vysvětlením modulární blokové stavebnice, významu živého shrnutí a doporučeným vyvážením 4 stupňů obtížností (Lehká 75–100 XP, Střední 200–250 XP, Těžká 400–500 XP, Nemožná 1000–1500 XP).
+   - Aktualizována záložka **„4. Tvorba miniher“** s informacemi o centrální správě miniher z horního menu administrace, nových pravidlech odměn (balíčky za disciplíny) a paleografické lupě na 1000 % s ručním potvrzením.
+3. **Aktualizace dokumentace pro brigádníky (`docs/NAVOD_PRO_BRIGADNIKY.md`):**
+   - Do manuálu přidána samostatná kapitola **„6. Tvorba a správa Výzev (Achievementů)“** a aktualizována sekce miniher.
+4. **Ověření:**
+   - Produkční build Next.js proběhl s kódem 0 bez chyb.

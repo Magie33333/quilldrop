@@ -70,22 +70,56 @@ Quilldrop je plně lokalizován do **češtiny 🇨🇿** i **angličtiny 🇬�
 
 ---
 
-## 🎮 5. Tvorba výukových miniher (Záložka `Minihry a výzvy`)
+## 🎮 5. Tvorba výukových miniher
 
-Každá karta může obsahovat písařské výzvy pro denní hraní. V pravém panelu přepněte na záložku **Minihry**:
+Minihry můžete vytvářet dvěma způsoby:
+1. **Přímo u karty:** V pravém panelu přepněte na záložku **Minihry** a přidejte otázku k právě editovanému kodexu.
+2. **Centrálně přes horní lištu (`Minihry`):** Kliknutím na tlačítko **Minihry** v horní liště administrace se otevře centrální správce všech miniher v databázi. Zde můžete minihry procházet, filtrovat, hromadně upravovat a snadno přiřazovat k libovolným rukopisům.
 
-1. **Nálada písaře (Mood):**
-   - Hráč odhaduje rozpoložení písaře na základě obsahu kolofonu (např. *touha po odměně a vínu*, *pokora a zbožnost*, *únava z dlouhého psaní*).
-2. **Písařská šifra (Cipher):**
-   - U kolofonů s kryptogramy, záměnami samohlásek za tečky či čísla nebo anagramy.
-   - Zadejte správné řešení a chybné varianty (distraktory).
-3. **Paleografický přepis (Transcription):**
-   - Označte výřezem konkrétní řádek nebo slovo na foliu.
-   - Hráč má za úkol správně přepsat historické zkratky a ligatury do moderní latinky.
+### Herní disciplíny a systém odměn:
+* **Nálada písaře (Mood):**
+  - Hráč odhaduje citové rozpoložení písaře z textu (např. *touha po odměně a vínu*, *pokora a zbožnost*, *únava z dlouhého psaní*).
+  - **Odměna hráči:** 📦 **Běžný balíček (Standard)**.
+* **Písařská šifra (Cipher) & Poznání písma (Script):**
+  - U kolofonů s kryptogramy, záměnami samohlásek za tečky či čísla, anagramy nebo určováním písařského stylu (karolína, gotická minuskula, bastarda, humanistica).
+  - Zadejte správné řešení a chybné varianty (distraktory).
+  - **Odměna hráči:** 📜 **Učencův balíček (Refined)**.
+* **Paleografický přepis (Transcription):**
+  - Vyznačte výřezem řádky písma na foliu a zadejte vzorový přepis.
+  - Hráč má k dispozici **paleografickou lupu s přiblížením až na 1000 %**.
+  - Po vyhodnocení musí hráč výsledek ručně potvrdit, aby si v klidu mohl přečíst správné řešení.
+  - **Odměna hráči:** 👑 **Královský balíček (Masterwork)**.
 
 ---
 
-## 🛡️ 6. Workflow, ukládání a schvalování
+## 🏆 6. Tvorba a správa Výzev (Achievementů)
+
+V horní liště administrace klikněte na tlačítko **Výzvy**. Otevře se prostředí pro správu achievementů a jejich kategorií.
+
+### Modulární bloková stavebnice podmínek:
+Každá výzva může mít jednu či více herních podmínek, které se skládají z logických bloků:
+1. **🧱 1. Co se sleduje (Doména pravidla):**
+   - Výběr oblasti: *Karty podle rarity*, *Celkový počet karet*, *Minihry celkem*, *Minihry podle disciplíny*, *Balíčky*, *Úroveň hráče*, *Získané XP*, *Zlaťáky v pokladnici*, *Streak bádání*, *Dílky mozaiky*, *Různá města*, *Konkrétní rukopis*, *Přečtené glosy* atd.
+2. **🧱 2. Kritérium množství (Alespoň vs. Přesně):**
+   - V 99 % běžných výzev platí princip **„Alespoň (≥)“** (protože postup ve hře pouze roste).
+   - Výběr **„Přesně (=)“** je k dispozici pouze u disciplín, kde má trefování přesné hodnoty logický smysl (např. easter eggy se zlaťáky: *„Měj v truhlici přesně 777 zlaťáků“* nebo specifická přesnost v přepisu).
+3. **🧱 3. Požadovaný počet:**
+   - Číslo s automatickou jednotkou (`karet`, `miniher`, `balíčků`, `zlaťáků`, `%`, `Level`, `dní`...).
+4. **🧱 4. Filtr / Rarita / Skriptorium:**
+   - Výběr konkrétní rarity (včetně logických kombinací jako *„Buď N Legendárních NEBO N Unikátních“* či *„Legendární nebo Unikátní (součet obou)“*), módu minihry nebo města.
+
+### 💡 Živé lidské shrnutí v reálném čase:
+Přímo pod bloky se v zeleném panelu dynamicky zobrazuje přesné znění podmínky v češtině (např. *„💡 Hráč musí: Vlastnit alespoň 10 karet rarity: 🔵 Pouze Vzácná (Rare)“*). Okamžitě tak vidíte, jak přesně hra podmínku vyhodnotí.
+
+### 🎯 4 stupně obtížnosti a doporučené vyvážení XP:
+* 🟢 **Lehká (75–100 XP):** Vstupní výzvy pro nováčky (první balíček, 5–10 karet, první minihra, 100 zlaťáků, noční bádání, Level 3).
+* 🔵 **Střední (200–250 XP):** Vyžaduje pravidelnost (25 kodexů, 7denní streak, 3 vzácné karty, 15 miniher, Level 8).
+* 🟣 **Těžká (400–500 XP):** Pro pokročilé badatele (45 kodexů, 30denní streak, 35 miniher, 2 nalezené šifry, 100% přepis, Level 15).
+* 🔴 **Nemožná (1000–1500 XP):** Vrcholné výzvy pro mistry (60+ kodexů + 5 legendárních/unikátních, 100denní streak, 75 miniher, 5 000 zlaťáků, celá 16dílná iluminace, Level 30).
+
+---
+
+## 🛡️ 7. Workflow, ukládání a schvalování
 
 1. **Uložení změn do databáze:**
    - Klikněte na zlaté tlačítko **`Uložit změny`** v horní liště.
@@ -101,7 +135,7 @@ Každá karta může obsahovat písařské výzvy pro denní hraní. V pravém p
 
 ---
 
-## 💡 7. Časté dotazy (FAQ)
+## 💡 8. Časté dotazy (FAQ)
 
 * **Co když se snímek z fakulty nechce načíst?**  
   Některé instituce vyžadují chvíli na načtení velkých TIFF/JPEG souborů. Zkontrolujte, zda URL adresa začíná `http://` nebo `https://`. Systém Quilldrop má zabudovaný CORS proxy pro univerzitní servery.
