@@ -146,6 +146,7 @@ export interface TrophyConditionMetaItem {
   label_en: string;
   icon: string;
   description_cs: string;
+  has_operator?: boolean;
   has_target?: boolean;
   target_label_cs?: string;
   target_options?: { value: string; label_cs: string }[];
@@ -157,15 +158,22 @@ export interface TrophyConditionMetaItem {
   default_value?: string | number;
 }
 
+export const TROPHY_OPERATOR_OPTIONS: { value: ">=" | "==" | "<="; label_cs: string; label_short: string }[] = [
+  { value: ">=", label_cs: "Alespoň (≥)", label_short: "≥" },
+  { value: "==", label_cs: "Přesně (=)", label_short: "=" },
+  { value: "<=", label_cs: "Maximálně (≤)", label_short: "≤" },
+];
+
 export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionMetaItem> = {
   collection_count: {
     label_cs: "Celkový počet karet ve sbírce",
     label_en: "Cards in Collection",
     icon: "📜",
     description_cs: "Celkový počet unikátních kolofonů/karet ve sbírce hráče",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik karet celkem?",
+    value_label_cs: "Počet karet",
     value_type: "number",
     unit_cs: "karet",
     default_value: 10,
@@ -175,6 +183,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Own Specific Manuscript",
     icon: "🎴",
     description_cs: "Vlastnictví konkrétní karty (dle ID, signatury či názvu)",
+    has_operator: false,
     has_target: true,
     target_label_cs: "Signatura / Název / ID",
     has_value: false,
@@ -185,6 +194,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Own Card of Rarity",
     icon: "⭐",
     description_cs: "Hráč musí vlastnit alespoň 1 kartu dané nebo vyšší rarity",
+    has_operator: false,
     has_target: true,
     target_label_cs: "Požadovaná rarita (nebo vyšší)",
     target_options: [
@@ -203,11 +213,12 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Count of Rarity Cards",
     icon: "✨",
     description_cs: "Hráč musí mít ve sbírce stanovený počet karet zvolené rarity (či jejich kombinace)",
+    has_operator: true,
     has_target: true,
     target_label_cs: "Které rarity?",
     target_options: [
       { value: "LegendaryOrUnique", label_cs: "👑 Legendární nebo Unikátní (součet obou nejvyšších rarit)" },
-      { value: "FiveLegendaryOrFiveUnique", label_cs: "🟡 Buď alespoň N Legendárních, NEBO alespoň N Unikátních" },
+      { value: "FiveLegendaryOrFiveUnique", label_cs: "🟡 Buď N Legendárních, NEBO N Unikátních" },
       { value: "EpicOrHigher", label_cs: "✨ Epická a vyšší (Epic, Legendary, Unique)" },
       { value: "RareOrHigher", label_cs: "💎 Vzácná a vyšší (Rare, Epic, Legendary, Unique)" },
       { value: "Unique", label_cs: "🟣 Pouze Unikátní (Unique)" },
@@ -219,7 +230,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     ],
     default_target: "LegendaryOrUnique",
     has_value: true,
-    value_label_cs: "Kolik karet?",
+    value_label_cs: "Počet karet",
     value_type: "number",
     unit_cs: "karet",
     default_value: 5,
@@ -229,9 +240,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Total Packs Opened",
     icon: "📦",
     description_cs: "Celkový počet balíčků, které hráč otevřel ve skriptoriu",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik balíčků?",
+    value_label_cs: "Počet balíčků",
     value_type: "number",
     unit_cs: "balíčků",
     default_value: 10,
@@ -257,9 +269,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Total Minigames Solved",
     icon: "🎮",
     description_cs: "Celkový počet úspěšně splněných písařských miniher napříč disciplínami",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik miniher?",
+    value_label_cs: "Počet miniher",
     value_type: "number",
     unit_cs: "miniher",
     default_value: 10,
@@ -269,6 +282,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Minigames by Mode",
     icon: "✍️",
     description_cs: "Počet splněných miniher vybrané disciplíny",
+    has_operator: true,
     has_target: true,
     target_label_cs: "Která disciplína?",
     target_options: [
@@ -279,7 +293,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     ],
     default_target: "transcription",
     has_value: true,
-    value_label_cs: "Kolik splněných her?",
+    value_label_cs: "Počet splněných her",
     value_type: "number",
     unit_cs: "her",
     default_value: 5,
@@ -289,6 +303,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Transcription Accuracy",
     icon: "🎯",
     description_cs: "Dosažení dokonalé nebo vysoké přesnosti při transkripci",
+    has_operator: true,
     has_target: false,
     has_value: true,
     value_label_cs: "Minimální přesnost",
@@ -301,9 +316,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Daily Study Streak",
     icon: "🕯️",
     description_cs: "Počet po sobě jdoucích dní každodenní návštěvy skriptoria",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik dní v řadě?",
+    value_label_cs: "Počet dní",
     value_type: "number",
     unit_cs: "dní",
     default_value: 7,
@@ -313,9 +329,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Mosaic Pieces Completed",
     icon: "🧩",
     description_cs: "Počet složených dílků iluminované mozaiky (16 = hotový obraz)",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik dílků (max 16)?",
+    value_label_cs: "Počet dílků (max 16)",
     value_type: "number",
     unit_cs: "dílků",
     default_value: 16,
@@ -325,9 +342,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Player Level Reached",
     icon: "🌟",
     description_cs: "Minimální dosažená úroveň písaře",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Minimální úroveň (Level)",
+    value_label_cs: "Úroveň (Level)",
     value_type: "number",
     unit_cs: "Level",
     default_value: 5,
@@ -337,9 +355,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Total XP Earned",
     icon: "⚡",
     description_cs: "Hráč dosáhl stanovené hodnoty zkušeností",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik zkušeností (XP)?",
+    value_label_cs: "Počet zkušeností (XP)",
     value_type: "number",
     unit_cs: "XP",
     default_value: 500,
@@ -349,9 +368,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Gold Coins Balance",
     icon: "💰",
     description_cs: "Zůstatek grošů / zlaťáků v písařské truhlici",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik zlaťáků v pokladnici?",
+    value_label_cs: "Počet zlaťáků v pokladnici",
     value_type: "number",
     unit_cs: "zlaťáků",
     default_value: 250,
@@ -361,9 +381,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Gift or Trade Completed",
     icon: "🤝",
     description_cs: "Počet darovaných nebo směněných karet s kolegy ve skriptoriu",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik darů / směn?",
+    value_label_cs: "Počet darů / směn",
     value_type: "number",
     unit_cs: "směn",
     default_value: 1,
@@ -373,6 +394,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Use Loupe at 1000% Zoom",
     icon: "🔎",
     description_cs: "Automaticky se splní při přiblížení lupy na maximum (1000 %)",
+    has_operator: false,
     has_target: false,
     has_value: false,
     value_type: "none",
@@ -382,6 +404,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Night Scribe (22:00-04:00)",
     icon: "🌙",
     description_cs: "Automaticky se splní při návštěvě v nočních hodinách",
+    has_operator: false,
     has_target: false,
     has_value: false,
     value_type: "none",
@@ -391,6 +414,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Manuscript from Scriptorium",
     icon: "🏛️",
     description_cs: "Počet kodexů pocházejících ze zadaného města či skriptoria",
+    has_operator: true,
     has_target: true,
     target_label_cs: "Které město / skriptorium?",
     target_options: [
@@ -404,7 +428,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     ],
     default_target: "praha",
     has_value: true,
-    value_label_cs: "Kolik kodexů z této lokality?",
+    value_label_cs: "Počet kodexů z lokality",
     value_type: "number",
     unit_cs: "kodexů",
     default_value: 3,
@@ -414,9 +438,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Codices from Different Places",
     icon: "🗺️",
     description_cs: "Hráč musí vlastnit kodexy pocházející z tolika různých měst či skriptorií",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik různých měst?",
+    value_label_cs: "Počet různých měst",
     value_type: "number",
     unit_cs: "různých měst",
     default_value: 3,
@@ -426,9 +451,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Curios & Marginalia Read",
     icon: "📖",
     description_cs: "Hráč prozkoumal a odemkl písařské glosy či marginálie",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik přečtených glos?",
+    value_label_cs: "Počet přečtených glos",
     value_type: "number",
     unit_cs: "glos",
     default_value: 3,
@@ -438,9 +464,10 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Colophons with Cipher",
     icon: "🗝️",
     description_cs: "Vlastnictví kolofonů obsahujících středověkou šifru či kryptogram",
+    has_operator: true,
     has_target: false,
     has_value: true,
-    value_label_cs: "Kolik šifrovaných kolofonů?",
+    value_label_cs: "Počet šifrovaných kolofonů",
     value_type: "number",
     unit_cs: "kolofonů",
     default_value: 1,
@@ -450,6 +477,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Colophon with Initial",
     icon: "🎨",
     description_cs: "Vlastnictví kolofonu zdobeného bohatě iluminovanou iniciálou",
+    has_operator: false,
     has_target: false,
     has_value: false,
     value_type: "none",
@@ -459,6 +487,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     label_en: "Rhymed Colophon",
     icon: "🎶",
     description_cs: "Vlastnictví karty s veršovaným či rýmovaným kolofonem",
+    has_operator: false,
     has_target: false,
     has_value: false,
     value_type: "none",
@@ -476,18 +505,17 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
   },
 };
 
-/**
- * Převede podmínku výzvy do srozumitelné lidské věty v češtině
- */
 export function formatConditionHuman(cond: TrophyCondition): string {
   if (!cond || !cond.type) return "Nespecifikovaná podmínka";
   const meta = TROPHY_CONDITION_META[cond.type] || TROPHY_CONDITION_META.custom;
   const val = cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? 1);
   const target = cond.target || meta.default_target || "";
+  const op = cond.operator || ">=";
+  const opWord = op === "==" ? "přesně" : op === "<=" ? "maximálně" : "alespoň";
 
   switch (cond.type) {
     case "collection_count":
-      return `Vlastnit alespoň ${val} unikátních kodexů ve sbírce`;
+      return `Vlastnit ${opWord} ${val} unikátních kodexů ve sbírce`;
     case "specific_card":
       return `Vlastnit konkrétní rukopis: „${target || val}“`;
     case "rarity_owned": {
@@ -496,59 +524,61 @@ export function formatConditionHuman(cond: TrophyCondition): string {
     }
     case "rarity_count": {
       if (target === "FiveLegendaryOrFiveUnique") {
-        return `Vlastnit buď alespoň ${val} Legendárních, NEBO alespoň ${val} Unikátních karet`;
+        return `Vlastnit buď ${opWord} ${val} Legendárních, NEBO ${opWord} ${val} Unikátních karet`;
       }
       const rLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané rarity";
-      return `Vlastnit alespoň ${val} karet rarity: ${rLabel}`;
+      return `Vlastnit ${opWord} ${val} karet rarity: ${rLabel}`;
     }
     case "packs_opened":
-      return `Otevřít alespoň ${val} balíčků ve skriptoriu`;
+      return `Otevřít ${opWord} ${val} balíčků ve skriptoriu`;
     case "pack_quality_opened": {
       const qLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "zvolené kvality";
       return `Otevřít alespoň jeden ${qLabel}`;
     }
     case "games_played":
-      return `Úspěšně splnit alespoň ${val} písařských miniher`;
+      return `Úspěšně splnit ${opWord} ${val} písařských miniher`;
     case "game_mode_played": {
       const mLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané disciplíny";
-      return `Úspěšně absolvovat alespoň ${val} miniher v disciplíně: ${mLabel}`;
+      return `Úspěšně absolvovat ${opWord} ${val} miniher v disciplíně: ${mLabel}`;
     }
     case "transcription_accuracy":
-      return `Dosáhnout přesnosti alespoň ${val} % v paleografické transkripci`;
+      return `Dosáhnout přesnosti ${opWord} ${val} % v paleografické transkripci`;
     case "streak_days":
-      return `Udržet nepřetržité denní bádání (streak) alespoň ${val} dní`;
+      return `Udržet nepřetržité denní bádání (streak) ${opWord} ${val} dní`;
     case "mosaic_pieces":
-      return Number(val) >= 16 ? `Složit celou 16dílnou mozaiku iluminace` : `Složit alespoň ${val} dílků mozaiky iluminace`;
+      return Number(val) >= 16 && op === ">="
+        ? `Složit celou 16dílnou mozaiku iluminace`
+        : `Složit ${opWord} ${val} dílků mozaiky iluminace`;
     case "player_level":
-      return `Dosáhnout alespoň ${val}. písařské úrovně (Level ${val})`;
+      return `Dosáhnout ${opWord} ${val}. písařské úrovně (Level ${val})`;
     case "player_xp":
-      return `Získat alespoň ${val} zkušenostních bodů (XP)`;
+      return `Získat ${opWord} ${val} zkušenostních bodů (XP)`;
     case "player_coins":
-      return `Nashromáždit alespoň ${val} zlaťáků v písařské pokladnici`;
+      return `Nashromáždit ${opWord} ${val} zlaťáků v písařské pokladnici`;
     case "gift_sent":
-      return `Darovat či směnit alespoň ${val} karet s kolegy`;
+      return `Darovat či směnit ${opWord} ${val} karet s kolegy`;
     case "loupe_zoom":
       return `Použít paleografickou lupu při maximálním zvětšení 1000 %`;
     case "night_scribe":
       return `Bádat ve skriptoriu v nočních hodinách (mezi 22:00 a 4:00)`;
     case "scriptorium_place": {
       const pLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané lokality";
-      return `Vlastnit alespoň ${val} kodexů z lokality: ${pLabel}`;
+      return `Vlastnit ${opWord} ${val} kodexů z lokality: ${pLabel}`;
     }
     case "multiple_places":
-      return `Vlastnit kodexy pocházející alespoň ze ${val} různých měst či skriptorií`;
+      return `Vlastnit kodexy pocházející ${opWord} ze ${val} různých měst či skriptorií`;
     case "curio_unlocked":
-      return `Odemknout a prozkoumat alespoň ${val} písařských glos`;
+      return `Odemknout a prozkoumat ${opWord} ${val} písařských glos`;
     case "cipher":
-      return `Vlastnit alespoň ${val} kolofonů se středověkou šifrou či kryptogramem`;
+      return `Vlastnit ${opWord} ${val} kolofonů se středověkou šifrou či kryptogramem`;
     case "initial":
       return `Vlastnit alespoň 1 kolofon zdobený iluminovanou iniciálou`;
     case "verse":
       return `Vlastnit alespoň 1 veršovaný či rýmovaný kolofon`;
     case "custom":
-      return `Speciální podmínka: ${target || val}`;
+      return `Speciální podmínka (${cond.operator || ">="}): ${target || val}`;
     default:
-      return `${meta.label_cs}: ${target ? target + " - " : ""}${val}`;
+      return `${meta.label_cs}: ${target ? target + " - " : ""}${opWord} ${val}`;
   }
 }
 
@@ -1197,10 +1227,16 @@ export function evaluateCondition(
   if (!cond || !cond.type) return false;
   const numVal = Number(cond.value || 0);
 
+  function compareValues(actual: number, target: number, operator?: string): boolean {
+    if (operator === "==") return actual === target;
+    if (operator === "<=") return actual <= target;
+    return actual >= target; // default ">="
+  }
+
   switch (cond.type) {
     case "collection_count": {
       const count = Object.entries(state?.collection || {}).filter(([_, cnt]) => Number(cnt) > 0).length;
-      return count >= (numVal || 1);
+      return compareValues(count, numVal || 1, cond.operator);
     }
 
     case "specific_card": {
@@ -1232,7 +1268,7 @@ export function evaluateCondition(
       if (targetRarity === "FiveLegendaryOrFiveUnique") {
         const legCount = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === "Legendary").length;
         const unqCount = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === "Unique").length;
-        return legCount >= (numVal || 5) || unqCount >= (numVal || 5);
+        return compareValues(legCount, numVal || 5, cond.operator) || compareValues(unqCount, numVal || 5, cond.operator);
       }
       let matches = 0;
       if (targetRarity === "LegendaryOrUnique" || targetRarity === "Legendary+") {
@@ -1244,11 +1280,11 @@ export function evaluateCondition(
       } else {
         matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === targetRarity).length;
       }
-      return matches >= (numVal || 1);
+      return compareValues(matches, numVal || 1, cond.operator);
     }
 
     case "packs_opened":
-      return (state?.packsOpened || 0) >= (numVal || 1);
+      return compareValues(state?.packsOpened || 0, numVal || 1, cond.operator);
 
     case "pack_quality_opened": {
       const targetQ = cond.target || cond.value;
@@ -1257,37 +1293,37 @@ export function evaluateCondition(
     }
 
     case "games_played":
-      return (state?.gamesPlayed || 0) >= (numVal || 1);
+      return compareValues(state?.gamesPlayed || 0, numVal || 1, cond.operator);
 
     case "game_mode_played": {
       if (extraContext?.gameMode && extraContext.gameMode === cond.target) return true;
-      return (state?.gamesPlayed || 0) >= (numVal || 1);
+      return compareValues(state?.gamesPlayed || 0, numVal || 1, cond.operator);
     }
 
     case "transcription_accuracy": {
       const targetAcc = numVal || 100;
-      return (extraContext?.accuracy || 0) >= targetAcc;
+      return compareValues(extraContext?.accuracy || 0, targetAcc, cond.operator);
     }
 
     case "streak_days":
-      return (state?.streak || 0) >= (numVal || 1);
+      return compareValues(state?.streak || 0, numVal || 1, cond.operator);
 
     case "mosaic_pieces":
-      return (state?.puzzle || 0) >= (numVal || 16) || Boolean(state?.gallery && state.gallery.length > 0);
+      return compareValues(state?.puzzle || 0, numVal || 16, cond.operator) || (cond.operator !== "<=" && Boolean(state?.gallery && state.gallery.length > 0));
 
     case "player_level": {
       const currentLevel = state?.level || Math.floor((state?.xp || 0) / 100) + 1;
-      return currentLevel >= (numVal || 1);
+      return compareValues(currentLevel, numVal || 1, cond.operator);
     }
 
     case "player_xp":
-      return (state?.xp || 0) >= (numVal || 100);
+      return compareValues(state?.xp || 0, numVal || 100, cond.operator);
 
     case "player_coins":
-      return (state?.coins || 0) >= (numVal || 100);
+      return compareValues(state?.coins || 0, numVal || 100, cond.operator);
 
     case "gift_sent":
-      return (state?.dailyTradedPartners?.length || 0) >= (numVal || 1) || Boolean(state?.trophies?.includes("philanthropist") || state?.trophies?.includes("first-gift"));
+      return compareValues(state?.dailyTradedPartners?.length || 0, numVal || 1, cond.operator) || Boolean(state?.trophies?.includes("philanthropist") || state?.trophies?.includes("first-gift"));
 
     case "loupe_zoom":
       return Boolean(extraContext?.loupeMaxUsed || state?.loupeMaxUsed || state?.trophies?.includes("loupe-max") || state?.trophies?.includes("loupe-glance"));
@@ -1307,7 +1343,7 @@ export function evaluateCondition(
             (placeKey === "praha" && (c.manuscript?.toLowerCase().includes("nkp") || c.place?.toLowerCase().includes("prague"))) ||
             (placeKey === "vyssi-brod" && (c.manuscript?.toLowerCase().includes("vb") || c.place?.toLowerCase().includes("brod"))))
       ).length;
-      return count >= (numVal || 1);
+      return compareValues(count, numVal || 1, cond.operator);
     }
 
     case "multiple_places": {
@@ -1316,12 +1352,12 @@ export function evaluateCondition(
           .filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.place && !c.place.toLowerCase().includes("unknown"))
           .map((c) => c.place.toLowerCase().trim())
       );
-      return ownedPlaces.size >= (numVal || 3);
+      return compareValues(ownedPlaces.size, numVal || 3, cond.operator);
     }
 
     case "cipher": {
       const count = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Šifra") || (c as any).colophons?.features?.includes("Šifra") || c.features?.some?.((f: string) => f.toLowerCase().includes("šifr")))).length;
-      return count >= (numVal || 1);
+      return compareValues(count, numVal || 1, cond.operator);
     }
 
     case "initial": {
@@ -1333,7 +1369,7 @@ export function evaluateCondition(
     }
 
     case "curio_unlocked":
-      return (state?.curiosUnlocked?.length || 0) >= (numVal || 1);
+      return compareValues(state?.curiosUnlocked?.length || 0, numVal || 1, cond.operator);
 
     case "custom": {
       const val = String(cond.target || cond.value || "").toLowerCase();
@@ -1345,7 +1381,7 @@ export function evaluateCondition(
       }
       if (val === "cipher") {
         const count = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Šifra") || (c as any).colophons?.features?.includes("Šifra") || c.features?.some?.((f: string) => f.toLowerCase().includes("šifr")))).length;
-        return count >= (numVal || 1);
+        return compareValues(count, numVal || 1, cond.operator);
       }
       if (val === "multiple_places" || val === "places_count") {
         const ownedPlaces = new Set(
@@ -1353,7 +1389,7 @@ export function evaluateCondition(
             .filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.place && !c.place.toLowerCase().includes("unknown"))
             .map((c) => c.place.toLowerCase().trim())
         );
-        return ownedPlaces.size >= (numVal || 3);
+        return compareValues(ownedPlaces.size, numVal || 3, cond.operator);
       }
       return Boolean(state?.trophies?.includes(cond.target || cond.value));
     }

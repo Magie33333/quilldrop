@@ -738,6 +738,23 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Přímo v každé kartě podmínky se v reálném čase generuje zvýrazněná věta v češtině (např. *„💡 Hráč musí: Vlastnit buď alespoň 5 Legendárních, NEBO alespoň 5 Unikátních karet“*).
    - Editor tak okamžitě vidí, jak systém zadané pravidlo chápe a vyhodnocuje.
 
+---
 
+## 📅 Záznam ze dne 20. 9. 2026 (Dodatek 2) — Modulární bloková stavebnice podmínek výzev
 
+**Cíl etapy:** Přetvořit nastavování podmínek na modulární stavebnici ze 4 bloků (Doména -> Operátor [≥, =, ≤] -> Hodnota -> Filtr/Cíl) s univerzálním vyhodnocováním a živým lidským shrnutím.
 
+**Provedené úpravy:**
+1. **Modulární architektura podmínek (`app/data/trophies.ts`):**
+   - Rozšířen typ `TrophyCondition` a `TROPHY_CONDITION_META` o podporu operátoru `has_operator` a `TROPHY_OPERATOR_OPTIONS` (`>=`, `==`, `<=`).
+   - Zavedena univerzální porovnávací logika `compareValues(actual, target, operator)` v `evaluateCondition`.
+   - `formatConditionHuman` dynamicky skládá přirozené české věty s ohledem na zvolený operátor (*„Alespoň X...“*, *„Přesně X...“*, *„Maximálně X...“*).
+2. **Nové rozhraní v administraci (`app/admin/page.tsx`):**
+   - Karty podmínek v editoru výzev byly přeuspořádány do logické stavebnice:
+     - **Blok 1 (Doména pravidla):** Výběr toho, co se sleduje (Karty, Minihry, Balíčky, Úroveň, Zlaťáky...).
+     - **Blok 2 (Operátor množství):** Rychlé přepínací tlačítka `≥ Alespoň`, `= Přesně`, `≤ Maximálně`.
+     - **Blok 3 (Počet / Hodnota):** Číselný vstup s automatickou jednotkou.
+     - **Blok 4 (Filtr / Cíl):** Výběr rarity, módu minihry, lokality nebo signatury.
+     - **Živé shrnutí:** Panel `💡 Hráč musí: ...` aktualizující se při každé změně.
+3. **Ověření:**
+   - Produkční build Next.js proběhl s kódem 0 bez chyb.

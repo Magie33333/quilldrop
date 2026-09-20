@@ -68,6 +68,7 @@ import {
   type TrophyConditionType,
   TROPHY_DIFFICULTY_META,
   TROPHY_CONDITION_META,
+  TROPHY_OPERATOR_OPTIONS,
   formatConditionHuman,
   getStoredTrophies,
   saveStoredTrophies,
@@ -1072,6 +1073,7 @@ export default function AdminPage() {
         ...(prev.conditions || []),
         {
           type: "collection_count",
+          operator: ">=",
           target: meta.default_target || "",
           value: meta.default_value ?? 10,
         },
@@ -6448,9 +6450,11 @@ export default function AdminPage() {
                                   </button>
                                 </div>
 
-                                {/* Výběr typu podmínky */}
+                                {/* Výběr typu podmínky (Doména) */}
                                 <div>
-                                  <label className="block text-[10px] font-semibold text-[#a89078] mb-1">Typ pravidla</label>
+                                  <label className="block text-[10px] font-semibold text-[#a89078] mb-1">
+                                    1. Co se sleduje (doména pravidla)
+                                  </label>
                                   <select
                                     value={cond.type}
                                     onChange={(e) => {
@@ -6459,6 +6463,7 @@ export default function AdminPage() {
                                       handleUpdateCondition(idx, {
                                         ...cond,
                                         type: nextType,
+                                        operator: nextMeta.has_operator ? (cond.operator || ">=") : undefined,
                                         target: nextMeta.default_target || nextMeta.target_options?.[0]?.value || "",
                                         value: nextMeta.default_value !== undefined ? nextMeta.default_value : (nextMeta.has_value ? 5 : ""),
                                       });
@@ -6473,12 +6478,71 @@ export default function AdminPage() {
                                   </select>
                                 </div>
 
-                                {/* Parametry podmínky: Výběr (target) a Počet (value) */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                                  {meta.has_target && (
-                                    <div>
+                                {/* Modulární bloková stavebnice: Operátor + Počet + Filtr/Cíl */}
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1">
+                                  {/* Blok 2: Kritérium množství (Operátor) */}
+                                  {meta.has_operator && (
+                                    <div className={meta.has_target && meta.has_value ? "sm:col-span-4" : meta.has_value ? "sm:col-span-6" : "sm:col-span-12"}>
                                       <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
-                                        {meta.target_label_cs || "Upřesnění / Výběr"}
+                                        2. Kritérium množství
+                                      </label>
+                                      <div className="flex rounded border border-[#3d2f21] overflow-hidden bg-[#120e0b]">
+                                        {TROPHY_OPERATOR_OPTIONS.map((op) => {
+                                          const isSelected = (cond.operator || ">=") === op.value;
+                                          return (
+                                            <button
+                                              key={op.value}
+                                              type="button"
+                                              onClick={() => handleUpdateCondition(idx, { ...cond, operator: op.value })}
+                                              className={`flex-1 py-1.5 px-1.5 text-[11px] font-medium transition cursor-pointer text-center ${
+                                                isSelected
+                                                  ? "bg-[#d4af37] text-[#120e0b] font-bold shadow-xs"
+                                                  : "text-[#c9a96e] hover:bg-[#201811] hover:text-[#ffd580]"
+                                              }`}
+                                              title={op.label_cs}
+                                            >
+                                              {op.label_cs}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Blok 3: Počet / Hodnota */}
+                                  {meta.has_value && (
+                                    <div className={meta.has_operator && meta.has_target ? "sm:col-span-3" : meta.has_operator ? "sm:col-span-6" : meta.has_target ? "sm:col-span-6" : "sm:col-span-12"}>
+                                      <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
+                                        {meta.has_operator ? "3. Počet" : "Hodnota"} {meta.unit_cs ? `(${meta.unit_cs})` : ""}
+                                      </label>
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type={meta.value_type === "number" ? "number" : "text"}
+                                          min={meta.value_type === "number" ? 1 : undefined}
+                                          value={cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? "")}
+                                          onChange={(e) =>
+                                            handleUpdateCondition(idx, {
+                                              ...cond,
+                                              value: meta.value_type === "number" ? Number(e.target.value) || 0 : e.target.value,
+                                            })
+                                          }
+                                          placeholder={meta.unit_cs || "Počet"}
+                                          className="w-full bg-[#120e0b] border border-[#4a3928] rounded px-2.5 py-1.5 text-xs text-[#ffd580] font-semibold focus:outline-none focus:border-[#d4af37]"
+                                        />
+                                        {meta.unit_cs && (
+                                          <span className="text-[11px] text-[#a89078] shrink-0 font-medium px-1.5 py-1 bg-[#1f1913] border border-[#382b1d] rounded">
+                                            {meta.unit_cs}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Blok 4: Filtr / Cíl / Rarita */}
+                                  {meta.has_target && (
+                                    <div className={meta.has_operator && meta.has_value ? "sm:col-span-5" : meta.has_value ? "sm:col-span-6" : "sm:col-span-12"}>
+                                      <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
+                                        {meta.has_operator && meta.has_value ? "4. Upřesnění / Filtr" : (meta.target_label_cs || "Upřesnění / Výběr")}
                                       </label>
                                       {meta.target_options ? (
                                         <select
@@ -6514,35 +6578,7 @@ export default function AdminPage() {
                                     </div>
                                   )}
 
-                                  {meta.has_value && (
-                                    <div>
-                                      <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
-                                        {meta.value_label_cs || "Požadovaný počet"} {meta.unit_cs ? `(${meta.unit_cs})` : ""}
-                                      </label>
-                                      <div className="flex items-center gap-1.5">
-                                        <input
-                                          type={meta.value_type === "number" ? "number" : "text"}
-                                          min={meta.value_type === "number" ? 1 : undefined}
-                                          value={cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? "")}
-                                          onChange={(e) =>
-                                            handleUpdateCondition(idx, {
-                                              ...cond,
-                                              value: meta.value_type === "number" ? Number(e.target.value) || 0 : e.target.value,
-                                            })
-                                          }
-                                          placeholder={meta.unit_cs || "Počet"}
-                                          className="w-full bg-[#120e0b] border border-[#4a3928] rounded px-2.5 py-1.5 text-xs text-[#ffd580] font-semibold focus:outline-none focus:border-[#d4af37]"
-                                        />
-                                        {meta.unit_cs && (
-                                          <span className="text-[11px] text-[#a89078] shrink-0 font-medium px-1.5 py-1 bg-[#1f1913] border border-[#382b1d] rounded">
-                                            {meta.unit_cs}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {!meta.has_target && !meta.has_value && (
+                                  {!meta.has_target && !meta.has_value && !meta.has_operator && (
                                     <div className="col-span-full text-xs text-amber-300/90 bg-[#221910] border border-[#4f3820] px-3 py-1.5 rounded flex items-center gap-2">
                                       <span>⚡</span>
                                       <span>Automatická událost: Sepne se okamžitě při provedení akce hráčem ve hře.</span>
