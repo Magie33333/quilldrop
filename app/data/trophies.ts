@@ -158,10 +158,9 @@ export interface TrophyConditionMetaItem {
   default_value?: string | number;
 }
 
-export const TROPHY_OPERATOR_OPTIONS: { value: ">=" | "==" | "<="; label_cs: string; label_short: string }[] = [
+export const TROPHY_OPERATOR_OPTIONS: { value: ">=" | "=="; label_cs: string; label_short: string }[] = [
   { value: ">=", label_cs: "Alespoň (≥)", label_short: "≥" },
   { value: "==", label_cs: "Přesně (=)", label_short: "=" },
-  { value: "<=", label_cs: "Maximálně (≤)", label_short: "≤" },
 ];
 
 export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionMetaItem> = {
@@ -511,7 +510,7 @@ export function formatConditionHuman(cond: TrophyCondition): string {
   const val = cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? 1);
   const target = cond.target || meta.default_target || "";
   const op = cond.operator || ">=";
-  const opWord = op === "==" ? "přesně" : op === "<=" ? "maximálně" : "alespoň";
+  const opWord = op === "==" ? "přesně" : "alespoň";
 
   switch (cond.type) {
     case "collection_count":
@@ -1229,7 +1228,6 @@ export function evaluateCondition(
 
   function compareValues(actual: number, target: number, operator?: string): boolean {
     if (operator === "==") return actual === target;
-    if (operator === "<=") return actual <= target;
     return actual >= target; // default ">="
   }
 
