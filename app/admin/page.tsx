@@ -68,6 +68,7 @@ import {
   type TrophyConditionType,
   TROPHY_DIFFICULTY_META,
   TROPHY_CONDITION_META,
+  formatConditionHuman,
   getStoredTrophies,
   saveStoredTrophies,
   getStoredTrophyCategories,
@@ -1064,11 +1065,16 @@ export default function AdminPage() {
   }
 
   function handleAddCondition() {
+    const meta = TROPHY_CONDITION_META.collection_count;
     setTrophyForm((prev) => ({
       ...prev,
       conditions: [
         ...(prev.conditions || []),
-        { type: "collection_count", value: 5 },
+        {
+          type: "collection_count",
+          target: meta.default_target || "",
+          value: meta.default_value ?? 10,
+        },
       ],
     }));
   }
@@ -6419,104 +6425,135 @@ export default function AdminPage() {
                           Zatím nejsou nastaveny žádné podmínky. Klikněte na „Přidat podmínku“.
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {trophyForm.conditions.map((cond, idx) => {
                             const meta = TROPHY_CONDITION_META[cond.type] || TROPHY_CONDITION_META.custom;
                             return (
                               <div
                                 key={idx}
-                                className="p-2.5 bg-[#1a1410] border border-[#3b2e21] rounded-md space-y-2 relative"
+                                className="p-3 bg-[#17120e] border border-[#3d2e1f] rounded-lg space-y-2.5 relative shadow-xs"
                               >
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center justify-between gap-2 border-b border-[#2e2318] pb-1.5">
                                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#ffd580]">
-                                    <span>{meta.icon}</span>
-                                    <span>Podmínka #{idx + 1}</span>
+                                    <span className="text-sm leading-none">{meta.icon}</span>
+                                    <span>Podmínka #{idx + 1}: {meta.label_cs}</span>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveCondition(idx)}
-                                    className="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-[#2e1d1d] transition cursor-pointer"
+                                    className="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-[#2e1d1d] transition cursor-pointer flex items-center gap-1 text-[11px]"
                                     title="Odstranit tuto podmínku"
                                   >
-                                    <Trash2 size={12} />
+                                    <Trash2 size={12} /> Smazat
                                   </button>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="block text-[10px] text-[#a89078] mb-0.5">Typ podmínky</label>
-                                    <select
-                                      value={cond.type}
-                                      onChange={(e) => {
-                                        const nextType = e.target.value as TrophyConditionType;
-                                        const nextMeta = TROPHY_CONDITION_META[nextType];
-                                        const defVal = nextMeta.value_type === "number" ? 5 : nextMeta.options?.[0]?.value || "";
-                                        handleUpdateCondition(idx, {
-                                          ...cond,
-                                          type: nextType,
-                                          value: defVal,
-                                          target: String(defVal),
-                                        });
-                                      }}
-                                      className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                                    >
-                                      {Object.entries(TROPHY_CONDITION_META).map(([key, cMeta]) => (
-                                        <option key={key} value={key}>
-                                          {cMeta.icon} {cMeta.label_cs}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                {/* Výběr typu podmínky */}
+                                <div>
+                                  <label className="block text-[10px] font-semibold text-[#a89078] mb-1">Typ pravidla</label>
+                                  <select
+                                    value={cond.type}
+                                    onChange={(e) => {
+                                      const nextType = e.target.value as TrophyConditionType;
+                                      const nextMeta = TROPHY_CONDITION_META[nextType] || TROPHY_CONDITION_META.custom;
+                                      handleUpdateCondition(idx, {
+                                        ...cond,
+                                        type: nextType,
+                                        target: nextMeta.default_target || nextMeta.target_options?.[0]?.value || "",
+                                        value: nextMeta.default_value !== undefined ? nextMeta.default_value : (nextMeta.has_value ? 5 : ""),
+                                      });
+                                    }}
+                                    className="w-full bg-[#120e0b] border border-[#3d2f21] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                                  >
+                                    {Object.entries(TROPHY_CONDITION_META).map(([key, cMeta]) => (
+                                      <option key={key} value={key}>
+                                        {cMeta.icon} {cMeta.label_cs}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
 
-                                  {/* Vstup hodnoty dle typu */}
-                                  <div>
-                                    <label className="block text-[10px] text-[#a89078] mb-0.5">
-                                      Cílová hodnota {meta.unit_cs ? `(${meta.unit_cs})` : ""}
-                                    </label>
-                                    {meta.value_type === "none" ? (
-                                      <div className="text-[11px] text-[#7d6f62] italic py-1">
-                                        Sepne se automaticky při vykonání této akce.
-                                      </div>
-                                    ) : meta.value_type === "select" ? (
-                                      <select
-                                        value={cond.target || cond.value || ""}
-                                        onChange={(e) =>
-                                          handleUpdateCondition(idx, {
-                                            ...cond,
-                                            value: e.target.value,
-                                            target: e.target.value,
-                                          })
-                                        }
-                                        className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
-                                      >
-                                        {meta.options?.map((opt) => (
-                                          <option key={opt.value} value={opt.value}>
-                                            {opt.label_cs}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    ) : (
+                                {/* Parametry podmínky: Výběr (target) a Počet (value) */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                  {meta.has_target && (
+                                    <div>
+                                      <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
+                                        {meta.target_label_cs || "Upřesnění / Výběr"}
+                                      </label>
+                                      {meta.target_options ? (
+                                        <select
+                                          value={cond.target || meta.default_target || meta.target_options[0]?.value || ""}
+                                          onChange={(e) =>
+                                            handleUpdateCondition(idx, {
+                                              ...cond,
+                                              target: e.target.value,
+                                            })
+                                          }
+                                          className="w-full bg-[#120e0b] border border-[#4a3928] rounded px-2.5 py-1.5 text-xs text-[#ffd580] font-medium focus:outline-none focus:border-[#d4af37]"
+                                        >
+                                          {meta.target_options.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>
+                                              {opt.label_cs}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          value={cond.target || ""}
+                                          onChange={(e) =>
+                                            handleUpdateCondition(idx, {
+                                              ...cond,
+                                              target: e.target.value,
+                                            })
+                                          }
+                                          placeholder="např. CO 340, M III 6 nebo klíč"
+                                          className="w-full bg-[#120e0b] border border-[#4a3928] rounded px-2.5 py-1.5 text-xs text-[#ffd580] focus:outline-none focus:border-[#d4af37]"
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {meta.has_value && (
+                                    <div>
+                                      <label className="block text-[10px] font-semibold text-[#c9a96e] mb-1">
+                                        {meta.value_label_cs || "Požadovaný počet"} {meta.unit_cs ? `(${meta.unit_cs})` : ""}
+                                      </label>
                                       <div className="flex items-center gap-1.5">
                                         <input
                                           type={meta.value_type === "number" ? "number" : "text"}
                                           min={meta.value_type === "number" ? 1 : undefined}
-                                          value={cond.value ?? ""}
+                                          value={cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? "")}
                                           onChange={(e) =>
                                             handleUpdateCondition(idx, {
                                               ...cond,
                                               value: meta.value_type === "number" ? Number(e.target.value) || 0 : e.target.value,
-                                              target: e.target.value,
                                             })
                                           }
-                                          placeholder={meta.unit_cs || "Hodnota"}
-                                          className="w-full bg-[#14100c] border border-[#382b1d] rounded px-2 py-1 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                                          placeholder={meta.unit_cs || "Počet"}
+                                          className="w-full bg-[#120e0b] border border-[#4a3928] rounded px-2.5 py-1.5 text-xs text-[#ffd580] font-semibold focus:outline-none focus:border-[#d4af37]"
                                         />
                                         {meta.unit_cs && (
-                                          <span className="text-[10px] text-[#8c7b6d] shrink-0 font-medium">{meta.unit_cs}</span>
+                                          <span className="text-[11px] text-[#a89078] shrink-0 font-medium px-1.5 py-1 bg-[#1f1913] border border-[#382b1d] rounded">
+                                            {meta.unit_cs}
+                                          </span>
                                         )}
                                       </div>
-                                    )}
-                                  </div>
+                                    </div>
+                                  )}
+
+                                  {!meta.has_target && !meta.has_value && (
+                                    <div className="col-span-full text-xs text-amber-300/90 bg-[#221910] border border-[#4f3820] px-3 py-1.5 rounded flex items-center gap-2">
+                                      <span>⚡</span>
+                                      <span>Automatická událost: Sepne se okamžitě při provedení akce hráčem ve hře.</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Názorné lidské shrnutí podmínky */}
+                                <div className="mt-1 px-3 py-2 rounded bg-[#201811] border border-[#443322] text-xs text-[#e8ded1] flex items-start gap-2 shadow-inner">
+                                  <span className="text-amber-400 font-bold shrink-0">💡 Hráč musí:</span>
+                                  <span className="font-semibold text-[#ffd580]">{formatConditionHuman(cond)}</span>
                                 </div>
 
                                 <p className="text-[10px] text-[#8c7b6d] italic">

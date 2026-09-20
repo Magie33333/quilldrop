@@ -10,26 +10,30 @@ export interface TrophyCategoryItem {
 }
 
 export type TrophyConditionType =
-  | "collection_count"      // Počet karet / kolofonů ve sbírce
-  | "specific_card"         // Vlastnictví konkrétního rukopisu / karty (dle UUID nebo ID)
-  | "rarity_owned"          // Vlastnictví alespoň 1 karty dané rarity
-  | "rarity_count"          // Počet karet dané rarity
-  | "packs_opened"          // Celkový počet otevřených balíčků
-  | "pack_quality_opened"   // Otevření balíčku konkrétní kvality (standard, refined, masterwork)
-  | "games_played"          // Celkový počet splněných miniher
-  | "game_mode_played"      // Počet splněných miniher konkrétního typu (transcription, cipher, script, mood)
-  | "transcription_accuracy"// Dosažení přesnosti přepisu (např. 100 %)
-  | "streak_days"           // Délka denního bádání / streak (dny)
-  | "mosaic_pieces"         // Počet složených dílků iluminace / mozaiky (16 dílků)
-  | "player_level"          // Úroveň hráče
-  | "player_xp"             // Celkový počet získaných XP
-  | "player_coins"          // Množství zlaťáků v pokladnici
-  | "gift_sent"             // Počet darovaných / vyměněných karet
-  | "loupe_zoom"            // Použití paleografické lupy na 1000 %
-  | "night_scribe"          // Noční bádání (mezi 00:00 a 04:00)
-  | "scriptorium_place"     // Karta z konkrétního skriptoria / města
-  | "curio_unlocked"        // Přečtení / odemčení kuriozit či glos
-  | "custom";               // Vlastní podmínka nebo tajný kód
+  | "collection_count"       // Počet karet / kolofonů ve sbírce
+  | "specific_card"          // Vlastnictví konkrétního rukopisu / karty (dle UUID nebo ID)
+  | "rarity_owned"           // Vlastnictví alespoň 1 karty dané rarity
+  | "rarity_count"           // Počet karet dané rarity
+  | "packs_opened"           // Celkový počet otevřených balíčků
+  | "pack_quality_opened"    // Otevření balíčku konkrétní kvality (standard, refined, masterwork)
+  | "games_played"           // Celkový počet splněných miniher
+  | "game_mode_played"       // Počet splněných miniher konkrétního typu (transcription, cipher, script, mood)
+  | "transcription_accuracy" // Dosažení přesnosti přepisu (např. 100 %)
+  | "streak_days"            // Délka denního bádání / streak (dny)
+  | "mosaic_pieces"          // Počet složených dílků iluminace / mozaiky (16 dílků)
+  | "player_level"           // Úroveň hráče
+  | "player_xp"              // Celkový počet získaných XP
+  | "player_coins"           // Množství zlaťáků v pokladnici
+  | "gift_sent"              // Počet darovaných / vyměněných karet
+  | "loupe_zoom"             // Použití paleografické lupy na 1000 %
+  | "night_scribe"           // Noční bádání (mezi 22:00 a 04:00)
+  | "scriptorium_place"      // Karta z konkrétního skriptoria / města
+  | "multiple_places"        // Kodexy z několika různých měst / skriptorií
+  | "curio_unlocked"         // Přečtení / odemčení kuriozit či glos
+  | "cipher"                 // Vlastnictví kolofonu se šifrou či kryptogramem
+  | "initial"                // Vlastnictví kolofonu s iluminovanou iniciálou
+  | "verse"                  // Vlastnictví veršovaného kolofonu
+  | "custom";                // Vlastní podmínka nebo tajný kód
 
 export interface TrophyCondition {
   id?: string;
@@ -137,205 +141,416 @@ export const DEFAULT_TROPHY_CATEGORIES: TrophyCategoryItem[] = [
   },
 ];
 
-export const TROPHY_CONDITION_META: Record<
-  TrophyConditionType,
-  {
-    label_cs: string;
-    label_en: string;
-    icon: string;
-    description_cs: string;
-    value_type: "number" | "select" | "text" | "none";
-    unit_cs?: string;
-    options?: { value: string; label_cs: string }[];
-  }
-> = {
+export interface TrophyConditionMetaItem {
+  label_cs: string;
+  label_en: string;
+  icon: string;
+  description_cs: string;
+  has_target?: boolean;
+  target_label_cs?: string;
+  target_options?: { value: string; label_cs: string }[];
+  has_value?: boolean;
+  value_label_cs?: string;
+  value_type?: "number" | "select" | "text" | "none";
+  unit_cs?: string;
+  default_target?: string;
+  default_value?: string | number;
+}
+
+export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionMetaItem> = {
   collection_count: {
-    label_cs: "Počet karet ve sbírce",
+    label_cs: "Celkový počet karet ve sbírce",
     label_en: "Cards in Collection",
     icon: "📜",
     description_cs: "Celkový počet unikátních kolofonů/karet ve sbírce hráče",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik karet celkem?",
     value_type: "number",
     unit_cs: "karet",
+    default_value: 10,
   },
   specific_card: {
     label_cs: "Vlastnictví konkrétního rukopisu",
     label_en: "Own Specific Manuscript",
     icon: "🎴",
-    description_cs: "Vlastnictví konkrétní karty (dle ID, názvu nebo signatury)",
-    value_type: "text",
+    description_cs: "Vlastnictví konkrétní karty (dle ID, signatury či názvu)",
+    has_target: true,
+    target_label_cs: "Signatura / Název / ID",
+    has_value: false,
+    value_type: "none",
   },
   rarity_owned: {
     label_cs: "Vlastnictví karty o dané raritě",
     label_en: "Own Card of Rarity",
     icon: "⭐",
-    description_cs: "Hráč vlastní alespoň 1 kartu zvolené rarity",
-    value_type: "select",
-    options: [
-      { value: "Common", label_cs: "Common (Běžná)" },
-      { value: "Uncommon", label_cs: "Uncommon (Neobyčejná)" },
-      { value: "Rare", label_cs: "Rare (Vzácná)" },
-      { value: "Epic", label_cs: "Epic (Epická)" },
-      { value: "Legendary", label_cs: "Legendary (Legendární)" },
-      { value: "Unique", label_cs: "Unique (Unikátní)" },
+    description_cs: "Hráč musí vlastnit alespoň 1 kartu dané nebo vyšší rarity",
+    has_target: true,
+    target_label_cs: "Požadovaná rarita (nebo vyšší)",
+    target_options: [
+      { value: "Unique", label_cs: "🟣 Unikátní (Unique)" },
+      { value: "Legendary", label_cs: "🟡 Legendární (Legendary) a vyšší" },
+      { value: "Epic", label_cs: "🟣 Epická (Epic) a vyšší" },
+      { value: "Rare", label_cs: "🔵 Vzácná (Rare) a vyšší" },
+      { value: "Uncommon", label_cs: "🟢 Neobyčejná (Uncommon) a vyšší" },
     ],
+    default_target: "Unique",
+    has_value: false,
+    value_type: "none",
   },
   rarity_count: {
     label_cs: "Počet karet určité rarity",
     label_en: "Count of Rarity Cards",
     icon: "✨",
-    description_cs: "Počet karet zvolené rarity ve sbírce",
+    description_cs: "Hráč musí mít ve sbírce stanovený počet karet zvolené rarity (či jejich kombinace)",
+    has_target: true,
+    target_label_cs: "Které rarity?",
+    target_options: [
+      { value: "LegendaryOrUnique", label_cs: "👑 Legendární nebo Unikátní (součet obou nejvyšších rarit)" },
+      { value: "FiveLegendaryOrFiveUnique", label_cs: "🟡 Buď alespoň N Legendárních, NEBO alespoň N Unikátních" },
+      { value: "EpicOrHigher", label_cs: "✨ Epická a vyšší (Epic, Legendary, Unique)" },
+      { value: "RareOrHigher", label_cs: "💎 Vzácná a vyšší (Rare, Epic, Legendary, Unique)" },
+      { value: "Unique", label_cs: "🟣 Pouze Unikátní (Unique)" },
+      { value: "Legendary", label_cs: "🟡 Pouze Legendární (Legendary)" },
+      { value: "Epic", label_cs: "🟣 Pouze Epická (Epic)" },
+      { value: "Rare", label_cs: "🔵 Pouze Vzácná (Rare)" },
+      { value: "Uncommon", label_cs: "🟢 Pouze Neobyčejná (Uncommon)" },
+      { value: "Common", label_cs: "⚪ Pouze Běžná (Common)" },
+    ],
+    default_target: "LegendaryOrUnique",
+    has_value: true,
+    value_label_cs: "Kolik karet?",
     value_type: "number",
     unit_cs: "karet",
-    options: [
-      { value: "Rare", label_cs: "Rare (Vzácná)" },
-      { value: "Epic", label_cs: "Epic (Epická)" },
-      { value: "Legendary", label_cs: "Legendary (Legendární)" },
-      { value: "Unique", label_cs: "Unique (Unikátní)" },
-    ],
+    default_value: 5,
   },
   packs_opened: {
     label_cs: "Celkový počet otevřených balíčků",
     label_en: "Total Packs Opened",
     icon: "📦",
     description_cs: "Celkový počet balíčků, které hráč otevřel ve skriptoriu",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik balíčků?",
     value_type: "number",
     unit_cs: "balíčků",
+    default_value: 10,
   },
   pack_quality_opened: {
     label_cs: "Otevření balíčku specifické kvality",
     label_en: "Opened Pack Quality",
     icon: "👑",
     description_cs: "Hráč otevřel balíček dané úrovně",
-    value_type: "select",
-    options: [
-      { value: "standard", label_cs: "Běžný balíček" },
-      { value: "refined", label_cs: "Učencův balíček (Refined)" },
-      { value: "masterwork", label_cs: "Královský balíček (Masterwork)" },
-      { value: "curio", label_cs: "Kuriozní balíček" },
+    has_target: true,
+    target_label_cs: "Typ balíčku",
+    target_options: [
+      { value: "standard", label_cs: "📦 Běžný balíček" },
+      { value: "refined", label_cs: "📜 Učencův balíček (Refined)" },
+      { value: "masterwork", label_cs: "👑 Královský balíček (Masterwork)" },
     ],
+    default_target: "masterwork",
+    has_value: false,
+    value_type: "none",
   },
   games_played: {
     label_cs: "Počet splněných miniher celkem",
     label_en: "Total Minigames Solved",
     icon: "🎮",
-    description_cs: "Celkový počet úspěšně splněných písařských miniher",
+    description_cs: "Celkový počet úspěšně splněných písařských miniher napříč disciplínami",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik miniher?",
     value_type: "number",
     unit_cs: "miniher",
+    default_value: 10,
   },
   game_mode_played: {
     label_cs: "Splněné minihry konkrétního režimu",
     label_en: "Minigames by Mode",
     icon: "✍️",
-    description_cs: "Počet splněných miniher dané disciplíny",
+    description_cs: "Počet splněných miniher vybrané disciplíny",
+    has_target: true,
+    target_label_cs: "Která disciplína?",
+    target_options: [
+      { value: "transcription", label_cs: "🔍 Paleografická transkripce (přepis řádků)" },
+      { value: "cipher", label_cs: "🗝️ Šifra a kryptogram" },
+      { value: "script", label_cs: "🔤 Poznání písma" },
+      { value: "mood", label_cs: "🎭 Nálada písaře" },
+    ],
+    default_target: "transcription",
+    has_value: true,
+    value_label_cs: "Kolik splněných her?",
     value_type: "number",
     unit_cs: "her",
-    options: [
-      { value: "transcription", label_cs: "Transkripce (přepis řádků)" },
-      { value: "cipher", label_cs: "Šifra a kryptogram" },
-      { value: "script", label_cs: "Poznání písma" },
-      { value: "mood", label_cs: "Nálada písaře" },
-    ],
+    default_value: 5,
   },
   transcription_accuracy: {
-    label_cs: "Přesnost přepisu (100 % shoda)",
+    label_cs: "Přesnost přepisu (např. 100 %)",
     label_en: "Transcription Accuracy",
     icon: "🎯",
     description_cs: "Dosažení dokonalé nebo vysoké přesnosti při transkripci",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Minimální přesnost",
     value_type: "number",
     unit_cs: "%",
+    default_value: 100,
   },
   streak_days: {
     label_cs: "Délka denního bádání (streak)",
     label_en: "Daily Study Streak",
     icon: "🕯️",
     description_cs: "Počet po sobě jdoucích dní každodenní návštěvy skriptoria",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik dní v řadě?",
     value_type: "number",
     unit_cs: "dní",
+    default_value: 7,
   },
   mosaic_pieces: {
-    label_cs: "Dokončené dílky mozaiky (16 dílků)",
+    label_cs: "Dokončené dílky mozaiky",
     label_en: "Mosaic Pieces Completed",
     icon: "🧩",
     description_cs: "Počet složených dílků iluminované mozaiky (16 = hotový obraz)",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik dílků (max 16)?",
     value_type: "number",
     unit_cs: "dílků",
+    default_value: 16,
   },
   player_level: {
     label_cs: "Dosažená úroveň hráče (Level)",
     label_en: "Player Level Reached",
     icon: "🌟",
     description_cs: "Minimální dosažená úroveň písaře",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Minimální úroveň (Level)",
     value_type: "number",
-    unit_cs: "úroveň",
+    unit_cs: "Level",
+    default_value: 5,
   },
   player_xp: {
     label_cs: "Celkový počet získaných XP",
     label_en: "Total XP Earned",
     icon: "⚡",
     description_cs: "Hráč dosáhl stanovené hodnoty zkušeností",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik zkušeností (XP)?",
     value_type: "number",
     unit_cs: "XP",
+    default_value: 500,
   },
   player_coins: {
     label_cs: "Množství zlaťáků v pokladnici",
     label_en: "Gold Coins Balance",
     icon: "💰",
     description_cs: "Zůstatek grošů / zlaťáků v písařské truhlici",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik zlaťáků v pokladnici?",
     value_type: "number",
     unit_cs: "zlaťáků",
+    default_value: 250,
   },
   gift_sent: {
-    label_cs: "Darování či výměna karty",
+    label_cs: "Darování či výměna karet",
     label_en: "Gift or Trade Completed",
     icon: "🤝",
-    description_cs: "Hráč daroval nebo směnil kartu s kolegou",
+    description_cs: "Počet darovaných nebo směněných karet s kolegy ve skriptoriu",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik darů / směn?",
     value_type: "number",
-    unit_cs: "výměn",
+    unit_cs: "směn",
+    default_value: 1,
   },
   loupe_zoom: {
     label_cs: "Použití paleografické lupy na 1000 %",
     label_en: "Use Loupe at 1000% Zoom",
     icon: "🔎",
-    description_cs: "Přiblížení detailu osvětlených řádků až na maximální zvětšení",
+    description_cs: "Automaticky se splní při přiblížení lupy na maximum (1000 %)",
+    has_target: false,
+    has_value: false,
     value_type: "none",
   },
   night_scribe: {
-    label_cs: "Noční bádání (mezi 00:00 a 04:00)",
-    label_en: "Night Scribe (00:00-04:00)",
+    label_cs: "Noční bádání (mezi 22:00 a 04:00)",
+    label_en: "Night Scribe (22:00-04:00)",
     icon: "🌙",
-    description_cs: "Aktivita v temných nočních hodinách při svitu svíce",
+    description_cs: "Automaticky se splní při návštěvě v nočních hodinách",
+    has_target: false,
+    has_value: false,
     value_type: "none",
   },
   scriptorium_place: {
-    label_cs: "Kodex z konkrétního města / kláštera",
+    label_cs: "Kodexy z konkrétního města / kláštera",
     label_en: "Manuscript from Scriptorium",
     icon: "🏛️",
-    description_cs: "Hráč vlastní kodex pocházející z vybrané lokality",
-    value_type: "select",
-    options: [
-      { value: "praha", label_cs: "Praha (Klementinum / NK ČR)" },
+    description_cs: "Počet kodexů pocházejících ze zadaného města či skriptoria",
+    has_target: true,
+    target_label_cs: "Které město / skriptorium?",
+    target_options: [
+      { value: "praha", label_cs: "Praha (Klementinum / NK ČR / Karlov)" },
       { value: "vyssi-brod", label_cs: "Vyšší Brod (Cisterciáci)" },
       { value: "olomouc", label_cs: "Olomouc (Vědecká knihovna)" },
       { value: "roudnice", label_cs: "Roudnice nad Labem (Augustiniáni)" },
-      { value: "krakov", label_cs: "Krakov (Biblioteka Jagiellońska)" },
+      { value: "krakov", label_cs: "Krakov / Kazimierz (Polsko)" },
+      { value: "bologna", label_cs: "Bologna (Itálie)" },
+      { value: "austria", label_cs: "Rakousko (Klosterneuburg / Vídeň)" },
     ],
+    default_target: "praha",
+    has_value: true,
+    value_label_cs: "Kolik kodexů z této lokality?",
+    value_type: "number",
+    unit_cs: "kodexů",
+    default_value: 3,
+  },
+  multiple_places: {
+    label_cs: "Kodexy z různých měst / klášterů",
+    label_en: "Codices from Different Places",
+    icon: "🗺️",
+    description_cs: "Hráč musí vlastnit kodexy pocházející z tolika různých měst či skriptorií",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik různých měst?",
+    value_type: "number",
+    unit_cs: "různých měst",
+    default_value: 3,
   },
   curio_unlocked: {
     label_cs: "Přečtení glos a kuriozit",
     label_en: "Curios & Marginalia Read",
     icon: "📖",
     description_cs: "Hráč prozkoumal a odemkl písařské glosy či marginálie",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik přečtených glos?",
     value_type: "number",
     unit_cs: "glos",
+    default_value: 3,
+  },
+  cipher: {
+    label_cs: "Kolofony se středověkou šifrou",
+    label_en: "Colophons with Cipher",
+    icon: "🗝️",
+    description_cs: "Vlastnictví kolofonů obsahujících středověkou šifru či kryptogram",
+    has_target: false,
+    has_value: true,
+    value_label_cs: "Kolik šifrovaných kolofonů?",
+    value_type: "number",
+    unit_cs: "kolofonů",
+    default_value: 1,
+  },
+  initial: {
+    label_cs: "Kolofon s iluminovanou iniciálou",
+    label_en: "Colophon with Initial",
+    icon: "🎨",
+    description_cs: "Vlastnictví kolofonu zdobeného bohatě iluminovanou iniciálou",
+    has_target: false,
+    has_value: false,
+    value_type: "none",
+  },
+  verse: {
+    label_cs: "Veršovaný či rýmovaný kolofon",
+    label_en: "Rhymed Colophon",
+    icon: "🎶",
+    description_cs: "Vlastnictví karty s veršovaným či rýmovaným kolofonem",
+    has_target: false,
+    has_value: false,
+    value_type: "none",
   },
   custom: {
     label_cs: "Vlastní / Speciální podmínka",
     label_en: "Custom / Special Requirement",
-    icon: "🗝️",
+    icon: "⚙️",
     description_cs: "Ručně zadaný klíč nebo podmínka vyhodnocovaná specificky",
+    has_target: true,
+    target_label_cs: "Identifikátor / Klíč",
+    has_value: true,
+    value_label_cs: "Hodnota",
     value_type: "text",
   },
 };
+
+/**
+ * Převede podmínku výzvy do srozumitelné lidské věty v češtině
+ */
+export function formatConditionHuman(cond: TrophyCondition): string {
+  if (!cond || !cond.type) return "Nespecifikovaná podmínka";
+  const meta = TROPHY_CONDITION_META[cond.type] || TROPHY_CONDITION_META.custom;
+  const val = cond.value !== undefined && cond.value !== "" ? cond.value : (meta.default_value ?? 1);
+  const target = cond.target || meta.default_target || "";
+
+  switch (cond.type) {
+    case "collection_count":
+      return `Vlastnit alespoň ${val} unikátních kodexů ve sbírce`;
+    case "specific_card":
+      return `Vlastnit konkrétní rukopis: „${target || val}“`;
+    case "rarity_owned": {
+      const rLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "Rare";
+      return `Vlastnit alespoň 1 kartu s raritou: ${rLabel}`;
+    }
+    case "rarity_count": {
+      if (target === "FiveLegendaryOrFiveUnique") {
+        return `Vlastnit buď alespoň ${val} Legendárních, NEBO alespoň ${val} Unikátních karet`;
+      }
+      const rLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané rarity";
+      return `Vlastnit alespoň ${val} karet rarity: ${rLabel}`;
+    }
+    case "packs_opened":
+      return `Otevřít alespoň ${val} balíčků ve skriptoriu`;
+    case "pack_quality_opened": {
+      const qLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "zvolené kvality";
+      return `Otevřít alespoň jeden ${qLabel}`;
+    }
+    case "games_played":
+      return `Úspěšně splnit alespoň ${val} písařských miniher`;
+    case "game_mode_played": {
+      const mLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané disciplíny";
+      return `Úspěšně absolvovat alespoň ${val} miniher v disciplíně: ${mLabel}`;
+    }
+    case "transcription_accuracy":
+      return `Dosáhnout přesnosti alespoň ${val} % v paleografické transkripci`;
+    case "streak_days":
+      return `Udržet nepřetržité denní bádání (streak) alespoň ${val} dní`;
+    case "mosaic_pieces":
+      return Number(val) >= 16 ? `Složit celou 16dílnou mozaiku iluminace` : `Složit alespoň ${val} dílků mozaiky iluminace`;
+    case "player_level":
+      return `Dosáhnout alespoň ${val}. písařské úrovně (Level ${val})`;
+    case "player_xp":
+      return `Získat alespoň ${val} zkušenostních bodů (XP)`;
+    case "player_coins":
+      return `Nashromáždit alespoň ${val} zlaťáků v písařské pokladnici`;
+    case "gift_sent":
+      return `Darovat či směnit alespoň ${val} karet s kolegy`;
+    case "loupe_zoom":
+      return `Použít paleografickou lupu při maximálním zvětšení 1000 %`;
+    case "night_scribe":
+      return `Bádat ve skriptoriu v nočních hodinách (mezi 22:00 a 4:00)`;
+    case "scriptorium_place": {
+      const pLabel = meta.target_options?.find((o) => o.value === target)?.label_cs || target || "vybrané lokality";
+      return `Vlastnit alespoň ${val} kodexů z lokality: ${pLabel}`;
+    }
+    case "multiple_places":
+      return `Vlastnit kodexy pocházející alespoň ze ${val} různých měst či skriptorií`;
+    case "curio_unlocked":
+      return `Odemknout a prozkoumat alespoň ${val} písařských glos`;
+    case "cipher":
+      return `Vlastnit alespoň ${val} kolofonů se středověkou šifrou či kryptogramem`;
+    case "initial":
+      return `Vlastnit alespoň 1 kolofon zdobený iluminovanou iniciálou`;
+    case "verse":
+      return `Vlastnit alespoň 1 veršovaný či rýmovaný kolofon`;
+    case "custom":
+      return `Speciální podmínka: ${target || val}`;
+    default:
+      return `${meta.label_cs}: ${target ? target + " - " : ""}${val}`;
+  }
+}
 
 // Zpětná kompatibilita pro TROPHY_CATEGORY_META
 export const TROPHY_CATEGORY_META: Record<string, { label_cs: string; label_en: string; icon: string }> = {
@@ -1014,6 +1229,11 @@ export function evaluateCondition(
 
     case "rarity_count": {
       const targetRarity = cond.target || "Rare";
+      if (targetRarity === "FiveLegendaryOrFiveUnique") {
+        const legCount = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === "Legendary").length;
+        const unqCount = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.rarity === "Unique").length;
+        return legCount >= (numVal || 5) || unqCount >= (numVal || 5);
+      }
       let matches = 0;
       if (targetRarity === "LegendaryOrUnique" || targetRarity === "Legendary+") {
         matches = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && (c.rarity === "Legendary" || c.rarity === "Unique")).length;
@@ -1088,6 +1308,28 @@ export function evaluateCondition(
             (placeKey === "vyssi-brod" && (c.manuscript?.toLowerCase().includes("vb") || c.place?.toLowerCase().includes("brod"))))
       ).length;
       return count >= (numVal || 1);
+    }
+
+    case "multiple_places": {
+      const ownedPlaces = new Set(
+        cards
+          .filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && c.place && !c.place.toLowerCase().includes("unknown"))
+          .map((c) => c.place.toLowerCase().trim())
+      );
+      return ownedPlaces.size >= (numVal || 3);
+    }
+
+    case "cipher": {
+      const count = cards.filter((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Šifra") || (c as any).colophons?.features?.includes("Šifra") || c.features?.some?.((f: string) => f.toLowerCase().includes("šifr")))).length;
+      return count >= (numVal || 1);
+    }
+
+    case "initial": {
+      return cards.some((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Iniciála") || (c as any).colophons?.features?.includes("Iniciála") || c.features?.some?.((f: string) => f.toLowerCase().includes("iniciál"))));
+    }
+
+    case "verse": {
+      return cards.some((c) => (Number(state?.collection?.[c.id]) || 0) > 0 && ((c as any).features?.includes("Verše") || (c as any).colophons?.features?.includes("Verše") || c.features?.some?.((f: string) => f.toLowerCase().includes("verš"))));
     }
 
     case "curio_unlocked":

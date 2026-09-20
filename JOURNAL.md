@@ -716,5 +716,28 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Přesný výpočet úrovně hráče i z celkových zkušeností (`Math.floor(xp / 100) + 1`).
    - Dynamické sloučení nových výchozích výzev do stávajícího `localStorage` v `getStoredTrophies()`.
 
+---
+
+## 📅 Záznam ze dne 20. 9. 2026 (Dodatek) — Revize a zpřehlednění systému podmínek v administraci
+
+**Cíl etapy:** Zpřístupnit transparentní a intuitivní definování podmínek u výzev v administraci (`/admin`). Vyřešit nemožnost volby konkrétní rarity u počtu karet, přidat podporu pro kombinace (např. *„buď 5 legendárních nebo 5 unikátních“*) a zavést živý lidský souhrn pravidla v reálném čase.
+
+**Provedené úpravy:**
+1. **Explicitní volba rarit a kombinací (`app/data/trophies.ts`, `app/admin/page.tsx`):**
+   - U podmínky `rarity_count` („Počet karet určité rarity“) přibyl dedikovaný výběr požadované rarity / kombinace:
+     - 👑 *Legendární nebo Unikátní (součet obou nejvyšších rarit)*
+     - 🟡 *Buď alespoň N Legendárních, NEBO alespoň N Unikátních* (přesné pokrytí požadavku na buď/nebo)
+     - ✨ *Epická a vyšší (Epic, Legendary, Unique)*
+     - 💎 *Vzácná a vyšší (Rare, Epic, Legendary, Unique)*
+     - Jednotlivé samostatné rarity (*Unique*, *Legendary*, *Epic*, *Rare*, *Uncommon*, *Common*).
+   - Vedle volby rarity je k dispozici samostatné pole pro počet karet s jednotkou.
+2. **Přehledné rozdělení vstupů dle typu podmínky:**
+   - Každá podmínka má jasně oddělený výběr cíle/upřesnění (`target`) a číselnou hodnotu (`value`) s jednotkou.
+   - U automatických událostí (lupa na 1000 %, noční bádání, vlastnictví iniciály/veršů) se zobrazuje vysvětlující štítek namísto prázdných polí.
+3. **Živý lidský souhrn podmínky (`formatConditionHuman`):**
+   - Přímo v každé kartě podmínky se v reálném čase generuje zvýrazněná věta v češtině (např. *„💡 Hráč musí: Vlastnit buď alespoň 5 Legendárních, NEBO alespoň 5 Unikátních karet“*).
+   - Editor tak okamžitě vidí, jak systém zadané pravidlo chápe a vyhodnocuje.
+
+
 
 
