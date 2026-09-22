@@ -3925,40 +3925,49 @@ function ProfileScreen({
     </div>
 
     <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {onOpenTutorial && (
-          <button
-            type="button"
-            className="settings-button"
-            style={{ flex: 1, minWidth: 160, background: "#fffdf5", borderColor: "#c9a66b", color: "#54380e", fontWeight: 600 }}
-            onClick={onOpenTutorial}
-            title={lang === "en" ? "Review the 5-chapter guide to the scriptorium and colophons" : "Znovu si projít 5kapitolového průvodce skriptoriem a kolofony"}
-          >
-            <Sparkles size={12} /> {lang === "en" ? "📜 Scriptorium Guide (Tutorial)" : "📜 Průvodce skriptoriem (Tutoriál)"}
+      {onOpenTutorial && (
+        <button
+          type="button"
+          className="settings-button"
+          style={{ width: "100%", background: "#fffdf5", borderColor: "#c9a66b", color: "#54380e", fontWeight: 600 }}
+          onClick={onOpenTutorial}
+          title={lang === "en" ? "Review the 5-chapter guide to the scriptorium and colophons" : "Znovu si projít 5kapitolového průvodce skriptoriem a kolofony"}
+        >
+          <Sparkles size={12} /> {lang === "en" ? "📜 Scriptorium Guide (Tutorial)" : "📜 Průvodce skriptoriem (Tutoriál)"}
+        </button>
+      )}
+
+      {/* Vývojářské a testovací nástroje pouze pro administrátory */}
+      {currentProfile?.role === "admin" && (
+        <div style={{ marginTop: 12, padding: "12px 14px", background: "#1f1811", border: "1px dashed #ba8e55", borderRadius: "8px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#ffd580", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+            ⚙️ {lang === "en" ? "Master of Scriptorium Tools (Admin Only)" : "Nástroje mistra skriptoria (Pouze administrátor)"}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+            <button
+              type="button"
+              className="settings-button"
+              style={{ flex: 1, minWidth: 160 }}
+              onClick={onAdvanceDay}
+              title={lang === "en" ? "Simulate next day (+1 mosaic fragment)" : "Simulovat další den návštěvy (+1 fragment do mozaiky)"}
+            >
+              <Sparkles size={12} /> {lang === "en" ? "Simulate Next Day (+1 fragment)" : "Simulovat další den (+1 fragment)"}
+            </button>
+            <button
+              type="button"
+              className="settings-button"
+              style={{ flex: 1, minWidth: 160, color: "#b91c1c" }}
+              onClick={onBreakStreak}
+              title={lang === "en" ? "Simulate broken streak (reset to Day 1)" : "Simulovat vynechání dne (reset streaku na Den 1 dle pravidel)"}
+            >
+              <RotateCcw size={12} /> {lang === "en" ? "Simulate Streak Break (reset)" : "Simulovat přerušení streaku (reset)"}
+            </button>
+          </div>
+          <button className="settings-button" style={{ width: "100%", color: "#dc2626" }} onClick={onReset}>
+            <RotateCcw size={12} /> {lang === "en" ? "Reset All Progress (Demo)" : "Resetovat celý postup pro demonstraci"}
           </button>
-        )}
-        <button
-          type="button"
-          className="settings-button"
-          style={{ flex: 1, minWidth: 160 }}
-          onClick={onAdvanceDay}
-          title={lang === "en" ? "Simulate next day (+1 mosaic fragment)" : "Simulovat další den návštěvy (+1 fragment do mozaiky)"}
-        >
-          <Sparkles size={12} /> {lang === "en" ? "Simulate Next Day (+1 fragment)" : "Simulovat další den (+1 fragment)"}
-        </button>
-        <button
-          type="button"
-          className="settings-button"
-          style={{ flex: 1, minWidth: 160, color: "#b91c1c" }}
-          onClick={onBreakStreak}
-          title={lang === "en" ? "Simulate broken streak (reset to Day 1)" : "Simulovat vynechání dne (reset streaku na Den 1 dle pravidel)"}
-        >
-          <RotateCcw size={12} /> {lang === "en" ? "Simulate Streak Break (reset)" : "Simulovat přerušení streaku (reset)"}
-        </button>
-      </div>
-      <button className="settings-button" onClick={onReset}>
-        <RotateCcw size={12} /> {lang === "en" ? "Reset All Progress (Demo)" : "Resetovat celý postup pro demonstraci"}
-      </button>
+        </div>
+      )}
     </div>
   </div>;
 }
