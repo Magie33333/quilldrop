@@ -2613,17 +2613,19 @@ function HomeScreen({
               {lang === "en" ? "Details →" : "Detail →"}
             </button>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "10px" }}>
-            <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px" }}>
-                <span>{getIlluminationTierName(activeIllumination, lang) || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
-                <span>{state.puzzle} {lang === "en" ? "of 16" : "z 16"}</span>
+          <div className="home-mosaic-row">
+            <div style={{ width: "100%", maxWidth: "140px", aspectRatio: "1", flexShrink: 0 }}>
+              <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 800 }}>{getIlluminationTierName(activeIllumination, lang) || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
+                <span style={{ whiteSpace: "nowrap", color: "#8b5a19", fontSize: "11px", fontWeight: 700 }}>{state.puzzle} {lang === "en" ? "of 16" : "z 16"}</span>
               </div>
               <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
                 <i style={{ width: `${(state.puzzle / 16) * 100}%` }} />
               </div>
-              <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px" }}>
+              <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px", lineHeight: "1.4" }}>
                 {state.puzzle < 16
                   ? (() => {
                       const remLogins = 16 - state.puzzle;
@@ -2632,7 +2634,9 @@ function HomeScreen({
                       if (remLogins >= 2 && remLogins <= 4) return `Zbývají ${remLogins} denní přihlášení v řadě do dokončení celého díla.`;
                       return `Zbývá ${remLogins} denních přihlášení v řadě do dokončení celého díla.`;
                     })()
-                  : (lang === "en" ? `🎉 Cycle ${activeIllumination.cycle} complete! Reward +${activeIllumination.rewardXp} XP and pack added to profile.` : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu.`)}
+                  : (lang === "en"
+                      ? `🎉 Cycle ${activeIllumination.cycle} complete! Reward +${activeIllumination.rewardXp} XP & pack added to profile. Tomorrow at dawn, Cycle ${activeIllumination.cycle + 1} begins!`
+                      : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu. Zítra za úsvitu začíná Cyklus ${activeIllumination.cycle + 1}!`)}
               </small>
             </div>
           </div>
