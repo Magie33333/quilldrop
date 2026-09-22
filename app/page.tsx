@@ -2614,10 +2614,10 @@ function HomeScreen({
             </button>
           </div>
           <div className="home-mosaic-row">
-            <div style={{ width: "100%", maxWidth: "140px", aspectRatio: "1", flexShrink: 0 }}>
+            <div className="home-mosaic-wrapper">
               <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div className="home-mosaic-info">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px", fontSize: "12px", fontWeight: 700, color: "var(--brown)", marginBottom: "4px", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 800 }}>{getIlluminationTierName(activeIllumination, lang) || (lang === "en" ? `Cycle ${activeIllumination.cycle}` : `Cyklus ${activeIllumination.cycle}`)}</span>
                 <span style={{ whiteSpace: "nowrap", color: "#8b5a19", fontSize: "11px", fontWeight: 700 }}>{state.puzzle} {lang === "en" ? "of 16" : "z 16"}</span>
@@ -2625,19 +2625,46 @@ function HomeScreen({
               <div className="progress" style={{ height: "10px", background: "#dcc296" }}>
                 <i style={{ width: `${(state.puzzle / 16) * 100}%` }} />
               </div>
-              <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px", lineHeight: "1.4" }}>
-                {state.puzzle < 16
-                  ? (() => {
-                      const remLogins = 16 - state.puzzle;
-                      if (lang === "en") return `Remaining: ${remLogins} daily login${remLogins === 1 ? "" : "s"} in a row to complete the illumination.`;
-                      if (remLogins === 1) return "Zbývá 1 denní přihlášení do dokončení celého díla.";
-                      if (remLogins >= 2 && remLogins <= 4) return `Zbývají ${remLogins} denní přihlášení v řadě do dokončení celého díla.`;
-                      return `Zbývá ${remLogins} denních přihlášení v řadě do dokončení celého díla.`;
-                    })()
-                  : (lang === "en"
+
+              <p className="home-mosaic-desc">
+                {getIlluminationDescription(activeIllumination, lang)}
+              </p>
+
+              <div>
+                {state.puzzle < 16 ? (
+                  <>
+                    <small style={{ display: "block", marginTop: "6px", color: "#684824", fontSize: "11px", lineHeight: "1.4" }}>
+                      {(() => {
+                        const remLogins = 16 - state.puzzle;
+                        if (lang === "en") return `Remaining: ${remLogins} daily login${remLogins === 1 ? "" : "s"} in a row to complete the illumination.`;
+                        if (remLogins === 1) return "Zbývá 1 denní přihlášení do dokončení celého díla.";
+                        if (remLogins >= 2 && remLogins <= 4) return `Zbývají ${remLogins} denní přihlášení v řadě do dokončení celého díla.`;
+                        return `Zbývá ${remLogins} denních přihlášení v řadě do dokončení celého díla.`;
+                      })()}
+                    </small>
+                    <div className="home-mosaic-reward-callout">
+                      🎁 {lang === "en" ? `Reward: +${activeIllumination.rewardXp} XP & Pack` : `Odměna: +${activeIllumination.rewardXp} XP & balíček`}{" "}
+                      <span style={{ color: "#7a4e17", fontWeight: 500, fontSize: "10.5px" }}>({lang === "en" ? `Cycle ${activeIllumination.cycle + 1} follows` : `poté Cyklus ${activeIllumination.cycle + 1}`})</span>
+                    </div>
+                  </>
+                ) : (
+                  <small style={{ display: "block", marginTop: "6px", color: "#2d6316", fontWeight: 700, fontSize: "11px", lineHeight: "1.4" }}>
+                    {lang === "en"
                       ? `🎉 Cycle ${activeIllumination.cycle} complete! Reward +${activeIllumination.rewardXp} XP & pack added to profile. Tomorrow at dawn, Cycle ${activeIllumination.cycle + 1} begins!`
-                      : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu. Zítra za úsvitu začíná Cyklus ${activeIllumination.cycle + 1}!`)}
-              </small>
+                      : `🎉 Cyklus ${activeIllumination.cycle} dokončen! Odměna +${activeIllumination.rewardXp} XP a balíček připsány do profilu. Zítra za úsvitu začíná Cyklus ${activeIllumination.cycle + 1}!`}
+                  </small>
+                )}
+              </div>
+
+              <div className="home-mosaic-actions">
+                <button
+                  className="illuminated-button"
+                  onClick={onGallery}
+                  style={{ width: "100%", justifyContent: "center", fontSize: "11px", padding: "6px 10px" }}
+                >
+                  {lang === "en" ? "View in Illumination Gallery" : "Prohlédnout v Galerii iluminací"} <span>→</span>
+                </button>
+              </div>
             </div>
           </div>
         </section>
