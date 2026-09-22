@@ -5202,8 +5202,10 @@ function OnboardingTutorialModal({
         aria-label={lang === "en" ? "Introduction to scriptorium" : "Úvodní zasvěcení do skriptoria"}
         style={{
           maxWidth: 540,
-          width: "92vw",
-          padding: "26px 28px 22px",
+          width: "94vw",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          padding: "22px 18px 18px",
           background: "linear-gradient(175deg, #fcf8ee 0%, #f4ebd8 100%)",
           border: "2px solid #b89758",
           boxShadow: "0 20px 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(184,151,88,0.15)",
@@ -5360,8 +5362,10 @@ function DailyPieceModal({
         aria-label={lang === "en" ? "Daily Scriptorium Visit" : "Denní návštěva skriptoria"}
         style={{
           maxWidth: 520,
-          width: "92vw",
-          padding: "24px 26px 22px",
+          width: "94vw",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          padding: "20px 16px 18px",
           background: "linear-gradient(175deg, #fcf8ee 0%, #f4ebd8 100%)",
           border: "2px solid #b89758",
           boxShadow: "0 20px 60px rgba(0,0,0,0.65), inset 0 0 40px rgba(184,151,88,0.18)",
@@ -5379,7 +5383,7 @@ function DailyPieceModal({
           </span>
         </div>
 
-        <h2 style={{ margin: "0 0 6px", fontSize: "21px", color: "#2d1a08", fontFamily: "Cinzel, Georgia, serif" }}>
+        <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "#2d1a08", fontFamily: "Cinzel, Georgia, serif" }}>
           {isCompleted
             ? (lang === "en" ? "🎉 Masterwork Illumination Completed!" : "🎉 Mistrovská iluminace dokončena!")
             : (lang === "en" ? "✨ New Illumination Fragment Revealed!" : "✨ Nový fragment iluminace odhalen!")}
@@ -5397,7 +5401,7 @@ function DailyPieceModal({
 
         {/* Mozaika */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-          <div style={{ width: 170, height: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.35)", borderRadius: 10, overflow: "hidden", border: "2px solid #b89758" }}>
+          <div style={{ width: "min(150px, 46vw)", height: "min(150px, 46vw)", boxShadow: "0 8px 24px rgba(0,0,0,0.35)", borderRadius: 10, overflow: "hidden", border: "2px solid #b89758" }}>
             <IlluminationMosaic pieces={puzzle} illumination={activeIllumination} />
           </div>
         </div>
