@@ -33,9 +33,21 @@
    - Pokud hráč vyčerpá pokusy nebo zvolí chybnou možnost, okno se nezavře prázdné:
    - Zobrazí se červený rámeček neúspěchu a **kompletní didaktické řešení**: správný přepis z rukopisu / správná volba, český překlad i odborný komentář písaře.
    - Hráč se tak vždy poučí a minihru ukončí až ručním stiskem tlačítka *„Rozumím, zavřít výzvu“*.
-5. **Aktualizace metodických příruček:**
-   - Aktualizována vestavěná příručka v administraci ([`app/admin/StudioHelpModal.tsx`](file:///C:/Users/benys/Downloads/quilldrop-local/app/admin/StudioHelpModal.tsx)).
-   - Aktualizován manuál pro brigádníky ([`docs/NAVOD_PRO_BRIGADNIKY.md`](file:///C:/Users/benys/Downloads/quilldrop-local/docs/NAVOD_PRO_BRIGADNIKY.md)).
+5. **Přejmenování minihry na „Šifry & Písmo“:**
+   - Klientská dlaždice zkrácena na úderné a jasné **„Šifry & Písmo“** (EN: *Ciphers & Scripts*). Upraveno v `HomeScreen`, `PacksScreen`, `trophies.ts`, `StudioHelpModal.tsx` i `NAVOD_PRO_BRIGADNIKY.md`.
+6. **Rozšíření mapy skriptorií a diakritická normalizace (`app/data/scriptoria.ts`):**
+   - Doplněna normalizace textů pro odolnost vůči diakritice a latinským tvarům (`prag`, `cuthn`, `olomuc`, `brun`, `cracov`, `wratislav`, `lipsi`, `vien`, `basil`, `paris`).
+   - Přidáno 13 nových historických lokalit: Kutná Hora, Český Krumlov, Plzeň, Klášter Teplá, Kroměříž, Cheb, Hradec Králové, Broumov, Zlatá Koruna, Osek, Basilej, Paříž, Řím.
+7. **Rozšíření denních mozaik o cykly 7 až 12 (bizarní a vtipné drollerie, `app/data/illuminations.ts`):**
+   - Přidáno 6 nových 16dílných iluminací s autentickým historickým vysvětlením a pramenem:
+     - 👹 **Cyklus 7: Titivillus – Démon písařských chyb** (sbírá písařské chyby do žoku).
+     - 🐌 **Cyklus 8: Rytíř a bojový hlemýžď** (Li Livres dou Tresor, 1315).
+     - 🐰 **Cyklus 9: Vražedný králík pomstitel** (Smithfield Decretals, 1340).
+     - 👑 **Cyklus 10: Královské lazebnice Václava IV.** (Bible Václava IV., Praha, 1390).
+     - 🦶 **Cyklus 11: Skiapod – Stínonoh s obří nohou** (Livre des merveilles, 1410).
+     - 🎭 **Cyklus 12: Klášterní chiméra** (Luttrell Psalter, 1330).
+   - Všechny obrazové soubory staženy do `public/illuminations/`.
+   - Doplněna migrační logika pro automatické doplnění nových cyklů stávajícím uživatelům v `localStorage`.
 
 ---
 
