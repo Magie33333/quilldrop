@@ -1208,7 +1208,7 @@ export default function Home() {
     }
   };
 
-  const startGame = (questType: "mood" | "cipher" | "script" | "paleo") => {
+  const startGame = (questType: "mood" | "scholar" | "cipher" | "script" | "paleo") => {
     if (state.gamesPlayed >= MAX_DAILY_GAMES) {
       setToast(lang === "en" ? `You have completed today's ${MAX_DAILY_GAMES} challenges. Return tomorrow at dawn.` : `Dnešních ${MAX_DAILY_GAMES} výzev jste již dokončili. Vraťte se zítra za svítání.`);
       return;
@@ -1216,6 +1216,13 @@ export default function Home() {
     let pool: QuestionData[] = [];
     if (questType === "mood") {
       pool = questions.filter(q => q.game_kind === "mood" || q.mode === "mood");
+    } else if (questType === "scholar") {
+      // Sloučený výběr pro Učencův balíček: náhodně losuje šifry i určení písma a století
+      pool = questions.filter(q =>
+        q.game_kind === "cipher" ||
+        q.mode === "cipher" ||
+        (q.game_kind === "paleo" && (q.mode === "script" || q.mode === "century" || (!q.target_transcription && !q.highlight_regions)))
+      );
     } else if (questType === "cipher") {
       pool = questions.filter(q => q.game_kind === "cipher" || q.mode === "cipher");
     } else if (questType === "script") {
@@ -1248,7 +1255,11 @@ export default function Home() {
 
     const chosen = finalPool.length > 0
       ? finalPool[Math.floor(Math.random() * finalPool.length)]
-      : DEFAULT_QUESTIONS.find(q => q.mode === questType || q.game_kind === (questType === "script" ? "paleo" : questType)) || DEFAULT_QUESTIONS[0];
+      : DEFAULT_QUESTIONS.find(q =>
+          questType === "scholar"
+            ? (q.game_kind === "cipher" || q.mode === "script")
+            : q.mode === questType || q.game_kind === (questType === "script" ? "paleo" : questType)
+        ) || DEFAULT_QUESTIONS[0];
 
     setActiveQuestion(chosen);
     setGame(chosen.game_kind);
@@ -2351,7 +2362,7 @@ function HomeScreen({
   onCollection: () => void;
   onMap: (place?: ScriptoriumPlace) => void;
   onGallery: () => void;
-  onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
+  onGame: (g: "mood" | "scholar" | "cipher" | "script" | "paleo") => void;
   onDetail: (c: Colophon) => void;
   lang?: Language;
 }) {
@@ -2461,23 +2472,15 @@ function HomeScreen({
               <span className="home-quest-icon icon-mood"><Smile size={19} /></span>
               <div className="home-quest-info">
                 <strong>{lang === "en" ? "Scribe's Mood" : "Nálada písaře"}</strong>
-                <small>{lang === "en" ? "Emotion choice · 4 options · Easy" : "Výběr emoce · 4 možnosti · Snadná"}</small>
+                <small>{lang === "en" ? "Emotion choice · 4 options (1 attempt) · Easy" : "Výběr emoce · 4 možnosti (1 pokus) · Snadná"}</small>
               </div>
               <span className="home-quest-reward reward-standard">{lang === "en" ? "📜 Standard Pack →" : "📜 Běžný balíček →"}</span>
             </button>
-            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("cipher")}>
+            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("scholar")}>
               <span className="home-quest-icon icon-cipher"><KeyRound size={19} /></span>
               <div className="home-quest-info">
-                <strong>{lang === "en" ? "Crack the Cipher" : "Rozlušti šifru"}</strong>
-                <small>{lang === "en" ? "Cryptograms & wordplay · Medium" : "Kryptogramy a hříčky · Střední"}</small>
-              </div>
-              <span className="home-quest-reward reward-scholar">{lang === "en" ? "✨ Scholar Pack →" : "✨ Učencův balíček →"}</span>
-            </button>
-            <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("script")}>
-              <span className="home-quest-icon icon-script"><ScrollText size={19} /></span>
-              <div className="home-quest-info">
-                <strong>{lang === "en" ? "Script & Century" : "Poznej písmo a století"}</strong>
-                <small>{lang === "en" ? "Typology & dating · Advanced" : "Typologie & datace kodexu · Pokročilá"}</small>
+                <strong>{lang === "en" ? "Scholar's Riddle: Ciphers & Scripts" : "Písařská hádanka: Šifry & Písmo"}</strong>
+                <small>{lang === "en" ? "Cryptograms, secret scripts & ductus (1 attempt) · Advanced" : "Kryptogramy, tajná písma & duktus (1 pokus) · Pokročilá"}</small>
               </div>
               <span className="home-quest-reward reward-scholar">{lang === "en" ? "✨ Scholar Pack →" : "✨ Učencův balíček →"}</span>
             </button>
@@ -2485,7 +2488,7 @@ function HomeScreen({
               <span className="home-quest-icon icon-paleo"><PenTool size={19} /></span>
               <div className="home-quest-info">
                 <strong>{lang === "en" ? "Palaeographical Master" : "Paleografický mistr"}</strong>
-                <small>{lang === "en" ? "Transcription with magnifier · Expert" : "Přepis autentického textu s lupou · Expertní"}</small>
+                <small>{lang === "en" ? "Authentic transcription with loupe (up to 5 attempts) · Expert" : "Přepis autentického textu s lupou (až 5 pokusů) · Expertní"}</small>
               </div>
               <span className="home-quest-reward reward-masterwork">{lang === "en" ? "💎 Masterwork Pack →" : "💎 Královský balíček →"}</span>
             </button>
@@ -2631,7 +2634,7 @@ function PacksScreen({
 }: {
   state: GameState;
   onOpen: (tier?: PackQuality | "daily") => void;
-  onGame: (g: "mood" | "cipher" | "script" | "paleo") => void;
+  onGame: (g: "mood" | "scholar" | "cipher" | "script" | "paleo") => void;
   lang?: Language;
 }) {
   const [selectedTier, setSelectedTier] = useState<PackQuality>("standard");
@@ -2879,10 +2882,10 @@ function PacksScreen({
               <button
                 className="illuminated-button tier-scholar"
                 disabled={!gamesLeft}
-                onClick={() => onGame("cipher")}
+                onClick={() => onGame("scholar")}
                 style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
               >
-                {lang === "en" ? "Launch Crack the Cipher" : "Spustit Rozlušti šifru"} <span>→</span>
+                {lang === "en" ? "Launch Scholar's Riddle (Ciphers & Scripts)" : "Spustit Písařskou hádanku (Šifry & Písmo)"} <span>→</span>
               </button>
             )}
             {selectedTier === "standard" && (
@@ -2905,14 +2908,14 @@ function PacksScreen({
           <h2>{lang === "en" ? "Earn Another Bonus Pack" : "Získejte další bonusový balíček"}</h2>
           <small style={{ color: "#765228", display: "block", marginTop: "2px", fontSize: "11px" }}>
             {lang === "en"
-              ? "Master any of the four scribal disciplines to unlock an authentic bonus pack."
-              : "Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček."}
+              ? "Master any of the three scribal disciplines to unlock an authentic bonus pack."
+              : "Splňte některou ze tří písařských disciplín a získejte odpovídající balíček."}
           </small>
         </div>
         <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} {lang === "en" ? "challenges available" : "výzev k dispozici"}</span>
       </div>
 
-      <div className="game-grid-4">
+      <div className="game-grid-3">
         {/* HRA 1: NÁLADA PÍSAŘE */}
         <button
           className="game-grid-card tier-standard"
@@ -2927,7 +2930,7 @@ function PacksScreen({
           </div>
           <div className="game-card-content">
             <strong>{lang === "en" ? "Scribe's Mood" : "Nálada písaře"}</strong>
-            <p>{lang === "en" ? "Deduce the scribe's emotional state from the original quote and translation." : "Odhadněte z autentického citátu a překladu rozpoložení středověkého písaře."}</p>
+            <p>{lang === "en" ? "Deduce the scribe's emotional state from the original quote and translation (1 attempt)." : "Odhadněte z autentického citátu a překladu rozpoložení středověkého písaře (1 pokus)."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-standard">
@@ -2937,45 +2940,21 @@ function PacksScreen({
           </div>
         </button>
 
-        {/* HRA 2: ROZLUŠTI ŠIFRU */}
+        {/* HRA 2: PÍSAŘSKÁ HÁDANKA: ŠIFRY & PÍSMO */}
         <button
           className="game-grid-card tier-scholar"
           disabled={!gamesLeft}
-          onClick={() => onGame("cipher")}
+          onClick={() => onGame("scholar")}
         >
           <div className="game-card-top">
             <span className="game-seal-medallion seal-cipher">
               <KeyRound size={23} />
             </span>
-            <span className="game-difficulty-pill diff-medium">{lang === "en" ? "Medium" : "Střední"}</span>
-          </div>
-          <div className="game-card-content">
-            <strong>{lang === "en" ? "Crack the Cipher" : "Rozlušti šifru"}</strong>
-            <p>{lang === "en" ? "Solve a medieval cryptogram, wordplay, or substitution cipher in the colophon." : "Odhalte písařský kryptogram, hříčku nebo substituční šifru v kolofonu."}</p>
-          </div>
-          <div className="game-card-footer">
-            <span className="game-reward-tag reward-scholar">
-              ✨ {lang === "en" ? "Scholar Pack" : "Učencův balíček"}
-            </span>
-            <span className="game-action-arrow">{lang === "en" ? "Play →" : "Hrát →"}</span>
-          </div>
-        </button>
-
-        {/* HRA 3: POZNEJ PÍSMO A STOLETÍ */}
-        <button
-          className="game-grid-card tier-scholar"
-          disabled={!gamesLeft}
-          onClick={() => onGame("script")}
-        >
-          <div className="game-card-top">
-            <span className="game-seal-medallion seal-script">
-              <ScrollText size={23} />
-            </span>
             <span className="game-difficulty-pill diff-advanced">{lang === "en" ? "Advanced" : "Pokročilá"}</span>
           </div>
           <div className="game-card-content">
-            <strong>{lang === "en" ? "Script & Century" : "Poznej písmo a století"}</strong>
-            <p>{lang === "en" ? "Identify the script ductus: textura, bastarda, cursiva, and the century of origin." : "Zařaďte duktus písma kodexu: textura, bastarda, kurzíva a století vzniku."}</p>
+            <strong>{lang === "en" ? "Scholar's Riddle: Ciphers & Scripts" : "Písařská hádanka: Šifry & Písmo"}</strong>
+            <p>{lang === "en" ? "Solve a medieval cryptogram, substitution cipher, or identify the palaeographical script ductus and century." : "Rozluštěte středověký kryptogram, substituční šifru nebo zařaďte paleografický duktus a století kodexu."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-scholar">
@@ -2985,7 +2964,7 @@ function PacksScreen({
           </div>
         </button>
 
-        {/* HRA 4: PALEOGRAFICKÝ MISTR */}
+        {/* HRA 3: PALEOGRAFICKÝ MISTR */}
         <button
           className="game-grid-card tier-masterwork"
           disabled={!gamesLeft}
@@ -2999,7 +2978,7 @@ function PacksScreen({
           </div>
           <div className="game-card-content">
             <strong>{lang === "en" ? "Palaeographical Master" : "Paleografický mistr"}</strong>
-            <p>{lang === "en" ? "Transcribe authentic Latin lines directly from the manuscript using the paleographical lens." : "Přepis autentických latinských řádků přímo z rukopisu s paleografickou lupou."}</p>
+            <p>{lang === "en" ? "Transcribe authentic Latin lines directly from the manuscript using the paleographical lens (up to 5 attempts)." : "Přepis autentických latinských řádků přímo z rukopisu s paleografickou lupou (až 5 pokusů k odevzdání)."}</p>
           </div>
           <div className="game-card-footer">
             <span className="game-reward-tag reward-masterwork">
@@ -5443,6 +5422,8 @@ function GameModal({
   const isTranscription = question.mode === "transcription" || Boolean(question.target_transcription);
 
   const [userText, setUserText] = useState("");
+  const [transcriptionAttempts, setTranscriptionAttempts] = useState<number>(0);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [transcriptionFeedback, setTranscriptionFeedback] = useState<{
     similarity: number;
     message: string;
@@ -5473,7 +5454,7 @@ function GameModal({
         : "Běžný balíček (+35 XP)");
 
   const handleCheckTranscription = () => {
-    if (!userText.trim()) return;
+    if (!userText.trim() || Boolean(answer)) return;
     const target = question.target_transcription || question.quote;
     const targets = [target, ...(question.accepted_variants || [])];
 
@@ -5483,34 +5464,52 @@ function GameModal({
       if (sim > bestSim) bestSim = sim;
     }
 
+    const nextAttempts = transcriptionAttempts + 1;
+    setTranscriptionAttempts(nextAttempts);
+
     const pass = bestSim >= 0.90;
+    const simPercent = Math.round(bestSim * 100);
+
     if (pass) {
       setTranscriptionFeedback({
-        similarity: Math.round(bestSim * 100),
+        similarity: simPercent,
         message:
           bestSim >= 0.98
             ? (lang === "en"
                 ? "Flawless palaeographical transcription without a single error!"
                 : "Dokonalý paleografický přepis bez jediné chyby!")
             : (lang === "en"
-                ? "Well done! Text achieved the required 90% accuracy and was accepted."
-                : "Výborně! Text dosáhl požadované 90% přesnosti a byl úspěšně uznán."),
+                ? `Well done! Text achieved ${simPercent}% accuracy and was accepted.`
+                : `Výborně! Text dosáhl ${simPercent}% přesnosti a byl úspěšně uznán.`),
         pass: true,
       });
       onAnswer(true);
     } else {
-      setTranscriptionFeedback({
-        similarity: Math.round(bestSim * 100),
-        message:
-          bestSim >= 0.75
-            ? (lang === "en"
-                ? `Very close (${Math.round(bestSim * 100)}%)! At least 90% match is required. Check word endings, abbreviations, and ligatures.`
-                : `Velmi blízko (${Math.round(bestSim * 100)} %)! K uznání je vyžadována alespoň 90% shoda. Zkontrolujte koncovky slov, zkratky a ligatury.`)
-            : (lang === "en"
-                ? `${Math.round(bestSim * 100)}% match so far (90% required). Inspect illuminated lines above and try again.`
-                : `Zatím ${Math.round(bestSim * 100)} % shoda (vyžadováno 90 %). Prozkoumejte detaily osvětlených řádků výše a zkuste to znovu.`),
-        pass: false,
-      });
+      const attemptsRemaining = Math.max(0, 5 - nextAttempts);
+      if (attemptsRemaining > 0) {
+        setTranscriptionFeedback({
+          similarity: simPercent,
+          message:
+            bestSim >= 0.75
+              ? (lang === "en"
+                  ? `Very close (${simPercent}%)! ${attemptsRemaining} attempt${attemptsRemaining === 1 ? "" : "s"} remaining. Check word endings, abbreviations, and ligatures.`
+                  : `Velmi blízko (${simPercent} %)! Zbývá ještě ${attemptsRemaining} ${attemptsRemaining === 1 ? "pokus" : attemptsRemaining >= 2 && attemptsRemaining <= 4 ? "pokusy" : "pokusů"}. Zkontrolujte koncovky slov, zkratky a ligatury.`)
+              : (lang === "en"
+                  ? `${simPercent}% match (target 90%). ${attemptsRemaining} attempt${attemptsRemaining === 1 ? "" : "s"} remaining. Inspect illuminated lines above and adjust your transcription.`
+                  : `Zatím ${simPercent} % shoda (cíl 90 %). Zbývá ještě ${attemptsRemaining} ${attemptsRemaining === 1 ? "pokus" : attemptsRemaining >= 2 && attemptsRemaining <= 4 ? "pokusy" : "pokusů"}. Prozkoumejte detaily osvětlených řádků výše a zkuste to znovu.`),
+          pass: false,
+        });
+      } else {
+        setTranscriptionFeedback({
+          similarity: simPercent,
+          message:
+            lang === "en"
+              ? `All 5 attempts exhausted (${simPercent}% best match). Challenge failed.`
+              : `Všech 5 pokusů bylo vyčerpáno (nejlepší shoda ${simPercent} %). Výzva nebyla splněna.`,
+          pass: false,
+        });
+        onAnswer(false);
+      }
     }
   };
 
@@ -5574,12 +5573,29 @@ function GameModal({
     setPanOffset({ x: 0, y: 0 });
     setUserText("");
     setTranscriptionFeedback(null);
+    setTranscriptionAttempts(0);
+    setSelectedOptionIndex(null);
   }, [question.id, question.title]);
+
+  const handleCloseClick = () => {
+    if (!answer) {
+      const leaveConfirm =
+        lang === "en"
+          ? "Are you sure you want to abandon this challenge? Abandoning counts as a failed attempt and will consume 1 of your 5 daily challenges."
+          : "Opravdu chcete tuto výzvu opustit? Opuštění rozehrané výzvy se započítává jako neúspěch a odečte 1 z vašich 5 denních her.";
+      if (confirm(leaveConfirm)) {
+        onAnswer(false);
+        onClose();
+      }
+      return;
+    }
+    onClose();
+  };
 
   const imgSrc = challengeCard.remoteImageUrl || challengeCard.imageUrl;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleCloseClick}>
       <section
         className={`modal game-modal game-${kind}`}
         onClick={(e) => e.stopPropagation()}
@@ -5587,7 +5603,7 @@ function GameModal({
         aria-modal="true"
         aria-label={qTitle}
       >
-        <button className="close" onClick={onClose} aria-label={lang === "en" ? "Close challenge" : "Zavřít výzvu"}>
+        <button className="close" onClick={handleCloseClick} aria-label={lang === "en" ? "Close challenge" : "Zavřít výzvu"}>
           ×
         </button>
         <p className="eyebrow">{lang === "en" ? "Bonus Pack Challenge" : "Výzva o bonusový balíček"}</p>
@@ -5802,7 +5818,7 @@ function GameModal({
                 className="transcription-input"
                 placeholder={lang === "en" ? "Transcribe Latin text from the illuminated lines here..." : "Zde přepište latinský text z osvětlených řádků..."}
                 value={userText}
-                disabled={answer === "correct"}
+                disabled={Boolean(answer)}
                 onChange={(e) => {
                   setUserText(e.target.value);
                   playQuillScratch();
@@ -5818,7 +5834,7 @@ function GameModal({
                 <button
                   type="button"
                   className="transcription-btn"
-                  disabled={!userText.trim() || answer === "correct"}
+                  disabled={!userText.trim() || Boolean(answer)}
                   onClick={handleCheckTranscription}
                 >
                   {lang === "en" ? "Verify Transcription (Enter)" : "Ověřit přepis (Enter)"}
@@ -5839,11 +5855,53 @@ function GameModal({
                   </span>
                 )}
               </div>
-              <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#7a592c" }}>
+
+              {/* Indikátor 5 pokusů k odevzdání */}
+              <div className="transcription-attempts-tracker">
+                <span className="font-bold text-[#5c3e1e]">
+                  {lang === "en" ? "Attempts:" : "Pokusy k odevzdání:"}
+                </span>
+                {Array.from({ length: 5 }).map((_, idx) => {
+                  const isUsed = idx < transcriptionAttempts;
+                  const isCurrent = idx === transcriptionAttempts && !answer;
+                  const isSuccess = isUsed && transcriptionFeedback?.pass;
+                  const isFail = isUsed && !transcriptionFeedback?.pass;
+                  return (
+                    <span
+                      key={idx}
+                      className={`attempt-pip ${
+                        isSuccess ? "used-success" : isFail ? "used-fail" : isCurrent ? "current" : ""
+                      }`}
+                      title={
+                        isSuccess
+                          ? (lang === "en" ? `Attempt ${idx + 1}: Passed!` : `Pokus ${idx + 1}: Úspěšně splněno!`)
+                          : isFail
+                          ? (lang === "en" ? `Attempt ${idx + 1}: Not accepted` : `Pokus ${idx + 1}: Neuznáno`)
+                          : isCurrent
+                          ? (lang === "en" ? `Attempt ${idx + 1}: Current attempt` : `Pokus ${idx + 1}: Aktuální pokus`)
+                          : (lang === "en" ? `Attempt ${idx + 1}: Remaining` : `Pokus ${idx + 1}: Zbývá`)
+                      }
+                    >
+                      {idx + 1}
+                    </span>
+                  );
+                })}
+                <span className="text-[10.5px] text-[#8c6b3e] ml-1">
+                  {answer
+                    ? answer === "correct"
+                      ? (lang === "en" ? "✓ Accepted" : "✓ Uznáno")
+                      : (lang === "en" ? "✗ All 5 attempts exhausted" : "✗ Všech 5 pokusů vyčerpáno")
+                    : (lang === "en"
+                        ? `(${Math.max(0, 5 - transcriptionAttempts)} remaining)`
+                        : `(zbývá ${Math.max(0, 5 - transcriptionAttempts)})`)}
+                </span>
+              </div>
+
+              <p style={{ margin: "6px 0 0", fontSize: "11px", color: "#7a592c" }}>
                 {lang === "en" ? (
-                  <>🎯 <b>Target:</b> at least 90% transcription accuracy (u/v, i/j and minor punctuation variants are tolerated).</>
+                  <>🎯 <b>Target:</b> at least 90% accuracy within up to 5 attempts (u/v, i/j and minor punctuation variants are tolerated).</>
                 ) : (
-                  <>🎯 <b>Cíl:</b> alespoň 90% přesnost přepisu (systém toleruje záměny u/v, i/j a drobnou interpunkci).</>
+                  <>🎯 <b>Cíl:</b> alespoň 90% přesnost v max. 5 pokusech (systém toleruje záměny u/v, i/j a drobnou interpunkci).</>
                 )}
               </p>
               {transcriptionFeedback && !transcriptionFeedback.pass && (
@@ -5875,13 +5933,23 @@ function GameModal({
               {qOptions.map((o, i) => {
                 const icon = Array.isArray(o) ? o[0] : ["A", "B", "C", "D"][i] || "•";
                 const text = Array.isArray(o) ? o[1] : String(o);
+                const isSelected = i === selectedOptionIndex;
+                const isCorrect = i === question.correct_index;
+                const btnClass = answer
+                  ? isCorrect
+                    ? "correct"
+                    : isSelected
+                    ? "wrong-chosen"
+                    : "dim"
+                  : "";
                 return (
                   <button
                     key={i}
-                    disabled={!!answer}
-                    className={answer ? (i === question.correct_index ? "correct" : "dim") : ""}
+                    disabled={Boolean(answer)}
+                    className={btnClass}
                     onClick={() => {
                       playSoftClick();
+                      setSelectedOptionIndex(i);
                       onAnswer(i === question.correct_index);
                     }}
                   >
@@ -5918,12 +5986,37 @@ function GameModal({
           </div>
         )}
 
-        {answer === "wrong" && !isTranscription && (
-          <div className="mt-3">
-            <p className="wrong-answer">{lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}</p>
-            <div className="mt-2 flex justify-end">
+        {answer === "wrong" && (
+          <div className="game-explanation" style={{ borderLeft: "4px solid #b91c1c", background: "#fdf2f2" }}>
+            <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>
+              {lang === "en" ? "✗ Challenge failed – recorded as an unsuccessful attempt." : "✗ Výzva zmařena – pokus byl započten jako neúspěch."}
+            </strong>
+            <p style={{ margin: "0 0 6px", fontSize: "11px", color: "#7f1d1d" }}>
+              {lang === "en"
+                ? "Here is the authentic solution and commentary to learn from:"
+                : "Zde je správné řešení a odborný komentář pro poučení:"}
+            </p>
+            {isTranscription ? (
+              <p className="game-transcription-solution">
+                <b>{lang === "en" ? "Target Transcription:" : "Vzorový přepis:"}</b> „{question.target_transcription || question.quote}“
+              </p>
+            ) : (
+              <p className="game-transcription-solution">
+                <b>{lang === "en" ? "Correct Answer:" : "Správná odpověď:"}</b>{" "}
+                {Array.isArray(qOptions[question.correct_index])
+                  ? (qOptions[question.correct_index] as [string, string])[1]
+                  : String(qOptions[question.correct_index] || "")}
+              </p>
+            )}
+            {qTranslation && (
+              <p className="game-translation-box">
+                <b>{lang === "en" ? "Translation:" : "Překlad:"}</b> „{qTranslation}“
+              </p>
+            )}
+            {qExplanation && <p className="mt-1" style={{ color: "#374151" }}>{qExplanation}</p>}
+            <div className="mt-3 flex justify-end">
               <button type="button" className="game-continue-btn" onClick={onClose}>
-                {lang === "en" ? "Close Challenge" : "Zavřít výzvu"}
+                {lang === "en" ? "Understood, Close Challenge" : "Rozumím, zavřít výzvu"}
               </button>
             </div>
           </div>

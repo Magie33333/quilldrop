@@ -287,6 +287,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     target_label_cs: "Která disciplína?",
     target_options: [
       { value: "transcription", label_cs: "🔍 Paleografická transkripce (přepis řádků)" },
+      { value: "scholar", label_cs: "📜 Písařská hádanka (Šifry nebo Písmo)" },
       { value: "cipher", label_cs: "🗝️ Šifra a kryptogram" },
       { value: "script", label_cs: "🔤 Poznání písma" },
       { value: "mood", label_cs: "🎭 Nálada písaře" },
@@ -1295,7 +1296,10 @@ export function evaluateCondition(
       return compareValues(state?.gamesPlayed || 0, numVal || 1, cond.operator);
 
     case "game_mode_played": {
-      if (extraContext?.gameMode && extraContext.gameMode === cond.target) return true;
+      if (extraContext?.gameMode) {
+        if (cond.target === "scholar" && (extraContext.gameMode === "cipher" || extraContext.gameMode === "script")) return true;
+        if (extraContext.gameMode === cond.target) return true;
+      }
       return compareValues(state?.gamesPlayed || 0, numVal || 1, cond.operator);
     }
 

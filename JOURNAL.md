@@ -9,6 +9,36 @@
 
 ---
 
+## 📅 Záznam ze dne 22. 9. 2026 — Příprava na ostrý provoz: 3 herní disciplíny, 5 her denně se strategií rizika a 5 pokusů u přepisu
+
+**Cíl etapy:** Připravit Quilldrop na ostrý provoz se studentskými brigádníky a hráči. Zjednodušit a sjednotit klientské rozhraní do 3 vyvážených dlaždic (odpovídajících 3 druhům balíčků), zavést denní limit 5 miniher s herním rizikem, nastavit 5 pokusů k odevzdání paleografického přepisu s okamžitou zpětnou vazbou shody a zajistit zobrazení didaktického řešení i při neúspěchu.
+
+**Realizované úpravy:**
+1. **Sjednocení herních miniher do 3 voleb ve hře (`app/page.tsx`, `app/globals.css`):**
+   - V klientské části (`HomeScreen`, `PacksScreen`, prompt prázdného balíčku) nahrazeny 4 samostatné minihry 3 vyváženými volbami:
+     - 🟢 **1. Nálada písaře** (Snadná, 1 pokus) → 📦 **Běžný balíček** (Standard Pack).
+     - 🔵 **2. Písařská hádanka: Šifry & Písmo** (Pokročilá, 1 pokus s nápovědou) → 📜 **Učencův balíček** (Scholar Pack). Z jedné dlaždice se náhodně losují kryptogramy, substituční šifry i určování duktu písma a století.
+     - 🟣 **3. Paleografický mistr** (Expertní, až 5 pokusů na odevzdání) → 👑 **Královský balíček** (Masterwork Pack).
+   - V administraci (`app/admin/page.tsx`) zůstávají všechny 4 režimy (`mood`, `cipher`, `script`, `transcription`) oddělené pro specializovanou autorskou tvorbu.
+   - V CSS přidána třída `.game-grid-3` pro responzivní 3sloupcové rozložení na desktopu a 1 sloupec na mobilu/tabletu.
+2. **Denní limit 5 her a herní riziko (`MAX_DAILY_GAMES = 5`):**
+   - Hráč může za den odehrát maximálně 5 výzev. Každá odehraná hra (úspěch, neúspěch i opuštění rozehrané výzvy) odečte 1 denní hru.
+   - Hráč musí zvažovat strategické riziko: zvolit jistý Běžný balíček za náladu, nebo riskovat pokus na nejtěžším paleografickém přepisu pro Královský balíček.
+   - Pokud hráč zkusí opustit rozehranou minihru křížkem před odevzdáním, zobrazí se potvrzovací varování, že opuštění se započítává jako neúspěch.
+3. **Systém 5 pokusů u paleografického přepisu (`app/page.tsx`):**
+   - Student má až 5 pokusů k odevzdání transkripce.
+   - Po každém odeslání se zobrazí grafický indikátor pokusů (`.transcription-attempts-tracker`), přesná procentuální shoda (např. *72 %*) a doporučení k úpravě zkratek a ligatur.
+   - Hráč může text přímo ladit a odesílat znovu.
+4. **Didaktické řešení a vysvětlení i při neúspěchu:**
+   - Pokud hráč vyčerpá pokusy nebo zvolí chybnou možnost, okno se nezavře prázdné:
+   - Zobrazí se červený rámeček neúspěchu a **kompletní didaktické řešení**: správný přepis z rukopisu / správná volba, český překlad i odborný komentář písaře.
+   - Hráč se tak vždy poučí a minihru ukončí až ručním stiskem tlačítka *„Rozumím, zavřít výzvu“*.
+5. **Aktualizace metodických příruček:**
+   - Aktualizována vestavěná příručka v administraci ([`app/admin/StudioHelpModal.tsx`](file:///C:/Users/benys/Downloads/quilldrop-local/app/admin/StudioHelpModal.tsx)).
+   - Aktualizován manuál pro brigádníky ([`docs/NAVOD_PRO_BRIGADNIKY.md`](file:///C:/Users/benys/Downloads/quilldrop-local/docs/NAVOD_PRO_BRIGADNIKY.md)).
+
+---
+
 ## 📅 Záznam ze dne 20. 9. 2026 — Paleografická lupa 500 %, čitelnost řešení, přehled všech miniher a správa Výzev
 
 **Realizované úpravy:**

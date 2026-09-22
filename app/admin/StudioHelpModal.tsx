@@ -352,16 +352,24 @@ export default function StudioHelpModal({
               {/* DŮLEŽITÉ FUNKCE PRO HRÁČE A EDITORY */}
               <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] space-y-2.5">
                 <strong className="text-[#ffd580] text-xs block">
-                  🔍 Paleografická lupa na 1000 % a ergonomie vyhodnocení
+                  🔍 Herní pravidla, 5 her denně a systém pokusů
                 </strong>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11.5px] text-[#8c7b6d]">
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
-                    <span className="text-[#ffd580] font-bold block mb-1">🔬 Přiblížení až 1000 %:</span>
-                    V minihře přepisu má student k dispozici interaktivní lupu s plynulým zvětšením od 100 % do 1000 % s kontrastním vykreslením. Umožňuje bezpečně rozpoznat i ty nejjemnější diakritické a zkracovací tečky či háčky.
+                    <span className="text-[#ffd580] font-bold block mb-1">🎲 3 volby ve hře vs. 4 režimy v editoru:</span>
+                    Zatímco v editoru tvoříte 4 specializované režimy, ve hře student vidí přesně 3 intuitivní dlaždice odpovídající 3 balíčkům. Dlaždice <strong>„Písařská hádanka“</strong> náhodně losuje šifry i určení písma pro pestřejší hratelnost.
                   </div>
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
-                    <span className="text-[#ffd580] font-bold block mb-1">⏸️ Ruční potvrzení výsledku:</span>
-                    Po dokončení jakékoliv minihry se okno <em>nikdy nezavře automaticky</em> ani nepřebije hráče vyskakovacím oknem s novým levelem. Hráč musí výsledek potvrdit tlačítkem <strong>„Pokračovat“</strong>, aby si stihl v klidu prostudovat správné řešení, vzorový přepis a didaktický komentář.
+                    <span className="text-[#ffd580] font-bold block mb-1">⚖️ Denní limit 5 her a riziko:</span>
+                    Hráč může denně odehrát maximálně 5 výzev. Každá odehraná hra (úspěch, neúspěch i opuštění výzvy) odečte 1 pokus. Hráč musí zvažovat riziko: snadná nálada pro jistý balíček, nebo těžký přepis s rizikem neúspěchu.
+                  </div>
+                  <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
+                    <span className="text-[#ffd580] font-bold block mb-1">✍️ 5 pokusů u paleografického mistra:</span>
+                    Při přepisu má student až 5 pokusů k odevzdání. Systém po každém odeslání ukáže procentuální shodu a zbývající pokusy, aby student mohl text upravovat a vyladit k 90% hranici.
+                  </div>
+                  <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
+                    <span className="text-[#ffd580] font-bold block mb-1">📖 Didaktické řešení i při neúspěchu:</span>
+                    Pokud student neuspěje, okno se nezavře prázdné, ale <strong>vždy ukáže správné řešení, vzorový přepis, překlad i didaktický komentář</strong>, aby se student poučil. K posunu dál dojde až po ručním odkliknutí.
                   </div>
                 </div>
               </div>

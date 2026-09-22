@@ -77,18 +77,21 @@ Minihry můžete vytvářet dvěma způsoby:
 2. **Centrálně přes horní lištu (`Minihry`):** Kliknutím na tlačítko **Minihry** v horní liště administrace se otevře centrální správce všech miniher v databázi. Zde můžete minihry procházet, filtrovat, hromadně upravovat a snadno přiřazovat k libovolným rukopisům.
 
 ### Herní disciplíny a systém odměn:
-* **Nálada písaře (Mood):**
+* **Nálada písaře (Mood) · 1 pokus:**
   - Hráč odhaduje citové rozpoložení písaře z textu (např. *touha po odměně a vínu*, *pokora a zbožnost*, *únava z dlouhého psaní*).
   - **Odměna hráči:** 📦 **Běžný balíček (Standard)**.
-* **Písařská šifra (Cipher) & Poznání písma (Script):**
-  - U kolofonů s kryptogramy, záměnami samohlásek za tečky či čísla, anagramy nebo určováním písařského stylu (karolína, gotická minuskula, bastarda, humanistica).
-  - Zadejte správné řešení a chybné varianty (distraktory).
+* **Písařská šifra (Cipher) & Poznání písma (Script) · 1 pokus:**
+  - V administraci se nastavují jako dvě samostatné disciplíny (šifry s nápovědou vs. typologie písma).
+  - **Ve hře se studentům nabízejí pod jednou společnou dlaždicí „Písařská hádanka: Šifry & Písmo“**, která náhodně losuje z obou fondů, aby byla hra pestrá a otázky se neopakovaly.
   - **Odměna hráči:** 📜 **Učencův balíček (Refined)**.
-* **Paleografický přepis (Transcription):**
-  - Vyznačte výřezem řádky písma na foliu a zadejte vzorový přepis.
-  - Hráč má k dispozici **paleografickou lupu s přiblížením až na 1000 %**.
-  - Po vyhodnocení musí hráč výsledek ručně potvrdit, aby si v klidu mohl přečíst správné řešení.
+* **Paleografický přepis (Transcription) · až 5 pokusů k odevzdání:**
+  - Vyznačte výřezem řádky písma na foliu a zadejte vzorový přepis (včetně alternativních variant).
+  - Hráč má k dispozici **paleografickou lupu s přiblížením až na 1000 %** a **až 5 pokusů na odevzdání**, kdy po každém pokusu vidí přesnou procentuální shodu a doporučení.
   - **Odměna hráči:** 👑 **Královský balíček (Masterwork)**.
+
+### ⚖️ Herní ekonomika a didaktika pro studenty:
+* **Denní limit 5 miniher:** Student může za den odehrát nejvýše 5 her. Každá hra (úspěch, neúspěch i opuštění výzvy) odečte 1 pokus. Hráč tak musí taktizovat a zvažovat herní riziko.
+* **Didaktické řešení i při neúspěchu:** Pokud student výzvu nesplní, systém mu **vždy zobrazí správné řešení, vzorový přepis, překlad i didaktické vysvětlení**, aby se poučil. K další hře postoupí až po ručním odkliknutí.
 
 ---
 
