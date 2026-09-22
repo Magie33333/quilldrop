@@ -160,6 +160,7 @@ type GameState = {
   gallery: string[];
   avatarArt: string | null;
   hasSeenTutorial?: boolean;
+  lastDailyPopupDate?: string;
 };
 
 const ILLUMINATIONS = DEFAULT_ILLUMINATIONS;
@@ -199,6 +200,7 @@ const INITIAL_STATE: GameState = {
   gallery: [],
   avatarArt: null,
   hasSeenTutorial: true,
+  lastDailyPopupDate: "",
 };
 
 // Čistý štít pro nově registrovaného hráče (0 karet, 0 XP, prázdné trofeje, tutoriál připraven)
@@ -222,6 +224,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   gallery: [],
   avatarArt: null,
   hasSeenTutorial: false,
+  lastDailyPopupDate: "",
 };
 
 const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
@@ -300,6 +303,7 @@ function loadState(userId?: string): GameState {
       completedQuestionsToday: saved?.completedQuestionsToday || [],
       dailyTradedPartners: saved?.dailyTradedPartners || [],
       hasSeenTutorial: saved?.hasSeenTutorial !== undefined ? saved.hasSeenTutorial : (userId ? false : true),
+      lastDailyPopupDate: saved?.lastDailyPopupDate || "",
     };
 
     // Pouze pro nepřihlášené návštěvníky doplňujeme ukázkové karty, pokud nemají žádné
@@ -449,6 +453,7 @@ export default function Home() {
   } | null>(null);
   const [reviewTradeModal, setReviewTradeModal] = useState<CardTrade | null>(null);
   const [showTutorialModal, setShowTutorialModal] = useState(false);
+  const [showDailyPieceModal, setShowDailyPieceModal] = useState(false);
 
   // Jazyk rozhraní a karet (Čeština / English)
   const [lang, setLang] = useState<Language>(() => {
@@ -602,6 +607,7 @@ export default function Home() {
         avatarArt: profile?.avatar_id || local.avatarArt,
         collection: mergedCollection,
         hasSeenTutorial: local.hasSeenTutorial ?? false,
+        lastDailyPopupDate: local.lastDailyPopupDate || "",
       };
 
       setState(mergedState);
@@ -972,6 +978,13 @@ export default function Home() {
       }, 1200);
     }
   }, [state, ready, currentUser, cards]);
+
+  // Automatické zobrazení denního pop-up okna při prvním přihlášení / návštěvě daného dne
+  useEffect(() => {
+    if (ready && !showTutorialModal && state.lastDailyPopupDate !== today()) {
+      setShowDailyPieceModal(true);
+    }
+  }, [ready, showTutorialModal, state.lastDailyPopupDate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1384,7 +1397,32 @@ export default function Home() {
         completedQuestionsToday: [],
         dailyTradedPartners: [],
         lastLoginDate: today(),
+        lastDailyPopupDate: today(),
       };
+    });
+    setShowDailyPieceModal(true);
+    playSealCrack();
+  };
+
+  const handleCloseDailyPieceModal = () => {
+    playParchmentFlip(0.25);
+    setShowDailyPieceModal(false);
+    setState(prev => {
+      const updated: GameState = {
+        ...prev,
+        lastDailyPopupDate: today(),
+      };
+      if (currentUser) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`quilldrop-state-${currentUser.id}`, JSON.stringify(updated));
+        }
+        syncToSupabase(currentUser.id, updated, cards);
+      } else {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("quilldrop-state", JSON.stringify(updated));
+        }
+      }
+      return updated;
     });
   };
 
@@ -1745,6 +1783,9 @@ export default function Home() {
       return updated;
     });
     setShowTutorialModal(false);
+    if (state.lastDailyPopupDate !== today()) {
+      setShowDailyPieceModal(true);
+    }
     setTab("packs");
     setToast(
       isFirstTime
@@ -2049,8 +2090,21 @@ export default function Home() {
         {showTutorialModal && (
           <OnboardingTutorialModal
             isOpen={showTutorialModal}
-            onClose={() => setShowTutorialModal(false)}
+            onClose={() => {
+              setShowTutorialModal(false);
+              if (state.lastDailyPopupDate !== today()) setShowDailyPieceModal(true);
+            }}
             onFinish={handleFinishTutorial}
+            lang={lang}
+          />
+        )}
+        {showDailyPieceModal && (
+          <DailyPieceModal
+            isOpen={showDailyPieceModal}
+            streak={state.streak}
+            puzzle={state.puzzle}
+            activeIllumination={activeIllumination}
+            onClose={handleCloseDailyPieceModal}
             lang={lang}
           />
         )}
@@ -5262,6 +5316,159 @@ function OnboardingTutorialModal({
             </button>
           </div>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function DailyPieceModal({
+  isOpen,
+  streak,
+  puzzle,
+  activeIllumination,
+  onClose,
+  lang = "cs",
+}: {
+  isOpen: boolean;
+  streak: number;
+  puzzle: number;
+  activeIllumination: IlluminationMosaicItem;
+  onClose: () => void;
+  lang?: Language;
+}) {
+  if (!isOpen) return null;
+
+  const isCompleted = puzzle === 16;
+  const daysLeft = 16 - puzzle;
+  const title = getIlluminationTitle(activeIllumination, lang);
+  const origin = getIlluminationOrigin(activeIllumination, lang);
+  const century = getIlluminationCentury(activeIllumination, lang);
+  const desc = getIlluminationDescription(activeIllumination, lang);
+  const tierName = getIlluminationTierName(activeIllumination, lang);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 9999 }}>
+      <section
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={lang === "en" ? "Daily Scriptorium Visit" : "Denní návštěva skriptoria"}
+        style={{
+          maxWidth: 520,
+          width: "92vw",
+          padding: "24px 26px 22px",
+          background: "linear-gradient(175deg, #fcf8ee 0%, #f4ebd8 100%)",
+          border: "2px solid #b89758",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.65), inset 0 0 40px rgba(184,151,88,0.18)",
+          borderRadius: 14,
+          textAlign: "center",
+        }}
+      >
+        <button className="close" onClick={onClose} title={lang === "en" ? "Close" : "Zavřít"}>×</button>
+
+        {/* Horní záhlaví */}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", background: "rgba(184, 151, 88, 0.15)", borderRadius: 20, border: "1px solid rgba(184, 151, 88, 0.35)", marginBottom: 12 }}>
+          <Sparkles size={13} style={{ color: "#8a6008" }} />
+          <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px", color: "#704808" }}>
+            {lang === "en" ? "Daily Visit · Scribe's Journey" : "Denní návštěva · Cesta písaře"}
+          </span>
+        </div>
+
+        <h2 style={{ margin: "0 0 6px", fontSize: "21px", color: "#2d1a08", fontFamily: "Cinzel, Georgia, serif" }}>
+          {isCompleted
+            ? (lang === "en" ? "🎉 Masterwork Illumination Completed!" : "🎉 Mistrovská iluminace dokončena!")
+            : (lang === "en" ? "✨ New Illumination Fragment Revealed!" : "✨ Nový fragment iluminace odhalen!")}
+        </h2>
+
+        <p style={{ margin: "0 auto 16px", maxWidth: 440, fontSize: "13px", color: "#6e4b1f", fontStyle: "italic", lineHeight: 1.45 }}>
+          {isCompleted
+            ? (lang === "en"
+                ? "You have assembled all 16 fragments! This precious artwork has been preserved into your Gallery."
+                : "Složili jste všech 16 fragmentů! Toto vzácné dílo bylo trvale uloženo do vaší síně slávy (galerie).")
+            : (lang === "en"
+                ? `Day ${streak} in a row: Piece ${puzzle} of 16 has been unveiled in your daily mosaic.`
+                : `Den ${streak} v řadě: ${puzzle}. dílek z 16 byl právě odhalen ve vaší denní mozaice.`)}
+        </p>
+
+        {/* Mozaika */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ width: 170, height: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.35)", borderRadius: 10, overflow: "hidden", border: "2px solid #b89758" }}>
+            <IlluminationMosaic pieces={puzzle} illumination={activeIllumination} />
+          </div>
+        </div>
+
+        {/* Informační odznaky */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", background: "#fff7e6", border: "1px solid #d4b26f", borderRadius: 6, fontSize: "11px", fontWeight: 700, color: "#8a5208" }}>
+            <Flame size={12} style={{ color: "#d9531e" }} /> {lang === "en" ? `Day ${streak} in a row` : `Den ${streak} v řadě`}
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", background: "#f0f8ff", border: "1px solid #a8cce8", borderRadius: 6, fontSize: "11px", fontWeight: 700, color: "#1a5276" }}>
+            <Puzzle size={12} style={{ color: "#2980b9" }} /> {lang === "en" ? `Piece ${puzzle} of 16` : `Dílek ${puzzle} / 16`}
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", background: "#fbf6e9", border: "1px solid #d0be98", borderRadius: 6, fontSize: "11px", fontWeight: 700, color: "#5c3d14" }}>
+            <Award size={12} style={{ color: "#b8860b" }} /> {lang === "en" ? `Cycle ${activeIllumination.cycle} · ${tierName}` : `Cyklus ${activeIllumination.cycle} · ${tierName}`}
+          </span>
+        </div>
+
+        {/* Karta s historickým kontextem */}
+        <div style={{ padding: "12px 14px", background: "rgba(255, 255, 255, 0.65)", borderRadius: 8, border: "1px solid #d8c7a6", textAlign: "left", marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: "13px", color: "#2d1a08", marginBottom: 2 }}>
+            {title}
+          </div>
+          <div style={{ fontSize: "11px", color: "#8a6008", fontWeight: 600, marginBottom: 6 }}>
+            🏛️ {origin} · {century}
+          </div>
+          <div style={{ fontSize: "12px", color: "#4d3419", lineHeight: 1.45 }}>
+            {desc}
+          </div>
+        </div>
+
+        {/* Odměna / zbývající dny */}
+        <div style={{ padding: "10px 12px", background: isCompleted ? "linear-gradient(135deg, #fef3d6 0%, #fae69e 100%)" : "#fbf8f0", borderRadius: 8, border: isCompleted ? "1px solid #d4af37" : "1px dashed #d8c7a6", marginBottom: 16, fontSize: "12px", color: "#4d3419" }}>
+          {isCompleted ? (
+            <div style={{ fontWeight: 700, color: "#7a4e05" }}>
+              🏆 {lang === "en"
+                ? `Earned reward: +${activeIllumination.rewardXp} XP and ${qualityLabel(activeIllumination.rewardPack, lang)}!`
+                : `Získaná odměna: +${activeIllumination.rewardXp} XP a ${qualityLabel(activeIllumination.rewardPack, lang)}!`}
+            </div>
+          ) : (
+            <div>
+              ⏳ {lang === "en"
+                ? `Only ${daysLeft} day${daysLeft === 1 ? "" : "s"} left to complete the cycle and earn +${activeIllumination.rewardXp} XP & ${qualityLabel(activeIllumination.rewardPack, lang)}.`
+                : `Zbývá ještě ${daysLeft} ${daysLeft === 1 ? "den" : daysLeft < 5 ? "dny" : "dní"} do dokončení cyklu a zisku +${activeIllumination.rewardXp} XP a ${qualityLabel(activeIllumination.rewardPack, lang)}.`}
+            </div>
+          )}
+          <div style={{ marginTop: 4, fontSize: "11px", color: "#8b6508", fontStyle: "italic" }}>
+            🕯️ {lang === "en"
+              ? "Your 3 daily packs and 5 scribal challenges are ready in the scriptorium!"
+              : "Vaše 3 denní balíčky a 5 písařských výzev jsou připraveny ve skriptoriu!"}
+          </div>
+        </div>
+
+        {/* Tlačítko pro vstup */}
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            width: "100%",
+            padding: "10px 20px",
+            background: "linear-gradient(180deg, #9a6712, #684107)",
+            color: "#fff3cf",
+            border: "1px solid #4a2d04",
+            borderRadius: 8,
+            fontWeight: 700,
+            fontSize: "14px",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(104, 65, 7, 0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <span>{lang === "en" ? "Enter Scriptorium →" : "Vstoupit do skriptoria →"}</span>
+        </button>
       </section>
     </div>
   );
