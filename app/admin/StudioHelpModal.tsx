@@ -357,7 +357,7 @@ export default function StudioHelpModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11.5px] text-[#8c7b6d]">
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
                     <span className="text-[#ffd580] font-bold block mb-1">🎲 3 volby ve hře vs. 4 režimy v editoru:</span>
-                    Zatímco v editoru tvoříte 4 specializované režimy, ve hře student vidí přesně 3 intuitivní dlaždice odpovídající 3 balíčkům. Dlaždice <strong>„Písařská hádanka“</strong> náhodně losuje šifry i určení písma pro pestřejší hratelnost.
+                    Zatímco v editoru tvoříte 4 specializované režimy, ve hře student vidí přesně 3 intuitivní dlaždice odpovídající 3 balíčkům. Dlaždice <strong>„Šifry & Písmo“</strong> náhodně losuje šifry i určení písma pro pestřejší hratelnost.
                   </div>
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
                     <span className="text-[#ffd580] font-bold block mb-1">⚖️ Denní limit 5 her a riziko:</span>

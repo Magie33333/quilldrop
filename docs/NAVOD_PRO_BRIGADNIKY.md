@@ -82,7 +82,7 @@ Minihry můžete vytvářet dvěma způsoby:
   - **Odměna hráči:** 📦 **Běžný balíček (Standard)**.
 * **Písařská šifra (Cipher) & Poznání písma (Script) · 1 pokus:**
   - V administraci se nastavují jako dvě samostatné disciplíny (šifry s nápovědou vs. typologie písma).
-  - **Ve hře se studentům nabízejí pod jednou společnou dlaždicí „Písařská hádanka: Šifry & Písmo“**, která náhodně losuje z obou fondů, aby byla hra pestrá a otázky se neopakovaly.
+  - **Ve hře se studentům nabízejí pod jednou společnou dlaždicí „Šifry & Písmo“**, která náhodně losuje z obou fondů, aby byla hra pestrá a otázky se neopakovaly.
   - **Odměna hráči:** 📜 **Učencův balíček (Refined)**.
 * **Paleografický přepis (Transcription) · až 5 pokusů k odevzdání:**
   - Vyznačte výřezem řádky písma na foliu a zadejte vzorový přepis (včetně alternativních variant).

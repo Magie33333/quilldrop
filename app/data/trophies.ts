@@ -287,7 +287,7 @@ export const TROPHY_CONDITION_META: Record<TrophyConditionType, TrophyConditionM
     target_label_cs: "Která disciplína?",
     target_options: [
       { value: "transcription", label_cs: "🔍 Paleografická transkripce (přepis řádků)" },
-      { value: "scholar", label_cs: "📜 Písařská hádanka (Šifry nebo Písmo)" },
+      { value: "scholar", label_cs: "📜 Šifry & Písmo" },
       { value: "cipher", label_cs: "🗝️ Šifra a kryptogram" },
       { value: "script", label_cs: "🔤 Poznání písma" },
       { value: "mood", label_cs: "🎭 Nálada písaře" },

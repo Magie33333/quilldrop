@@ -2479,7 +2479,7 @@ function HomeScreen({
             <button className="home-quest-btn" disabled={!gamesLeft} onClick={() => onGame("scholar")}>
               <span className="home-quest-icon icon-cipher"><KeyRound size={19} /></span>
               <div className="home-quest-info">
-                <strong>{lang === "en" ? "Scholar's Riddle: Ciphers & Scripts" : "Písařská hádanka: Šifry & Písmo"}</strong>
+                <strong>{lang === "en" ? "Ciphers & Scripts" : "Šifry & Písmo"}</strong>
                 <small>{lang === "en" ? "Cryptograms, secret scripts & ductus (1 attempt) · Advanced" : "Kryptogramy, tajná písma & duktus (1 pokus) · Pokročilá"}</small>
               </div>
               <span className="home-quest-reward reward-scholar">{lang === "en" ? "✨ Scholar Pack →" : "✨ Učencův balíček →"}</span>
@@ -2885,7 +2885,7 @@ function PacksScreen({
                 onClick={() => onGame("scholar")}
                 style={{ width: "auto", minWidth: "220px", padding: "10px 18px", fontSize: "12px" }}
               >
-                {lang === "en" ? "Launch Scholar's Riddle (Ciphers & Scripts)" : "Spustit Písařskou hádanku (Šifry & Písmo)"} <span>→</span>
+                {lang === "en" ? "Launch Ciphers & Scripts" : "Spustit Šifry & Písmo"} <span>→</span>
               </button>
             )}
             {selectedTier === "standard" && (
@@ -2940,7 +2940,7 @@ function PacksScreen({
           </div>
         </button>
 
-        {/* HRA 2: PÍSAŘSKÁ HÁDANKA: ŠIFRY & PÍSMO */}
+        {/* HRA 2: ŠIFRY & PÍSMO */}
         <button
           className="game-grid-card tier-scholar"
           disabled={!gamesLeft}
@@ -2953,7 +2953,7 @@ function PacksScreen({
             <span className="game-difficulty-pill diff-advanced">{lang === "en" ? "Advanced" : "Pokročilá"}</span>
           </div>
           <div className="game-card-content">
-            <strong>{lang === "en" ? "Scholar's Riddle: Ciphers & Scripts" : "Písařská hádanka: Šifry & Písmo"}</strong>
+            <strong>{lang === "en" ? "Ciphers & Scripts" : "Šifry & Písmo"}</strong>
             <p>{lang === "en" ? "Solve a medieval cryptogram, substitution cipher, or identify the palaeographical script ductus and century." : "Rozluštěte středověký kryptogram, substituční šifru nebo zařaďte paleografický duktus a století kodexu."}</p>
           </div>
           <div className="game-card-footer">
@@ -6059,7 +6059,8 @@ function MapModal({
   });
 
   const currentSelection =
-    scriptoriaWithCards.find((s) => s.place.id === selectedPlace.id) || scriptoriaWithCards[0];
+    scriptoriaWithCards.find((s) => s.place.id === selectedPlace?.id) ||
+    scriptoriaWithCards[0] || { place: SCRIPTORIA_PLACES[0], cards: [], owned: [] };
 
   const totalMapOwned = scriptoriaWithCards.reduce((acc, s) => acc + s.owned.length, 0);
   const totalMapCards = scriptoriaWithCards.reduce((acc, s) => acc + s.cards.length, 0);

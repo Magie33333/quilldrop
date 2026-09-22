@@ -17,7 +17,7 @@
 1. **Sjednocení herních miniher do 3 voleb ve hře (`app/page.tsx`, `app/globals.css`):**
    - V klientské části (`HomeScreen`, `PacksScreen`, prompt prázdného balíčku) nahrazeny 4 samostatné minihry 3 vyváženými volbami:
      - 🟢 **1. Nálada písaře** (Snadná, 1 pokus) → 📦 **Běžný balíček** (Standard Pack).
-     - 🔵 **2. Písařská hádanka: Šifry & Písmo** (Pokročilá, 1 pokus s nápovědou) → 📜 **Učencův balíček** (Scholar Pack). Z jedné dlaždice se náhodně losují kryptogramy, substituční šifry i určování duktu písma a století.
+     - 🔵 **2. Šifry & Písmo** (Pokročilá, 1 pokus s nápovědou) → 📜 **Učencův balíček** (Scholar Pack). Z jedné dlaždice se náhodně losují kryptogramy, substituční šifry i určování duktu písma a století.
      - 🟣 **3. Paleografický mistr** (Expertní, až 5 pokusů na odevzdání) → 👑 **Královský balíček** (Masterwork Pack).
    - V administraci (`app/admin/page.tsx`) zůstávají všechny 4 režimy (`mood`, `cipher`, `script`, `transcription`) oddělené pro specializovanou autorskou tvorbu.
    - V CSS přidána třída `.game-grid-3` pro responzivní 3sloupcové rozložení na desktopu a 1 sloupec na mobilu/tabletu.

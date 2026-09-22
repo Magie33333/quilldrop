@@ -19,6 +19,14 @@ export type ScriptoriumPlace = {
   matchKeywords: string[];
 };
 
+function normalizeKeyword(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
 export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
   {
     id: "praha",
@@ -38,7 +46,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 48,
     y: 36,
     icon: "👑",
-    matchKeywords: ["prague", "praha", "castro", "sanctorum", "klementinum", "národní knihovna", "czechia (praha?)"],
+    matchKeywords: ["prague", "praha", "prag", "pragae", "pragens", "castro", "sanctorum", "klementinum", "klementin", "karolin", "strahov", "břevnov", "brevnov", "staré město", "stare mesto", "nové město", "nove mesto", "hradčany", "hradcany", "vyšehrad", "vysehrad", "národní knihovna", "narodni knihovna", "czechia (praha?)"],
   },
   {
     id: "olomouc",
@@ -418,7 +426,267 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 43,
     y: 84,
     icon: "⚜️",
-    matchKeywords: ["firenze", "florentie", "florence", "laurenziana"],
+    matchKeywords: ["firenze", "florentie", "florence", "florenti", "florentia", "laurenziana"],
+  },
+  {
+    id: "kutna-hora",
+    name: "Kutná Hora",
+    name_en: "Kutná Hora (Kuttenberg)",
+    region: "Královské horní město a cisterciácký klášter Sedlec",
+    region_en: "Royal Mining Town & Cistercian Abbey Sedlec",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Státní okresní archiv Kutná Hora, České muzeum stříbra",
+    modernRepository_en: "State District Archive Kutná Hora, Czech Silver Museum",
+    description: "Stříbrná pokladnice Koruny české a centrum gotické knižní kultury. V blízkém sedleckém cisterciáckém klášteře a v městských chrámech vznikaly velkolepé iluminované kodexy a graduály.",
+    description_en: "The silver treasury of the Bohemian Crown and a thriving center of Gothic book culture. Grand illuminated codices and graduals were created in the nearby Sedlec Abbey and city churches.",
+    lat: 49.9484,
+    lng: 15.2681,
+    zoom: 12,
+    x: 52,
+    y: 39,
+    icon: "⛏️",
+    matchKeywords: ["kutná hora", "kutna hora", "cuthna", "kuttenberg", "sedlec", "sedleci", "kuttenb", "kutn"],
+  },
+  {
+    id: "krumlov",
+    name: "Český Krumlov",
+    name_en: "Český Krumlov (Krummau)",
+    region: "Rožmberská rezidence a zámecká knihovna",
+    region_en: "Rosenberg Residence & Castle Library",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Státní oblastní archiv v Třeboni – oddělení Český Krumlov (Zámecká knihovna)",
+    modernRepository_en: "State Regional Archive in Třeboň – Český Krumlov Branch (Castle Library)",
+    description: "Hlavní sídlo rožmberského vladařství. V hradním skriptoriu a zámecké knihovně vznikala a byla shromažďována špičková díla dvorské literatury, práva a biblických textů.",
+    description_en: "Primary residence of the Lords of Rosenberg. Courtly literature, legal codices, and biblical texts were copied and preserved in the castle scriptorium and renowned library.",
+    lat: 48.8127,
+    lng: 14.3175,
+    zoom: 12,
+    x: 46,
+    y: 52,
+    icon: "🌹",
+    matchKeywords: ["český krumlov", "cesky krumlov", "krumlov", "krummau", "crumlov", "crumlaw"],
+  },
+  {
+    id: "plzen",
+    name: "Plzeň",
+    name_en: "Pilsen (Plzeň)",
+    region: "Západní Čechy",
+    region_en: "Western Bohemia",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Archiv města Plzně, Studijní a vědecká knihovna Plzeňského kraje",
+    modernRepository_en: "Plzeň City Archives, Research Library of Plzeň Region",
+    description: "Klíčové západočeské město a kolébka českého knihtisku (Kronika trojánská, cca 1468/1476). Dochovala se zde řada městských a františkánských rukopisů.",
+    description_en: "Key West Bohemian stronghold and cradle of Bohemian printing (Trojan Chronicle, ca 1468/1476). Notable municipal and Franciscan manuscript collections survive here.",
+    lat: 49.7475,
+    lng: 13.3776,
+    zoom: 12,
+    x: 42,
+    y: 40,
+    icon: "🛡️",
+    matchKeywords: ["plzeň", "plzen", "pilsen", "pilsn", "plsna", "pilsensis"],
+  },
+  {
+    id: "tepla",
+    name: "Klášter Teplá",
+    name_en: "Teplá Abbey (Tepl)",
+    region: "Premonstrátská kanonie v západních Čechách",
+    region_en: "Premonstratensian Abbey in Western Bohemia",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Knihovna kanonie premonstrátů v Teplé (Národní knihovna ČR)",
+    modernRepository_en: "Teplá Abbey Library (National Library of the Czech Republic)",
+    description: "Jedna z nejrozsáhlejších a nejcennějších historických klášterních knihoven v českých zemích s více než 600 středověkými rukopisy včetně Codexu Teplensis.",
+    description_en: "One of the largest and most valuable monastic libraries in the Czech lands, preserving over 600 medieval manuscripts, including the German Codex Teplensis.",
+    lat: 49.9664,
+    lng: 12.8722,
+    zoom: 12,
+    x: 39,
+    y: 38,
+    icon: "⛪",
+    matchKeywords: ["teplá", "tepla", "tepl", "teplensis"],
+  },
+  {
+    id: "kromeriz",
+    name: "Kroměříž",
+    name_en: "Kroměříž (Kremsier)",
+    region: "Arcibiskupský zámek a kapitula",
+    region_en: "Archbishop's Chateau & Chapter",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Arcibiskupský zámek v Kroměříži – Zámecká knihovna",
+    modernRepository_en: "Kroměříž Archbishop's Palace – Chateau Library",
+    description: "Letní sídlo olomouckých biskupů a arcibiskupů s monumentální historickou knihovnou a cennými hudebními a liturgickými kodexy.",
+    description_en: "Summer residence of the Olomouc bishops and archbishops boasting a monumental historical library with precious liturgical and musical manuscripts.",
+    lat: 49.2985,
+    lng: 17.3931,
+    zoom: 12,
+    x: 65,
+    y: 44,
+    icon: "🏛️",
+    matchKeywords: ["kroměříž", "kromeriz", "kremsier", "cremsir", "cremsier"],
+  },
+  {
+    id: "cheb",
+    name: "Cheb",
+    name_en: "Cheb (Eger)",
+    region: "Chebsko (Egerland)",
+    region_en: "Egerland",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Státní okresní archiv Cheb",
+    modernRepository_en: "State District Archive Cheb",
+    description: "Historické říšské a české pohraniční město s bohatým městským archivem, františkánskou a křížovnickou písemnou kulturou.",
+    description_en: "Historic imperial and Bohemian border city with a rich municipal archive, Franciscan, and Crutched Friars scribal culture.",
+    lat: 50.0796,
+    lng: 12.3739,
+    zoom: 12,
+    x: 37,
+    y: 36,
+    icon: "🏰",
+    matchKeywords: ["cheb", "eger", "egrensis", "egram"],
+  },
+  {
+    id: "hradec-kralove",
+    name: "Hradec Králové",
+    name_en: "Hradec Králové (Königgrätz)",
+    region: "Východní Čechy, věnné město královen",
+    region_en: "Eastern Bohemia, Dowry Town of Queens",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Muzeum východních Čech, Státní okresní archiv Hradec Králové",
+    modernRepository_en: "Museum of Eastern Bohemia, State District Archive Hradec Králové",
+    description: "Centrum východočeské městské i husitské vzdělanosti. Místo vzniku proslulého Franusova kancionálu (1505) i starších latinských kodexů.",
+    description_en: "Hub of East Bohemian municipal and Utraquist scribal culture. Famous as the provenance of the monumental Franus Cantional (1505) and medieval codices.",
+    lat: 50.2092,
+    lng: 15.8328,
+    zoom: 12,
+    x: 56,
+    y: 34,
+    icon: "👑",
+    matchKeywords: ["hradec králové", "hradec kralove", "königgrätz", "koniggratz", "grecz", "gretz", "franus"],
+  },
+  {
+    id: "broumov",
+    name: "Broumov",
+    name_en: "Broumov (Braunau)",
+    region: "Benediktinské opatství sv. Vojtěcha",
+    region_en: "Benedictine Abbey of St. Adalbert",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Klášterní knihovna v Broumově (spravována Národní knihovnou ČR)",
+    modernRepository_en: "Broumov Monastic Library (managed by National Library of the CR)",
+    description: "Klášter, kam břevnovští benediktini v době husitských válek přenesli své nejcennější rukopisy. Unikátně dochovaný klášterní knižní fond.",
+    description_en: "The refuge where Břevnov Benedictines evacuated their most precious codices during the Hussite wars. Uniquely preserved monastic book collection.",
+    lat: 50.5856,
+    lng: 16.3328,
+    zoom: 12,
+    x: 59,
+    y: 28,
+    icon: "📖",
+    matchKeywords: ["broumov", "braunau", "broumovsk"],
+  },
+  {
+    id: "zlata-koruna",
+    name: "Zlatá Koruna",
+    name_en: "Zlatá Koruna (Goldenkrone)",
+    region: "Cisterciácký klášter Svatá Koruna",
+    region_en: "Cistercian Abbey Sancta Corona",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Národní knihovna ČR, Státní oblastní archiv v Třeboni",
+    modernRepository_en: "National Library of the Czech Republic, State Regional Archive in Třeboň",
+    description: "Klášter založený králem Přemyslem Otakarem II. roku 1263. Zdejší kodexy s trnovou relikvií patří k pokladům jihočeské cisterciácké knižní tvorby.",
+    description_en: "Abbey founded by King Ottokar II of Bohemia in 1263. Codices connected to the holy thorn relic represent pinnacles of South Bohemian Cistercian book craft.",
+    lat: 48.8553,
+    lng: 14.3711,
+    zoom: 12,
+    x: 47,
+    y: 51,
+    icon: "👑",
+    matchKeywords: ["zlatá koruna", "zlata koruna", "sancta corona", "goldenkrone"],
+  },
+  {
+    id: "osek",
+    name: "Osek",
+    name_en: "Osek Abbey (Ossegg)",
+    region: "Cisterciácký klášter v Podkrušnohoří",
+    region_en: "Cistercian Abbey at the Ore Mountains",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Národní knihovna ČR, Klášterní knihovna Osek",
+    modernRepository_en: "National Library of the Czech Republic, Osek Monastic Library",
+    description: "Severočeský cisterciácký klášter založený na sklonku 12. století rodem Hrabišiců. Uchoval bohatý fond teologických a liturgických rukopisů.",
+    description_en: "North Bohemian Cistercian abbey founded at the end of the 12th century. Preserved a rich collection of medieval theological and liturgical codices.",
+    lat: 50.6219,
+    lng: 13.6931,
+    zoom: 12,
+    x: 44,
+    y: 29,
+    icon: "⛪",
+    matchKeywords: ["osek", "ossegg", "ossecensis"],
+  },
+  {
+    id: "basel",
+    name: "Basilej (Basel)",
+    name_en: "Basel",
+    region: "Místo Basilejského koncilu",
+    region_en: "Site of the Council of Basel",
+    country: "Švýcarsko",
+    country_en: "Switzerland",
+    modernRepository: "Universitätsbibliothek Basel",
+    modernRepository_en: "Basel University Library",
+    description: "Dějiště slavného Basilejského koncilu (1431–1449), kam putovala česká husitská poselstva. Vznikly zde diplomatické zápisy, traktáty i opisy kodexů.",
+    description_en: "Site of the celebrated Council of Basel (1431–1449), attended by Bohemian Hussite delegations. Conciliar decrees, tracts, and copied codices are held here.",
+    lat: 47.5596,
+    lng: 7.5886,
+    zoom: 11,
+    x: 27,
+    y: 55,
+    icon: "🕊️",
+    matchKeywords: ["basel", "basilej", "basilea", "basiliensis", "concilium basiliense"],
+  },
+  {
+    id: "paris",
+    name: "Paříž (Paris)",
+    name_en: "Paris",
+    region: "Sorbonna a pařížská univerzita",
+    region_en: "Sorbonne & University of Paris",
+    country: "Francie",
+    country_en: "France",
+    modernRepository: "Bibliothèque nationale de France (BnF), Paříž",
+    modernRepository_en: "National Library of France (BnF), Paris",
+    description: "Intelektuální metropole středověké Evropy, model pro založení Univerzity Karlovy. Čeští studenti a mistři zde opisovali filosofické a teologické spisy.",
+    description_en: "The intellectual capital of medieval Europe and blueprint for Charles University in Prague. Bohemian masters and students copied philosophical and theological treatises here.",
+    lat: 48.8566,
+    lng: 2.3522,
+    zoom: 11,
+    x: 12,
+    y: 47,
+    icon: "⚜️",
+    matchKeywords: ["paris", "paříž", "pariz", "sorbonne", "parisiensis", "parisius", "bnf", "gallia"],
+  },
+  {
+    id: "roma",
+    name: "Řím (Roma)",
+    name_en: "Rome (Roma)",
+    region: "Vatikán a kurie",
+    region_en: "Vatican & Papal Curia",
+    country: "Itálie",
+    country_en: "Italy",
+    modernRepository: "Biblioteca Apostolica Vaticana (BAV), Řím",
+    modernRepository_en: "Vatican Apostolic Library (BAV), Rome",
+    description: "Sídlo papežské kurie a Vatikánské apoštolské knihovny. Dochovaly se zde listiny, bohemikální kodexy a papežské buly zásadního významu pro české dějiny.",
+    description_en: "Seat of the Papal Curia and Vatican Apostolic Library. Preserves charters, Bohemica codices, and papal bulls of paramount importance for Bohemian history.",
+    lat: 41.9028,
+    lng: 12.4964,
+    zoom: 11,
+    x: 44,
+    y: 89,
+    icon: "🏛️",
+    matchKeywords: ["roma", "řím", "rim", "rome", "vatican", "vaticana", "bav", "apostolica", "curia"],
   },
 ];
 
@@ -442,38 +710,59 @@ export function getPlaceDescription(place: ScriptoriumPlace, lang: "cs" | "en" =
   return (lang === "en" && place.description_en) ? place.description_en : place.description;
 }
 
-export function getScriptoriumForCard(card: { place?: string; manuscript?: string }): ScriptoriumPlace {
-  const p = (card.place || "").toLowerCase().trim();
-  const m = (card.manuscript || "").toLowerCase().trim();
+export function getScriptoriumForCard(card?: { place?: string; manuscript?: string } | null): ScriptoriumPlace {
+  if (!card) return SCRIPTORIA_PLACES[0];
+  const rawP = (card.place || "").trim();
+  const rawM = (card.manuscript || "").trim();
+  const pNorm = normalizeKeyword(rawP);
+  const mNorm = normalizeKeyword(rawM);
 
   // 1. Nejprve zkusíme určit přesné místo sepsání z kolofonu (card.place)
-  if (p && !p.includes("unknown") && p !== "unknown place") {
+  if (pNorm && !pNorm.includes("unknown") && pNorm !== "unknown place" && !pNorm.includes("neznám") && !pNorm.includes("neznam")) {
     for (const place of SCRIPTORIA_PLACES) {
-      if (place.matchKeywords.some((kw) => p.includes(kw))) {
+      if (place.matchKeywords.some((kw) => {
+        const kwNorm = normalizeKeyword(kw);
+        return pNorm.includes(kwNorm) || rawP.toLowerCase().includes(kw.toLowerCase());
+      })) {
         return place;
       }
     }
     // Geografické zástupné termíny
-    if (p.includes("czech") || p.includes("česk")) {
+    if (pNorm.includes("czech") || pNorm.includes("cesk") || pNorm.includes("bohem")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "praha")!;
     }
-    if (p.includes("austria") || p.includes("rakousk")) {
+    if (pNorm.includes("morav")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "olomouc")!;
+    }
+    if (pNorm.includes("siles") || pNorm.includes("slezsk")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "wroclaw") || SCRIPTORIA_PLACES.find((x) => x.id === "fulstejn")!;
+    }
+    if (pNorm.includes("austria") || pNorm.includes("rakousk")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "viden")!;
     }
-    if (p.includes("ital")) {
+    if (pNorm.includes("ital")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "bologna")!;
     }
-    if (p.includes("poland") || p.includes("polsk")) {
+    if (pNorm.includes("poland") || pNorm.includes("polsk")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "krakow")!;
     }
-    if (p.includes("germany") || p.includes("německ")) {
+    if (pNorm.includes("germany") || pNorm.includes("nemeck") || pNorm.includes("aleman")) {
       return SCRIPTORIA_PLACES.find((x) => x.id === "nurnberg")!;
+    }
+    if (pNorm.includes("franc") || pNorm.includes("gallia")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "paris") || SCRIPTORIA_PLACES[0];
+    }
+    if (pNorm.includes("helvet") || pNorm.includes("svycar") || pNorm.includes("swiss")) {
+      return SCRIPTORIA_PLACES.find((x) => x.id === "basel") || SCRIPTORIA_PLACES[0];
     }
   }
 
   // 2. Pokud je místo vzniku neznámé, zařadíme kartu podle místa dochování kodexu (card.manuscript)
   for (const place of SCRIPTORIA_PLACES) {
-    if (place.matchKeywords.some((kw) => m.includes(kw))) {
+    if (place.matchKeywords.some((kw) => {
+      const kwNorm = normalizeKeyword(kw);
+      return mNorm.includes(kwNorm) || rawM.toLowerCase().includes(kw.toLowerCase());
+    })) {
       return place;
     }
   }
