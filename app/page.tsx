@@ -74,6 +74,14 @@ import {
   getStoredTrophyCategories,
   evaluateTrophy,
 } from "./data/trophies";
+import {
+  syncServerTime,
+  getSecureDate,
+  computeStateSignature,
+  verifyStateSignature,
+  sanitizeCollection,
+  generateSafeUsername,
+} from "./security";
 
 type Tab = "home" | "packs" | "collection" | "trophies" | "profile";
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
@@ -238,7 +246,7 @@ const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
 export const MAX_DAILY_PACKS = 3;
 export const MAX_DAILY_GAMES = 5;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => getSecureDate();
 const XP_PER_LEVEL = 100;
 const levelForXp = (xp: number) => Math.floor(xp / XP_PER_LEVEL) + 1;
 const qualityLabel = (quality: PackQuality, lang?: Language) => {
@@ -288,22 +296,34 @@ function loadState(userId?: string): GameState {
   if (typeof window === "undefined") return userId ? EMPTY_PLAYER_STATE : INITIAL_STATE;
   try {
     const key = userId ? `quilldrop-state-${userId}` : "quilldrop-state";
-    const saved = JSON.parse(localStorage.getItem(key) || "null");
+    const raw = localStorage.getItem(key);
+    const saved = JSON.parse(raw || "null");
+
+    // Ověření integrity stavu proti manuální editaci v DevTools
+    const isAuthentic = saved ? (saved._sig ? verifyStateSignature(saved, userId) : true) : true;
+    if (saved && saved._sig && !isAuthentic) {
+      console.warn("🛡️ Quilldrop Security: Zjištěna neautorizovaná úprava lokálního stavu. Podvržená data byla zahozena.");
+    }
 
     // Pro přihlášeného uživatele je základem čistý stav, pro anonymního návštěvníka demo stav
     const baseTemplate = userId ? EMPTY_PLAYER_STATE : INITIAL_STATE;
+    const validatedData = isAuthentic && saved ? saved : {};
+
     const base: GameState = {
       ...baseTemplate,
-      ...(saved || {}),
-      bonusPacks: saved?.bonusPacks || [],
-      gallery: saved?.gallery || [],
-      trophyTimestamps: saved?.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
-      loupeMaxUsed: saved?.loupeMaxUsed || false,
-      dailyGamesHistory: Array.isArray(saved?.dailyGamesHistory) ? saved.dailyGamesHistory : [],
-      completedQuestionsToday: saved?.completedQuestionsToday || [],
-      dailyTradedPartners: saved?.dailyTradedPartners || [],
-      hasSeenTutorial: saved?.hasSeenTutorial !== undefined ? saved.hasSeenTutorial : (userId ? false : true),
-      lastDailyPopupDate: saved?.lastDailyPopupDate || "",
+      ...validatedData,
+      collection: isAuthentic && saved?.collection
+        ? sanitizeCollection(saved.collection, COLOPHONS)
+        : (userId ? {} : { ...INITIAL_STATE.collection }),
+      bonusPacks: Array.isArray(validatedData.bonusPacks) ? validatedData.bonusPacks : [],
+      gallery: Array.isArray(validatedData.gallery) ? validatedData.gallery : [],
+      trophyTimestamps: validatedData.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
+      loupeMaxUsed: validatedData.loupeMaxUsed || false,
+      dailyGamesHistory: Array.isArray(validatedData.dailyGamesHistory) ? validatedData.dailyGamesHistory : [],
+      completedQuestionsToday: Array.isArray(validatedData.completedQuestionsToday) ? validatedData.completedQuestionsToday : [],
+      dailyTradedPartners: Array.isArray(validatedData.dailyTradedPartners) ? validatedData.dailyTradedPartners : [],
+      hasSeenTutorial: validatedData.hasSeenTutorial !== undefined ? validatedData.hasSeenTutorial : (userId ? false : true),
+      lastDailyPopupDate: validatedData.lastDailyPopupDate || "",
     };
 
     // Pouze pro nepřihlášené návštěvníky doplňujeme ukázkové karty, pokud nemají žádné
@@ -313,13 +333,16 @@ function loadState(userId?: string): GameState {
     }
 
     const todayStr = today();
-    const isNewDay = base.lastPlayed !== todayStr;
+    // Ochrana proti posunu hodin dozadu (clock rollback)
+    const isClockRollback = Boolean(base.lastPlayed && base.lastPlayed > todayStr);
+    const isNewDay = base.lastPlayed !== todayStr && !isClockRollback;
+
     const dailyReset: GameState = isNewDay
       ? { ...base, packsOpened: 0, gamesPlayed: 0, dailyGamesHistory: [], completedQuestionsToday: [], dailyTradedPartners: [], bonusPacks: [], lastPlayed: todayStr }
       : base;
 
-    // Pokud se uživatel již dnes přihlásil, streak byl pro dnešek započten
-    if (dailyReset.lastLoginDate === todayStr) {
+    // Pokud byl detekován rollback nebo se uživatel již dnes přihlásil, streak neměníme
+    if (isClockRollback || dailyReset.lastLoginDate === todayStr) {
       return dailyReset;
     }
 
@@ -336,6 +359,10 @@ function loadState(userId?: string): GameState {
       // Úplně první přihlášení uživatele
       nextStreak = 1;
       nextPuzzle = 1;
+    } else if (daysDiff <= 0) {
+      // Čas se neposunul dopředu nebo došlo k manipulaci s hodinami -> žádný nárůst
+      nextStreak = dailyReset.streak || 1;
+      nextPuzzle = dailyReset.puzzle || 1;
     } else if (daysDiff === 1) {
       // Nepřerušený denní streak (návštěva v po sobě jdoucí kalendářní den)
       nextStreak = (dailyReset.streak || 0) + 1;
@@ -549,12 +576,13 @@ export default function Home() {
         .maybeSingle();
 
       if (!profile) {
-        const defaultName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Písař";
+        const defaultName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Písař";
+        const safeUsername = generateSafeUsername(defaultName, user.email || "");
         const { data: newProfile } = await supabase
           .from("profiles")
           .upsert({
             id: user.id,
-            username: defaultName,
+            username: safeUsername,
             display_name: defaultName,
             role: "player",
             xp: EMPTY_PLAYER_STATE.xp,
@@ -580,7 +608,11 @@ export default function Home() {
         .eq("user_id", user.id);
 
       const local = loadState(user.id);
-      const mergedCollection: Record<string | number, number> = { ...local.collection };
+      const rawLocal = typeof window !== "undefined" ? localStorage.getItem(`quilldrop-state-${user.id}`) : null;
+      const parsedLocal = rawLocal ? JSON.parse(rawLocal) : null;
+      const isLocalAuthentic = parsedLocal ? (parsedLocal._sig ? verifyStateSignature(parsedLocal, user.id) : true) : true;
+
+      const mergedCollection: Record<string | number, number> = {};
 
       if (userCards && userCards.length > 0) {
         for (const uc of userCards) {
@@ -589,18 +621,35 @@ export default function Home() {
           );
           const cardKey = cardMatch ? cardMatch.id : uc.card_id;
           mergedCollection[cardKey] = Math.max(mergedCollection[cardKey] || 0, uc.count || 1);
-          if (cardMatch && String(cardMatch.id) !== String(uc.card_id) && mergedCollection[uc.card_id]) {
-            delete mergedCollection[uc.card_id];
-          }
         }
+      } else if (isLocalAuthentic && local.collection) {
+        // Pouze pokud v Supabase ještě žádné karty nejsou a lokální stav je ověřený
+        Object.assign(mergedCollection, sanitizeCollection(local.collection, currentCards.length > 0 ? currentCards : COLOPHONS));
       }
+
+      // Pro registrovaného uživatele je profil v Supabase primární autoritou
+      const validXp = profile?.xp !== undefined
+        ? (isLocalAuthentic ? Math.max(local.xp, profile.xp) : profile.xp)
+        : (isLocalAuthentic ? local.xp : 0);
+
+      const validCoins = profile?.coins !== undefined
+        ? (isLocalAuthentic ? Math.max(local.coins, profile.coins) : profile.coins)
+        : (isLocalAuthentic ? local.coins : 50);
+
+      const validStreak = profile?.streak !== undefined
+        ? (isLocalAuthentic ? Math.max(local.streak, profile.streak) : profile.streak)
+        : (isLocalAuthentic ? local.streak : 1);
+
+      const validPuzzle = profile?.puzzle_progress !== undefined
+        ? (isLocalAuthentic ? Math.max(local.puzzle, profile.puzzle_progress) : profile.puzzle_progress)
+        : (isLocalAuthentic ? local.puzzle : 1);
 
       const mergedState: GameState = {
         ...local,
-        xp: profile?.xp !== undefined ? Math.max(local.xp, profile.xp) : local.xp,
-        coins: profile?.coins !== undefined ? Math.max(local.coins, profile.coins) : local.coins,
-        streak: profile?.streak !== undefined ? Math.max(local.streak, profile.streak) : local.streak,
-        puzzle: profile?.puzzle_progress !== undefined ? Math.max(local.puzzle, profile.puzzle_progress) : local.puzzle,
+        xp: validXp,
+        coins: validCoins,
+        streak: validStreak,
+        puzzle: validPuzzle,
         bonusPacks: Array.isArray(profile?.bonus_packs) && profile.bonus_packs.length > 0 ? (profile.bonus_packs as PackQuality[]) : local.bonusPacks,
         trophies: Array.isArray(profile?.trophies) && profile.trophies.length > 0 ? Array.from(new Set([...local.trophies, ...profile.trophies])) : local.trophies,
         trophyTimestamps: local.trophyTimestamps || {},
@@ -612,7 +661,8 @@ export default function Home() {
 
       setState(mergedState);
       if (typeof window !== "undefined") {
-        localStorage.setItem(`quilldrop-state-${user.id}`, JSON.stringify(mergedState));
+        const sig = computeStateSignature(mergedState, user.id);
+        localStorage.setItem(`quilldrop-state-${user.id}`, JSON.stringify({ ...mergedState, _sig: sig }));
       }
 
       // Pokud nový hráč ještě neviděl úvodní tutoriál, automaticky jej otevřeme
@@ -961,6 +1011,7 @@ export default function Home() {
       }
     }
 
+    syncServerTime();
     fetchLiveCards();
 
     return () => window.clearTimeout(timer);
@@ -969,7 +1020,9 @@ export default function Home() {
   useEffect(() => {
     if (!ready) return;
     const key = currentUser ? `quilldrop-state-${currentUser.id}` : "quilldrop-state";
-    localStorage.setItem(key, JSON.stringify({ ...state, lastPlayed: today() }));
+    const stateWithDate = { ...state, lastPlayed: today() };
+    const sig = computeStateSignature(stateWithDate, currentUser?.id);
+    localStorage.setItem(key, JSON.stringify({ ...stateWithDate, _sig: sig }));
 
     if (currentUser) {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -1023,6 +1076,7 @@ export default function Home() {
     setAuthError("");
     setAuthSuccessMsg("");
     const name = authDisplayName.trim() || authEmail.split("@")[0] || (lang === "en" ? "Scribe" : "Písař");
+    const safeUsername = generateSafeUsername(name, authEmail.trim());
     try {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail.trim(),
@@ -1030,7 +1084,8 @@ export default function Home() {
         options: {
           data: {
             display_name: name,
-            username: name,
+            full_name: name,
+            username: safeUsername,
           },
           emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
         },

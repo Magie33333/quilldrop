@@ -354,12 +354,13 @@ export function getActiveIllumination(streak: number, list = getStoredIlluminati
   return sorted[cycleIndex % sorted.length];
 }
 
-// Výpočet rozdílu dnů mezi dvěma daty YYYY-MM-DD
+// Výpočet rozdílu dnů mezi dvěma daty YYYY-MM-DD (d2 - d1)
 export function getDaysDifference(dateStr1: string, dateStr2: string): number {
   if (!dateStr1 || !dateStr2) return 999;
   const d1 = new Date(dateStr1 + "T00:00:00Z");
   const d2 = new Date(dateStr2 + "T00:00:00Z");
   if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 999;
-  const diffTime = Math.abs(d2.getTime() - d1.getTime());
+  const diffTime = d2.getTime() - d1.getTime();
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
+

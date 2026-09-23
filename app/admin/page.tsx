@@ -77,6 +77,7 @@ import {
 } from "../data/trophies";
 import HeuristCatalogModal from "./HeuristCatalogModal";
 import StudioHelpModal from "./StudioHelpModal";
+import { generateSafeUsername } from "../security";
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -1354,8 +1355,9 @@ export default function AdminPage() {
         password: cleanPassword,
         options: {
           data: {
-            username: cleanName,
+            username: generateSafeUsername(cleanName, cleanEmail),
             full_name: cleanName,
+            display_name: cleanName,
           },
           emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/admin" : undefined,
         },
