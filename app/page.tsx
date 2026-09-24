@@ -520,9 +520,35 @@ export default function Home() {
   const [authSuccessMsg, setAuthSuccessMsg] = useState("");
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  async function fetchAllProfilesList(): Promise<UserProfile[]> {
+    try {
+      let profs: any = null;
+      const res = await supabase
+        .from("profiles")
+        .select("id, username, display_name, streak, xp, coins, avatar_id, role, motto_card_id, puzzle_progress, trophies, created_at")
+        .order("xp", { ascending: false })
+        .limit(200);
+
+      if (!res.error && res.data) {
+        profs = res.data;
+      } else {
+        // Fallback pokud v Supabase ještě nebyl spuštěn sloupec motto_card_id
+        const fallback = await supabase
+          .from("profiles")
+          .select("id, username, display_name, streak, xp, coins, avatar_id, role, puzzle_progress, trophies, created_at")
+          .order("xp", { ascending: false })
+          .limit(200);
+        profs = fallback.data;
+      }
+      return (profs || []) as UserProfile[];
+    } catch {
+      return [];
+    }
+  }
+
   async function syncToSupabase(userId: string, st: GameState, currentCards: Colophon[]) {
     try {
-      await supabase.from("profiles").upsert({
+      const payload: any = {
         id: userId,
         xp: st.xp,
         coins: st.coins,
@@ -531,10 +557,19 @@ export default function Home() {
         bonus_packs: st.bonusPacks,
         trophies: st.trophies,
         avatar_id: st.avatarArt,
-        motto_card_id: st.mottoCardId ? String(st.mottoCardId) : null,
         last_played_date: st.lastPlayed || today(),
         updated_at: new Date().toISOString(),
-      });
+      };
+      if (st.mottoCardId) {
+        payload.motto_card_id = String(st.mottoCardId);
+      }
+
+      const { error: upsertErr } = await supabase.from("profiles").upsert(payload);
+      if (upsertErr && payload.motto_card_id) {
+        // Pokud sloupec motto_card_id ještě neexistuje v databázi, zopakovat bez něj
+        delete payload.motto_card_id;
+        await supabase.from("profiles").upsert(payload);
+      }
 
       const cardMap = new Map<string, number>();
       for (const [cardKey, count] of Object.entries(st.collection)) {
@@ -685,13 +720,9 @@ export default function Home() {
 
       // Načíst všechny hráče z tabulky profiles pro žebříček a kolegy
       try {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, username, display_name, streak, xp, coins, avatar_id, role, motto_card_id, puzzle_progress, trophies, created_at")
-          .order("xp", { ascending: false })
-          .limit(200);
+        const profs = await fetchAllProfilesList();
         if (profs && profs.length > 0) {
-          setAllPlayers(profs as UserProfile[]);
+          setAllPlayers(profs);
           const filtered = profs.filter((p: any) => p.id !== user.id);
           filtered.sort((a: any, b: any) => {
             if (a.role === "admin" && b.role !== "admin") return -1;
@@ -958,13 +989,9 @@ export default function Home() {
           }
           // Načíst všechny hráče z tabulky profiles pro žebříček a kolegy
           try {
-            const { data: profs } = await supabase
-              .from("profiles")
-              .select("id, username, display_name, streak, xp, coins, avatar_id, role, motto_card_id, puzzle_progress, trophies, created_at")
-              .order("xp", { ascending: false })
-              .limit(200);
+            const profs = await fetchAllProfilesList();
             if (profs && profs.length > 0) {
-              setAllPlayers(profs as UserProfile[]);
+              setAllPlayers(profs);
               const filtered = user ? profs.filter((p: any) => p.id !== user.id) : profs;
               // Seřadit: mistři skriptoria (admini) nahoře, dále podle XP sestupně
               filtered.sort((a: any, b: any) => {
@@ -2314,6 +2341,7 @@ export default function Home() {
             illuminations={illuminations}
             currentUser={currentUser}
             isSelf={currentUser?.id === inspectedPlayer.id}
+            selfCardStats={{ uniqueCount: uniqueOwned, totalCount: uniqueOwned + duplicates }}
             onClose={() => setInspectedPlayer(null)}
             onOpenTrade={(p) => {
               setInspectedPlayer(null);
@@ -6587,6 +6615,7 @@ function PlayerProfileModal({
   illuminations,
   currentUser,
   isSelf,
+  selfCardStats,
   onClose,
   onOpenTrade,
   onSendGift,
@@ -6597,13 +6626,16 @@ function PlayerProfileModal({
   illuminations: IlluminationMosaicItem[];
   currentUser?: any;
   isSelf: boolean;
+  selfCardStats?: { uniqueCount: number; totalCount: number };
   onClose: () => void;
   onOpenTrade?: (player: UserProfile) => void;
   onSendGift?: (player: UserProfile) => void;
   lang?: Language;
 }) {
-  const [cardStats, setCardStats] = useState<{ uniqueCount: number; totalCount: number } | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [cardStats, setCardStats] = useState<{ uniqueCount: number; totalCount: number } | null>(
+    isSelf && selfCardStats ? selfCardStats : null
+  );
+  const [loadingStats, setLoadingStats] = useState(!isSelf || !selfCardStats);
 
   // Esc klávesa pro zavření
   useEffect(() => {

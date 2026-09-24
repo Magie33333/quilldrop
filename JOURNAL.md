@@ -889,3 +889,8 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
      - Možnost přímo z modálu zahájit směnu kolofonů nebo odeslat dar z duplikátů.
 3. **Propojení z obrazovky Výzev (`TrophiesScreen`):**
    - Zlatý cechovní banner na kartě Výzev nabízí okamžitý přechod na žebříček s plynulým posunem na sekci `#leaderboard`.
+4. **Odolný schema fallback (`fetchAllProfilesList` a `syncToSupabase`):**
+   - Vyřešena příčina nezobrazování spolužáků: Pokud v Supabase ještě nebyl spuštěn SQL skript přidávající sloupec `motto_card_id`, dotaz na databázi nehavaruje, nýbrž automaticky a transparentně použije fallback dotaz bez tohoto sloupce.
+   - Hráči (např. *Alžběta Langfelnerová*, *Monika Syslová*) se nyní okamžitě načítají v žebříčku.
+   - Do `ALL_PENDING_MIGRATIONS.sql` přidána politika `Veřejné čtení sbírky karet` na `user_cards`, aby bylo možné při prohlížení profilu tovaryšů vidět počty jejich unikátních karet.
+

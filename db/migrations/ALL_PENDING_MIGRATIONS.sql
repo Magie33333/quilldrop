@@ -191,3 +191,9 @@ ADD COLUMN IF NOT EXISTS motto_card_id TEXT;
 
 COMMENT ON COLUMN public.profiles.motto_card_id IS 'ID karty ze sbírky, jejíž kolofon si hráč zvolil jako své osobní písařské motto na profilu.';
 
+-- 9. NÁHLED DO KARET SPOLUŽÁKŮ PRO ŽEBŘÍČEK A SMĚNU (POUZE SELECT)
+DROP POLICY IF EXISTS "Veřejné čtení sbírky karet" ON public.user_cards;
+DROP POLICY IF EXISTS "Hráč čte svou sbírku karet" ON public.user_cards;
+CREATE POLICY "Veřejné čtení sbírky karet" ON public.user_cards FOR SELECT USING (true);
+
+
