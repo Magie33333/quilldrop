@@ -185,3 +185,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
 
+-- 8. OSOBNÍ PÍSAŘSKÉ MOTTO / KOLOFON NA PROFILU HRÁČE
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS motto_card_id TEXT;
+
+COMMENT ON COLUMN public.profiles.motto_card_id IS 'ID karty ze sbírky, jejíž kolofon si hráč zvolil jako své osobní písařské motto na profilu.';
+

@@ -167,6 +167,7 @@ type GameState = {
   lastLoginDate: string;
   gallery: string[];
   avatarArt: string | null;
+  mottoCardId?: string | number | null;
   hasSeenTutorial?: boolean;
   lastDailyPopupDate?: string;
 };
@@ -207,6 +208,7 @@ const INITIAL_STATE: GameState = {
   lastLoginDate: "",
   gallery: [],
   avatarArt: null,
+  mottoCardId: null,
   hasSeenTutorial: true,
   lastDailyPopupDate: "",
 };
@@ -231,6 +233,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   lastLoginDate: "",
   gallery: [],
   avatarArt: null,
+  mottoCardId: null,
   hasSeenTutorial: false,
   lastDailyPopupDate: "",
 };
@@ -288,6 +291,7 @@ type UserProfile = {
   display_name: string;
   role?: string;
   avatar_id?: string | null;
+  motto_card_id?: string | null;
   xp?: number;
   coins?: number;
   streak?: number;
@@ -333,6 +337,7 @@ function loadState(userId?: string): GameState {
         : (userId ? {} : { ...INITIAL_STATE.collection }),
       bonusPacks: Array.isArray(validatedData.bonusPacks) ? validatedData.bonusPacks : [],
       gallery: Array.isArray(validatedData.gallery) ? validatedData.gallery : [],
+      mottoCardId: validatedData.mottoCardId !== undefined ? validatedData.mottoCardId : baseTemplate.mottoCardId,
       trophyTimestamps: validatedData.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
       loupeMaxUsed: validatedData.loupeMaxUsed || false,
       dailyGamesHistory: Array.isArray(validatedData.dailyGamesHistory) ? validatedData.dailyGamesHistory : [],
@@ -524,6 +529,7 @@ export default function Home() {
         bonus_packs: st.bonusPacks,
         trophies: st.trophies,
         avatar_id: st.avatarArt,
+        motto_card_id: st.mottoCardId ? String(st.mottoCardId) : null,
         last_played_date: st.lastPlayed || today(),
         updated_at: new Date().toISOString(),
       });
@@ -642,6 +648,7 @@ export default function Home() {
         trophies: Array.isArray(profile?.trophies) && profile.trophies.length > 0 ? Array.from(new Set([...local.trophies, ...profile.trophies])) : local.trophies,
         trophyTimestamps: local.trophyTimestamps || {},
         avatarArt: profile?.avatar_id || local.avatarArt,
+        mottoCardId: profile?.motto_card_id || local.mottoCardId || null,
         collection: mergedCollection,
         hasSeenTutorial: local.hasSeenTutorial ?? false,
         lastDailyPopupDate: hasSeenDailyPopupToday(user.id) ? today() : (local.lastDailyPopupDate || ""),
@@ -678,7 +685,7 @@ export default function Home() {
       try {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("id, username, display_name, streak, xp, avatar_id, role")
+          .select("id, username, display_name, streak, xp, avatar_id, role, motto_card_id")
           .order("streak", { ascending: false })
           .limit(30);
         if (profs && profs.length > 0) {
@@ -949,7 +956,7 @@ export default function Home() {
           try {
             const { data: profs } = await supabase
               .from("profiles")
-              .select("id, username, display_name, streak, xp, avatar_id, role")
+              .select("id, username, display_name, streak, xp, avatar_id, role, motto_card_id")
               .order("streak", { ascending: false })
               .limit(30);
             if (profs && profs.length > 0) {
@@ -1899,6 +1906,18 @@ export default function Home() {
     );
   };
 
+  const handleSetMotto = (cardId: string | number) => {
+    setState(s => ({ ...s, mottoCardId: cardId }));
+    playQuillScratch();
+    setToast(lang === "en" ? "Profile motto updated!" : "Osobní kolofon byl nastaven na váš profil!");
+  };
+
+  const handleRemoveMotto = () => {
+    setState(s => ({ ...s, mottoCardId: null }));
+    playQuillScratch();
+    setToast(lang === "en" ? "Profile motto removed." : "Osobní kolofon byl z profilu odebrán.");
+  };
+
   if (!ready) return <main className="loading">Otevíráme skriptorium…</main>;
 
   return (
@@ -1972,6 +1991,8 @@ export default function Home() {
               onOpenTutorial={currentProfile?.role === "admin" ? () => setShowTutorialModal(true) : undefined}
               lang={lang}
               onSetLang={handleSetLang}
+              cards={cards}
+              onRemoveMotto={handleRemoveMotto}
             />
           )}
         </div>
@@ -1996,7 +2017,22 @@ export default function Home() {
           })}
         </nav>
 
-        {detail && <CardDetail card={detail} count={state.collection[detail.id] || 0} onClose={() => setDetail(null)} lang={lang} />}
+        {detail && (
+          <CardDetail
+            card={detail}
+            count={state.collection[detail.id] || (detail.uuid ? state.collection[detail.uuid] : 0) || 0}
+            onClose={() => setDetail(null)}
+            lang={lang}
+            isFavoriteMotto={Boolean(
+              state.mottoCardId && (
+                String(state.mottoCardId) === String(detail.id) ||
+                (detail.uuid && String(state.mottoCardId) === String(detail.uuid))
+              )
+            )}
+            onSetMotto={handleSetMotto}
+            onRemoveMotto={handleRemoveMotto}
+          />
+        )}
         {opened && <PackReveal key={`${reveal}-${cardShown}`} card={opened[reveal]} position={reveal + 1} total={opened.length} quality={packQuality} shown={cardShown} onReveal={() => setCardShown(true)} onNext={finishReveal} lang={lang} />}
         {game && activeQuestion && (
           <GameModal
@@ -3533,6 +3569,8 @@ function ProfileScreen({
   onOpenTutorial,
   lang = "cs",
   onSetLang,
+  cards = [],
+  onRemoveMotto,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -3560,8 +3598,14 @@ function ProfileScreen({
   onOpenTutorial?: () => void;
   lang?: Language;
   onSetLang?: (l: Language) => void;
+  cards?: Colophon[];
+  onRemoveMotto?: () => void;
 }) {
   const [colleagueQuery, setColleagueQuery] = useState("");
+  const mottoCard = useMemo(() => {
+    if (!state.mottoCardId) return null;
+    return cards.find(c => String(c.id) === String(state.mottoCardId) || c.uuid === String(state.mottoCardId)) || null;
+  }, [state.mottoCardId, cards]);
   const filteredColleagues = useMemo(() => {
     if (!colleagueQuery.trim()) return colleagues;
     const q = colleagueQuery.toLowerCase();
@@ -3860,7 +3904,91 @@ function ProfileScreen({
         <small>{levelXp} / {XP_PER_LEVEL} XP · {lang === "en" ? `Remaining: ${XP_PER_LEVEL - levelXp} XP to Level ${level + 1}` : `Zbývá ${XP_PER_LEVEL - levelXp} XP do úrovně ${level + 1}`}</small>
       </div>
     </section>
-    <blockquote>“Per pedes et non per manus.” ({lang === "en" ? "By foot and not by hands." : "Nohama a ne rukama."})<cite>{lang === "en" ? "Personal scribe note" : "Osobní zápis písaře"}</cite></blockquote>
+    {mottoCard ? (
+      <div
+        style={{
+          marginTop: 14,
+          marginBottom: 16,
+          padding: "14px 16px",
+          background: "linear-gradient(145deg, #fdf8ee 0%, #f4e6ca 100%)",
+          border: "2px solid #8d5b1c",
+          outline: "1px solid #bc8a43",
+          outlineOffset: "-4px",
+          borderRadius: 10,
+          boxShadow: "0 4px 12px rgba(60,36,21,0.1), inset 0 0 16px rgba(188,138,67,0.12)",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11px", fontWeight: 700, color: "#8d5b1c", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <span>📜</span>
+            <span>{lang === "en" ? "Personal Scribal Motto" : "Osobní písařské motto"}</span>
+          </div>
+          {onRemoveMotto && (
+            <button
+              type="button"
+              onClick={onRemoveMotto}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#8a2414",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: "pointer",
+                textDecoration: "underline",
+                padding: "2px 4px",
+              }}
+              title={lang === "en" ? "Remove motto from profile" : "Odebrat motto z profilu"}
+            >
+              {lang === "en" ? "Remove" : "Odebrat"}
+            </button>
+          )}
+        </div>
+
+        <p className="latin" style={{ margin: "4px 0 8px", fontSize: "14px", fontStyle: "italic", color: "#3c2415", lineHeight: "1.4", fontWeight: 600 }}>
+          “{mottoCard.quote}”
+        </p>
+
+        {getCardTranslation(mottoCard, lang) && getCardTranslation(mottoCard, lang) !== "Translation pending" && (
+          <p style={{ fontStyle: "normal", background: "rgba(236,212,167,0.65)", padding: "7px 10px", borderLeft: "3px solid #8d5b1c", borderRadius: "0 4px 4px 0", fontSize: "12px", margin: "6px 0 8px", color: "#4a2d0b" }}>
+            {getCardTranslation(mottoCard, lang)}
+          </p>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 6, fontSize: "11px", color: "#784f1d" }}>
+          <span>
+            — <strong>{getCardScribe(mottoCard.scribe, lang)}</strong>, {getCardPlace(mottoCard.place, lang)} ({mottoCard.year || (lang === "en" ? "undated" : "nedatováno")}) · {mottoCard.manuscript} {mottoCard.locus ? `[${mottoCard.locus}]` : ""}
+          </span>
+          <span className={`rarity-pill rarity-${mottoCard.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "6px", fontWeight: 800 }}>
+            {mottoCard.rarity}
+          </span>
+        </div>
+      </div>
+    ) : (
+      <div
+        style={{
+          marginTop: 14,
+          marginBottom: 16,
+          padding: "12px 16px",
+          background: "rgba(247, 236, 213, 0.45)",
+          border: "1px dashed rgba(141, 91, 28, 0.45)",
+          borderRadius: 10,
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11px", fontWeight: 700, color: "#8d5b1c", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+          <span>📜</span>
+          <span>{lang === "en" ? "Personal Scribal Motto" : "Osobní písařské motto"}</span>
+        </div>
+        <blockquote style={{ margin: "2px 0 6px", fontStyle: "italic", fontSize: "12.5px", color: "#54380e", border: "none", padding: 0 }}>
+          “Per pedes et non per manus.” ({lang === "en" ? "By foot and not by hands." : "Nohama a ne rukama."})
+          <cite style={{ display: "block", fontSize: "10.5px", opacity: 0.8, marginTop: 2 }}>{lang === "en" ? "Traditional scribal note (default)" : "Tradiční písařský povzdech (výchozí)"}</cite>
+        </blockquote>
+        <div style={{ fontSize: "11px", color: "#784f1d", fontStyle: "italic", marginTop: 4 }}>
+          💡 {lang === "en" ? "Tip: You can set any collected card as your profile motto in the Collection." : "Tip: Zvolte si svůj vlastní kolofon! Rozklikněte libovolnou získanou kartu ve Sbírce a zvolte ji jako své osobní motto."}
+        </div>
+      </div>
+    )}
     <div className="profile-stats">
       <div><strong>{uniqueOwned}</strong><span>{lang === "en" ? "unique" : "unikátních"}</span></div>
       <div><strong>{state.streak}</strong><span>{lang === "en" ? "day streak" : "dní v řadě"}</span></div>
@@ -4112,6 +4240,31 @@ function ProfileScreen({
                 )}
               </div>
               <small>{friend.streak || 1} {lang === "en" ? "days streak" : "dní v řadě"} · {friend.xp !== undefined ? `${friend.xp} XP` : (lang === "en" ? "Scriptorium Fellow" : "Tovaryš skriptoria")}</small>
+              {(() => {
+                if (!friend.motto_card_id) return null;
+                const fCard = cards?.find(c => String(c.id) === String(friend.motto_card_id) || c.uuid === String(friend.motto_card_id));
+                if (!fCard) return null;
+                return (
+                  <div
+                    style={{
+                      marginTop: 3,
+                      fontSize: "11px",
+                      fontStyle: "italic",
+                      color: "#684824",
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 4,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={`“${fCard.quote}” (${getCardScribe(fCard.scribe, lang)})`}
+                  >
+                    <span style={{ fontStyle: "normal", opacity: 0.85, fontSize: "11px" }}>📜</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>“{fCard.quote}”</span>
+                  </div>
+                );
+              })()}
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
               {onOpenTrade && (
@@ -5906,7 +6059,23 @@ function DailyPieceModal({
   );
 }
 
-function CardDetail({ card, count, onClose, lang = "cs" }: { card: Colophon; count: number; onClose: () => void; lang?: Language }) {
+function CardDetail({
+  card,
+  count,
+  onClose,
+  lang = "cs",
+  isFavoriteMotto = false,
+  onSetMotto,
+  onRemoveMotto,
+}: {
+  card: Colophon;
+  count: number;
+  onClose: () => void;
+  lang?: Language;
+  isFavoriteMotto?: boolean;
+  onSetMotto?: (cardId: string | number) => void;
+  onRemoveMotto?: () => void;
+}) {
   const title = getCardTitle(card, lang);
   const translation = getCardTranslation(card, lang);
   const rarityReason = getCardRarityReason(card, lang);
@@ -5940,6 +6109,75 @@ function CardDetail({ card, count, onClose, lang = "cs" }: { card: Colophon; cou
             {rarityReason && <div><dt>{lang === "en" ? "Rarity Note" : "Důvod rarity"}</dt><dd>{rarityReason}</dd></div>}
             <div><dt>{lang === "en" ? "Copies Owned" : "Vlastněných kopií"}</dt><dd><b>×{count}</b></dd></div>
           </dl>
+
+          {/* Akce: Osobní písařské motto / kolofon na profilu */}
+          {count > 0 ? (
+            <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px dashed rgba(60,36,21,0.25)" }}>
+              {isFavoriteMotto ? (
+                <button
+                  type="button"
+                  onClick={() => onRemoveMotto?.()}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "9px 12px",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    background: "linear-gradient(180deg, #2d5a27 0%, #1e3d1a 100%)",
+                    color: "#f4eedb",
+                    border: "1px solid #142811",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 5px rgba(0,0,0,0.18)",
+                    transition: "all 0.15s ease",
+                  }}
+                  title={lang === "en" ? "Click to remove this colophon as your motto" : "Klepnutím odeberete tento kolofon ze svého profilu"}
+                >
+                  <span>📜</span>
+                  <span>{lang === "en" ? "✓ Active Profile Motto (Click to remove)" : "✓ Váš aktivní osobní kolofon (Klepnutím odebrat)"}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSetMotto?.(card.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "9px 12px",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    background: "linear-gradient(180deg, #f7ecd5 0%, #ecd4a7 100%)",
+                    color: "#3c2415",
+                    border: "1.5px solid #a67c38",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 5px rgba(60,36,21,0.12)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "linear-gradient(180deg, #ecd4a7 0%, #deb878 100%)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "linear-gradient(180deg, #f7ecd5 0%, #ecd4a7 100%)";
+                  }}
+                  title={lang === "en" ? "Set this colophon as your personal motto on your profile" : "Nastaví tento kolofon jako vaše osobní motto na profilu"}
+                >
+                  <span>📜</span>
+                  <span>{lang === "en" ? "Set as Profile Motto / Colophon" : "Zvolit jako osobní kolofon na profilu"}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ marginTop: "12px", paddingTop: "10px", borderTop: "1px dashed rgba(60,36,21,0.2)", fontSize: "11.5px", color: "rgba(60,36,21,0.65)", fontStyle: "italic", textAlign: "center" }}>
+              {lang === "en" ? "Acquire this card to set its colophon as your profile motto." : "Získejte tuto kartu do sbírky, abyste si mohli její kolofon nastavit jako motto."}
+            </div>
+          )}
         </div>
       </section>
     </div>

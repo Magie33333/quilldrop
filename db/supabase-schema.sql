@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     username TEXT UNIQUE,
     display_name TEXT,
     avatar_id TEXT DEFAULT 'rabbit-scribe',
+    motto_card_id TEXT,
     role TEXT DEFAULT 'player' CHECK (role IN ('player', 'editor', 'reviewer', 'admin')),
     xp INT DEFAULT 0 NOT NULL,
     coins INT DEFAULT 0 NOT NULL,

@@ -832,3 +832,30 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Do manuálu přidána samostatná kapitola **„6. Tvorba a správa Výzev (Achievementů)“** a aktualizována sekce miniher.
 4. **Ověření:**
    - Produkční build Next.js proběhl s kódem 0 bez chyb.
+
+---
+
+## 📅 Záznam ze dne 24. 9. 2026 — Osobní písařské motto (vlastní kolofon na profilu hráče)
+
+**Cíl etapy:** Umožnit každému hráči kromě složených iluminací nastavit si také své osobní písařské motto (vlastní kolofon) z karet, které reálně získal do sbírky, a toto motto prezentovat na profilu i v seznamu kolegů ve skriptoriu.
+
+**Provedené úpravy:**
+1. **Databázové rozšíření a migrace (`db/migrations/09_add_profile_motto.sql`, `ALL_PENDING_MIGRATIONS.sql`, `db/supabase-schema.sql`):**
+   - Přidán sloupec `motto_card_id TEXT` do tabulky `public.profiles`.
+   - Zahrnuto do souhrnné migrace a hlavního schématu databáze.
+2. **Herní stav a synchronizace (`app/page.tsx`):**
+   - Do `GameState` i `UserProfile` přidáno `mottoCardId?: string | number | null`.
+   - Hodnota se automaticky ukládá do lokálního podepsaného stavu (`localStorage`) i do cloudu Supabase (`profiles.motto_card_id`).
+   - Seznam kolegů (`colleagues`) načítá `motto_card_id` v reálném čase.
+3. **Výběr motta v detailu karty (`CardDetail`):**
+   - Do modálu karty přibylo interaktivní pergamenové tlačítko:
+     - Pokud hráč kartu vlastní (`count > 0`), může stiskem **[ 📜 Zvolit jako osobní kolofon na profilu ]** nastavit kolofon jako své motto.
+     - Pokud je již karta vybrána, tlačítko má aktivní zelený stav **[ ✓ Váš aktivní osobní kolofon (Klepnutím odebrat) ]**.
+     - Pokud hráč kartu dosud nezískal (`count === 0`), zobrazí se jemné vysvětlení, že kartu je třeba nejprve získat.
+   - Výběr i odebrání doprovází autentický zvuk škrábání husího brku (`playQuillScratch`) a vizuální toast notifikace.
+4. **Zobrazení motta na profilu (`ProfileScreen`):**
+   - Na profilu hráče nahrazen statický citát dynamickým pergamenovým panelem:
+     - Zobrazuje latinský citát, překlad, jméno písaře, rok, lokalitu a signaturu rukopisu vybrané karty spolu s odznakem rarity a možností odebrání.
+     - Pokud hráč ještě žádný kolofon nezvolil, zobrazuje se výchozí tradiční písařský povzdech s tipem na výběr motta ve Sbírce.
+5. **Prezentace motta v seznamu spolužáků:**
+   - U kolegů ve skriptoriu se pod jménem a streaked zobrazuje jejich nastavené písařské motto s ikonou pergamenu, takže studenti vidí, jaké kolofony si jejich spolužáci vybrali.
