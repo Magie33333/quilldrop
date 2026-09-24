@@ -3312,9 +3312,6 @@ function PacksScreen({
           {standardCount > 0 && <span className="tier-count-pill">{standardCount}</span>}
           <strong>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</strong>
           <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
-          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.standard} gold` : `Cena u stacionáře: ${STATIONER_PRICES.standard} zlaťáků`}>
-            🪙 {STATIONER_PRICES.standard}
-          </span>
         </button>
 
         <button
@@ -3327,9 +3324,6 @@ function PacksScreen({
           {scholarCount > 0 && <span className="tier-count-pill">{scholarCount}</span>}
           <strong>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</strong>
           <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} available` : `${scholarCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
-          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.refined} gold` : `Cena u stacionáře: ${STATIONER_PRICES.refined} zlaťáků`}>
-            🪙 {STATIONER_PRICES.refined}
-          </span>
         </button>
 
         <button
@@ -3342,9 +3336,26 @@ function PacksScreen({
           {masterworkCount > 0 && <span className="tier-count-pill">{masterworkCount}</span>}
           <strong>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</strong>
           <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} available` : `${masterworkCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
-          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.masterwork} gold` : `Cena u stacionáře: ${STATIONER_PRICES.masterwork} zlaťáků`}>
-            🪙 {STATIONER_PRICES.masterwork}
-          </span>
+        </button>
+      </div>
+
+      {/* Rychlý přechod na trh stacionáře za zlaťáky */}
+      <div className="pack-stationer-shortcut-bar">
+        <span className="pack-stationer-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
+          <Gem size={13} color="#d4af37" />
+          <span>{lang === "en" ? "Purse:" : "V měšci:"}</span> <b>{state.coins}</b> {lang === "en" ? "gold" : "zlaťáků"}
+        </span>
+        <button
+          type="button"
+          className="pack-stationer-scroll-btn"
+          onClick={() => {
+            const el = document.getElementById("officina-stationarii");
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+          }}
+          title={lang === "en" ? "Purchase quires and codices with gold coins from the Stationer" : "Dokoupit další pecie a kodexy za zlaťáky v dílně stacionáře"}
+        >
+          <Store size={13} />
+          <span>{lang === "en" ? "Buy More Packs at Stationer ↓" : "Koupit další balíčky u stacionáře ↓"}</span>
         </button>
       </div>
 
@@ -3414,7 +3425,7 @@ function PacksScreen({
           <button
             className={`illuminated-button tier-${selectedTier}`}
             onClick={() => onOpen(selectedTier)}
-            style={{ width: "100%", maxWidth: "340px", justifyContent: "center" }}
+            style={{ width: "100%", maxWidth: "340px", justifyContent: "center", marginBottom: "8px" }}
           >
             {lang === "en" ? `Unseal ${qualityLabel(selectedTier, lang)} (5 cards)` : `Otevřít ${qualityLabel(selectedTier, lang)} (5 karet)`} <span>→</span>
           </button>
@@ -3484,7 +3495,7 @@ function PacksScreen({
       </section>
 
       {/* OFFICINA STATIONARII - Stacionářova dílna & trh rukopisů */}
-      <section className="stationer-market-card">
+      <section id="officina-stationarii" className="stationer-market-card">
         <div className="stationer-market-header">
           <div className="stationer-market-title-group">
             <div className="stationer-market-icon">
