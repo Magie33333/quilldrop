@@ -247,6 +247,22 @@ export const MAX_DAILY_PACKS = 3;
 export const MAX_DAILY_GAMES = 5;
 
 const today = () => getSecureDate();
+
+function getDailyPopupStorageKey(userId?: string): string {
+  const dateStr = today();
+  return userId ? `quilldrop_popup_seen_${userId}_${dateStr}` : `quilldrop_popup_seen_guest_${dateStr}`;
+}
+
+function hasSeenDailyPopupToday(userId?: string): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(getDailyPopupStorageKey(userId)) === "true";
+}
+
+function markDailyPopupSeenToday(userId?: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(getDailyPopupStorageKey(userId), "true");
+}
+
 const XP_PER_LEVEL = 100;
 const levelForXp = (xp: number) => Math.floor(xp / XP_PER_LEVEL) + 1;
 const qualityLabel = (quality: PackQuality, lang?: Language) => {
@@ -323,7 +339,7 @@ function loadState(userId?: string): GameState {
       completedQuestionsToday: Array.isArray(validatedData.completedQuestionsToday) ? validatedData.completedQuestionsToday : [],
       dailyTradedPartners: Array.isArray(validatedData.dailyTradedPartners) ? validatedData.dailyTradedPartners : [],
       hasSeenTutorial: validatedData.hasSeenTutorial !== undefined ? validatedData.hasSeenTutorial : (userId ? false : true),
-      lastDailyPopupDate: validatedData.lastDailyPopupDate || "",
+      lastDailyPopupDate: hasSeenDailyPopupToday(userId) ? today() : (validatedData.lastDailyPopupDate || ""),
     };
 
     // Pouze pro nepřihlášené návštěvníky doplňujeme ukázkové karty, pokud nemají žádné
@@ -429,11 +445,7 @@ export default function Home() {
   const [curioIndex, setCurioIndex] = useState(0);
 
   // Kolegové ve skriptoriu a P2P darování karet (Social Trading)
-  const [colleagues, setColleagues] = useState<any[]>([
-    { id: "demo-1", display_name: "Lucie z Klementina", username: "lucie.d", streak: 14, xp: 850, avatar_id: "urban-v" },
-    { id: "demo-2", display_name: "Bratr Jan (Vyšší Brod)", username: "frater.iohannes", streak: 9, xp: 620, avatar_id: "codex-gigas" },
-    { id: "demo-3", display_name: "Matouš ze Skriptoria", username: "matheus.scribe", streak: 5, xp: 340, avatar_id: "rabbit-scribe" },
-  ]);
+  const [colleagues, setColleagues] = useState<any[]>([]);
   const [pendingGifts, setPendingGifts] = useState<any[]>([]);
   const [giftModalTarget, setGiftModalTarget] = useState<any | null>(null);
   const [selectedGiftCardId, setSelectedGiftCardId] = useState<string>("");
@@ -441,36 +453,7 @@ export default function Home() {
   const [isSendingGift, setIsSendingGift] = useState(false);
 
   // P2P Vzájemná směna karet (Bilateral Card Trading)
-  const [pendingTrades, setPendingTrades] = useState<CardTrade[]>([
-    {
-      id: "demo-trade-1",
-      sender_id: "demo-1",
-      sender_name: "Lucie z Klementina",
-      recipient_id: "me",
-      recipient_name: "Vy",
-      sender_offer: [
-        {
-          card_id: COLOPHONS[2]?.id || "3",
-          title: COLOPHONS[2]?.title || "Iniciála sv. Jeronýma",
-          rarity: (COLOPHONS[2]?.rarity as Rarity) || "Rare",
-          count: 1,
-          imageUrl: COLOPHONS[2]?.imageUrl,
-        },
-      ],
-      recipient_request: [
-        {
-          card_id: COLOPHONS[0]?.id || "1",
-          title: COLOPHONS[0]?.title || "Pražský kodex písaře Václava",
-          rarity: (COLOPHONS[0]?.rarity as Rarity) || "Uncommon",
-          count: 1,
-          imageUrl: COLOPHONS[0]?.imageUrl,
-        },
-      ],
-      message: "Zdravím ze skriptoria! Chybí mi tento pražský kolofon. Rád ti za něj nabídnu tuto vzácnou iluminaci.",
-      status: "pending",
-      created_at: new Date().toISOString(),
-    },
-  ]);
+  const [pendingTrades, setPendingTrades] = useState<CardTrade[]>([]);
   const [activeTradeModal, setActiveTradeModal] = useState<{
     colleague: any;
     initialOffer?: TradeItem[];
@@ -481,6 +464,11 @@ export default function Home() {
   const [reviewTradeModal, setReviewTradeModal] = useState<CardTrade | null>(null);
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [showDailyPieceModal, setShowDailyPieceModal] = useState(false);
+  const [passwordModal, setPasswordModal] = useState<{ isOpen: boolean; isForced: boolean }>({
+    isOpen: false,
+    isForced: false,
+  });
+  const dismissedPasswordNoticeRef = useRef(false);
 
   // Jazyk rozhraní a karet (Čeština / English)
   const [lang, setLang] = useState<Language>(() => {
@@ -656,7 +644,7 @@ export default function Home() {
         avatarArt: profile?.avatar_id || local.avatarArt,
         collection: mergedCollection,
         hasSeenTutorial: local.hasSeenTutorial ?? false,
-        lastDailyPopupDate: local.lastDailyPopupDate || "",
+        lastDailyPopupDate: hasSeenDailyPopupToday(user.id) ? today() : (local.lastDailyPopupDate || ""),
       };
 
       setState(mergedState);
@@ -664,6 +652,47 @@ export default function Home() {
         const sig = computeStateSignature(mergedState, user.id);
         localStorage.setItem(`quilldrop-state-${user.id}`, JSON.stringify({ ...mergedState, _sig: sig }));
       }
+
+      // Načíst příchozí nevyřízené dary pro tohoto hráče
+      try {
+        const { data: gifts } = await supabase
+          .from("card_gifts")
+          .select("*")
+          .eq("recipient_id", user.id)
+          .eq("status", "pending");
+        setPendingGifts(gifts || []);
+      } catch {}
+
+      // Načíst příchozí návrhy směny pro tohoto hráče
+      try {
+        const { data: trades } = await supabase
+          .from("card_trades")
+          .select("*")
+          .eq("recipient_id", user.id)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+        setPendingTrades(trades || []);
+      } catch {}
+
+      // Načíst reálné kolegy z tabulky profiles
+      try {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, username, display_name, streak, xp, avatar_id, role")
+          .order("streak", { ascending: false })
+          .limit(30);
+        if (profs && profs.length > 0) {
+          const filtered = profs.filter((p: any) => p.id !== user.id);
+          filtered.sort((a: any, b: any) => {
+            if (a.role === "admin" && b.role !== "admin") return -1;
+            if (b.role === "admin" && a.role !== "admin") return 1;
+            return (b.xp || 0) - (a.xp || 0);
+          });
+          setColleagues(filtered);
+        } else {
+          setColleagues([]);
+        }
+      } catch {}
 
       // Pokud nový hráč ještě neviděl úvodní tutoriál, automaticky jej otevřeme
       if (!mergedState.hasSeenTutorial) {
@@ -684,6 +713,9 @@ export default function Home() {
           setCurrentUser(session.user);
           await loadUserData(session.user, cards);
           setShowAuthModal(false);
+          if (session.user.user_metadata?.must_change_password && !dismissedPasswordNoticeRef.current) {
+            setPasswordModal({ isOpen: true, isForced: true });
+          }
         } else {
           setShowAuthModal(true);
         }
@@ -702,9 +734,15 @@ export default function Home() {
         setCurrentUser(session.user);
         await loadUserData(session.user, cards);
         setShowAuthModal(false);
+        if (session.user.user_metadata?.must_change_password && !dismissedPasswordNoticeRef.current) {
+          setPasswordModal({ isOpen: true, isForced: true });
+        }
       } else {
         setCurrentUser(null);
         setCurrentProfile(null);
+        setColleagues([]);
+        setPendingTrades([]);
+        setPendingGifts([]);
         setShowAuthModal(true);
       }
     });
@@ -922,17 +960,9 @@ export default function Home() {
                 if (b.role === "admin" && a.role !== "admin") return 1;
                 return (b.xp || 0) - (a.xp || 0);
               });
-              const realIds = new Set(filtered.map((p: any) => p.id));
-              const demoFallbacks = [
-                { id: "demo-1", display_name: "Lucie z Klementina", username: "lucie.d", streak: 14, xp: 850, avatar_id: "urban-v", role: "demo" },
-                { id: "demo-2", display_name: "Bratr Jan (Vyšší Brod)", username: "frater.iohannes", streak: 9, xp: 620, avatar_id: "codex-gigas", role: "demo" },
-                { id: "demo-3", display_name: "Matouš ze Skriptoria", username: "matheus.scribe", streak: 5, xp: 340, avatar_id: "rabbit-scribe", role: "demo" },
-              ];
-              const combined = [
-                ...filtered,
-                ...demoFallbacks.filter((d) => !realIds.has(d.id)),
-              ];
-              setColleagues(combined);
+              setColleagues(filtered);
+            } else {
+              setColleagues([]);
             }
           } catch {}
         }
@@ -1032,12 +1062,16 @@ export default function Home() {
     }
   }, [state, ready, currentUser, cards]);
 
-  // Automatické zobrazení denního pop-up okna při prvním přihlášení / návštěvě daného dne
+  // Automatické zobrazení denního pop-up okna při prvním přihlášení / vstupu daného dne (pouze 1x denně na uživatele)
   useEffect(() => {
-    if (ready && !showTutorialModal && state.lastDailyPopupDate !== today()) {
+    if (!ready || authChecking || showAuthModal || showTutorialModal || passwordModal.isOpen) return;
+    const userId = currentUser?.id;
+    if (!hasSeenDailyPopupToday(userId) && state.lastDailyPopupDate !== today()) {
+      markDailyPopupSeenToday(userId);
+      setState(prev => ({ ...prev, lastDailyPopupDate: today() }));
       setShowDailyPieceModal(true);
     }
-  }, [ready, showTutorialModal, state.lastDailyPopupDate]);
+  }, [ready, authChecking, showAuthModal, showTutorialModal, passwordModal.isOpen, currentUser, state.lastDailyPopupDate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1061,7 +1095,11 @@ export default function Home() {
         setCurrentUser(data.user);
         await loadUserData(data.user, cards);
         setShowAuthModal(false);
-        setToast(lang === "en" ? "Welcome back to the scriptorium!" : "Vítejte zpět ve skriptoriu!");
+        if (data.user.user_metadata?.must_change_password && !dismissedPasswordNoticeRef.current) {
+          setPasswordModal({ isOpen: true, isForced: true });
+        } else {
+          setToast(lang === "en" ? "Welcome back to the scriptorium!" : "Vítejte zpět ve skriptoriu!");
+        }
       }
     } catch (err: any) {
       setAuthError(err.message || (lang === "en" ? "Sign in failed." : "Přihlášení se nezdařilo."));
@@ -1146,6 +1184,9 @@ export default function Home() {
     await supabase.auth.signOut();
     setCurrentUser(null);
     setCurrentProfile(null);
+    setColleagues([]);
+    setPendingTrades([]);
+    setPendingGifts([]);
     setShowAuthModal(true);
     setToast(lang === "en" ? "You have been signed out of Quilldrop." : "Byli jste odhlášeni z Quilldrop.");
   };
@@ -1462,6 +1503,7 @@ export default function Home() {
   const handleCloseDailyPieceModal = () => {
     playParchmentFlip(0.25);
     setShowDailyPieceModal(false);
+    markDailyPopupSeenToday(currentUser?.id);
     setState(prev => {
       const updated: GameState = {
         ...prev,
@@ -1469,12 +1511,14 @@ export default function Home() {
       };
       if (currentUser) {
         if (typeof window !== "undefined") {
-          localStorage.setItem(`quilldrop-state-${currentUser.id}`, JSON.stringify(updated));
+          const sig = computeStateSignature(updated, currentUser.id);
+          localStorage.setItem(`quilldrop-state-${currentUser.id}`, JSON.stringify({ ...updated, _sig: sig }));
         }
         syncToSupabase(currentUser.id, updated, cards);
       } else {
         if (typeof window !== "undefined") {
-          localStorage.setItem("quilldrop-state", JSON.stringify(updated));
+          const sig = computeStateSignature(updated);
+          localStorage.setItem("quilldrop-state", JSON.stringify({ ...updated, _sig: sig }));
         }
       }
       return updated;
@@ -1838,7 +1882,9 @@ export default function Home() {
       return updated;
     });
     setShowTutorialModal(false);
-    if (state.lastDailyPopupDate !== today()) {
+    if (!hasSeenDailyPopupToday(currentUser?.id) && state.lastDailyPopupDate !== today()) {
+      markDailyPopupSeenToday(currentUser?.id);
+      setState(prev => ({ ...prev, lastDailyPopupDate: today() }));
       setShowDailyPieceModal(true);
     }
     setTab("packs");
@@ -1913,6 +1959,7 @@ export default function Home() {
               pendingTrades={pendingTrades}
               onOpenAuth={() => { setAuthMode("login"); setAuthError(""); setAuthSuccessMsg(""); setShowAuthModal(true); }}
               onLogout={handleLogout}
+              onChangePassword={() => setPasswordModal({ isOpen: true, isForced: false })}
               onReset={resetDemo}
               onAdvanceDay={handleAdvanceDay}
               onBreakStreak={handleBreakStreak}
@@ -2147,7 +2194,11 @@ export default function Home() {
             isOpen={showTutorialModal}
             onClose={() => {
               setShowTutorialModal(false);
-              if (state.lastDailyPopupDate !== today()) setShowDailyPieceModal(true);
+              if (!hasSeenDailyPopupToday(currentUser?.id) && state.lastDailyPopupDate !== today()) {
+                markDailyPopupSeenToday(currentUser?.id);
+                setState(prev => ({ ...prev, lastDailyPopupDate: today() }));
+                setShowDailyPieceModal(true);
+              }
             }}
             onFinish={handleFinishTutorial}
             lang={lang}
@@ -2181,6 +2232,21 @@ export default function Home() {
             onGoogle={handleGoogleSignIn}
             lang={lang}
             onSetLang={handleSetLang}
+          />
+        )}
+        {passwordModal.isOpen && (
+          <ChangePasswordModal
+            isOpen={passwordModal.isOpen}
+            isForced={passwordModal.isForced}
+            onClose={() => {
+              dismissedPasswordNoticeRef.current = true;
+              setPasswordModal({ isOpen: false, isForced: false });
+            }}
+            lang={lang}
+            onPasswordChanged={() => {
+              dismissedPasswordNoticeRef.current = true;
+              setToast(lang === "en" ? "Password changed successfully!" : "Heslo bylo úspěšně změněno!");
+            }}
           />
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
@@ -3454,6 +3520,7 @@ function ProfileScreen({
   pendingTrades = [],
   onOpenAuth,
   onLogout,
+  onChangePassword,
   onReset,
   onAdvanceDay,
   onBreakStreak,
@@ -3480,6 +3547,7 @@ function ProfileScreen({
   pendingTrades?: CardTrade[];
   onOpenAuth: () => void;
   onLogout: () => void;
+  onChangePassword?: () => void;
   onReset: () => void;
   onAdvanceDay: () => void;
   onBreakStreak: () => void;
@@ -3697,7 +3765,21 @@ function ProfileScreen({
               <ExternalLink size={13} /> {lang === "en" ? "Enter Studio" : "Vstoupit do Studia"}
             </a>
           ) : <span />}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {onChangePassword && (
+              <button
+                type="button"
+                className="profile-logout-btn"
+                onClick={onChangePassword}
+                style={{
+                  background: "#faeed5",
+                  borderColor: "#c9b48c",
+                  color: "#8b2500",
+                }}
+              >
+                <KeyRound size={13} /> {lang === "en" ? "Change Password" : "Změnit heslo"}
+              </button>
+            )}
             <button type="button" className="profile-logout-btn" onClick={onLogout}>
               <LogOut size={13} /> {lang === "en" ? "Log Out" : "Odhlásit se"}
             </button>
@@ -3992,7 +4074,9 @@ function ProfileScreen({
     <div className="friends">
       {filteredColleagues.length === 0 ? (
         <div style={{ textAlign: "center", padding: "16px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
-          {lang === "en" ? `No fellow scribe found matching "${colleagueQuery}".` : `Nenalezen žádný kolega odpovídající hledání „${colleagueQuery}“`}
+          {colleagueQuery.trim()
+            ? (lang === "en" ? `No fellow scribe found matching "${colleagueQuery}".` : `Nenalezen žádný kolega odpovídající hledání „${colleagueQuery}“.`)
+            : (lang === "en" ? "Zatím se do skriptoria nezaregistrovali žádní další kolegové. Pozvěte spolužáky a kolegy ke směně kolofonů!" : "Zatím se do skriptoria nezaregistrovali žádní další kolegové. Pozvěte spolužáky a kolegy ke směně kolofonů!")}
         </div>
       ) : (
         filteredColleagues.map((friend) => (
@@ -4021,13 +4105,9 @@ function ProfileScreen({
                   <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
                     {lang === "en" ? "👑 Master of Scriptorium (Admin)" : "👑 Mistr skriptoria (Admin)"}
                   </span>
-                ) : !friend.id?.startsWith("demo-") ? (
+                ) : (
                   <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.15)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
                     {lang === "en" ? "✦ Seminar Colleague" : "✦ Kolega ze semináře"}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: 4, background: "rgba(0,0,0,0.05)", border: "1px solid #ccc", color: "#777" }}>
-                    {lang === "en" ? "Practice Scribe" : "Cvičný písař"}
                   </span>
                 )}
               </div>
@@ -5404,6 +5484,224 @@ function OnboardingTutorialModal({
             </button>
           </div>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function ChangePasswordModal({
+  isOpen,
+  isForced,
+  onClose,
+  lang = "cs",
+  onPasswordChanged,
+}: {
+  isOpen: boolean;
+  isForced: boolean;
+  onClose: () => void;
+  lang?: Language;
+  onPasswordChanged: () => void;
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!newPassword || newPassword.length < 6) {
+      setError(
+        lang === "en"
+          ? "Password must be at least 6 characters long."
+          : "Heslo musí mít alespoň 6 znaků."
+      );
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError(
+        lang === "en"
+          ? "Passwords do not match."
+          : "Zadaná hesla se neshodují."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+        data: {
+          must_change_password: false,
+        },
+      });
+
+      if (updateError) {
+        setError(updateError.message);
+      } else {
+        onPasswordChanged();
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err?.message || (lang === "en" ? "Failed to update password." : "Změna hesla se nezdařila."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-overlay">
+      <section className="auth-box" role="dialog" aria-modal="true" style={{ maxWidth: 420 }}>
+        {!isForced && (
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "#6e4b1b",
+            }}
+            aria-label={lang === "en" ? "Close" : "Zavřít"}
+          >
+            <X size={18} />
+          </button>
+        )}
+
+        <div className="auth-box-seal" style={{ fontSize: 28 }}>
+          🔑
+        </div>
+
+        <h2>
+          {isForced
+            ? (lang === "en" ? "Set Your Personal Password" : "Zvolte si své osobní heslo")
+            : (lang === "en" ? "Change Account Password" : "Změna hesla k účtu")}
+        </h2>
+
+        {isForced ? (
+          <div
+            style={{
+              background: "rgba(212,175,55,0.2)",
+              border: "1px solid #c9a030",
+              borderRadius: 8,
+              padding: "10px 12px",
+              margin: "12px 0 16px",
+              fontSize: "12px",
+              color: "#68440c",
+              textAlign: "left",
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>{lang === "en" ? "🛡️ Initial Sign-in Notice" : "🛡️ První přihlášení do skriptoria"}</strong>
+            <p style={{ margin: "4px 0 0" }}>
+              {lang === "en"
+                ? "The Master of the Scriptorium assigned you a temporary password. For safety, please set your personal secret password now."
+                : "Mistr skriptoria vám přidělil účet s výchozím heslem. Z bezpečnostních důvodů si prosím nyní nastavte své vlastní osobní heslo."}
+            </p>
+          </div>
+        ) : (
+          <p style={{ marginBottom: 14 }}>
+            {lang === "en"
+              ? "Choose a strong new password for your scribe account (minimum 6 characters)."
+              : "Zadejte nové bezpečné heslo pro svůj písařský účet (minimálně 6 znaků)."}
+          </p>
+        )}
+
+        {error && (
+          <div className="auth-error-msg" role="alert" style={{ marginBottom: 12 }}>
+            <AlertCircle size={15} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="auth-form" style={{ textAlign: "left" }}>
+          <label>
+            <span>{lang === "en" ? "New Password" : "Nové heslo"}</span>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
+          </label>
+
+          <label>
+            <span>{lang === "en" ? "Confirm New Password" : "Potvrzení nového hesla"}</span>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
+          </label>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              margin: "6px 0 16px",
+              fontSize: "12px",
+              color: "#5a3c1e",
+              cursor: "pointer",
+            }}
+            onClick={() => setShowPassword(p => !p)}
+          >
+            <input
+              type="checkbox"
+              checked={showPassword}
+              onChange={(e) => setShowPassword(e.target.checked)}
+              style={{ cursor: "pointer" }}
+            />
+            <span>{lang === "en" ? "Show password text" : "Zobrazit text hesla"}</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+              style={{ flex: 1, padding: "10px 14px", fontWeight: 700 }}
+            >
+              {loading
+                ? (lang === "en" ? "Saving..." : "Ukládám...")
+                : (lang === "en" ? "Save Password" : "Uložit nové heslo")}
+            </button>
+            {isForced ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost"
+                style={{ fontSize: "11px", padding: "8px 10px", color: "#7a5528" }}
+              >
+                {lang === "en" ? "Remind later" : "Změnit později"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost"
+                style={{ fontSize: "11px", padding: "8px 10px", color: "#7a5528" }}
+              >
+                {lang === "en" ? "Cancel" : "Zrušit"}
+              </button>
+            )}
+          </div>
+        </form>
       </section>
     </div>
   );

@@ -1358,6 +1358,7 @@ export default function AdminPage() {
             username: generateSafeUsername(cleanName, cleanEmail),
             full_name: cleanName,
             display_name: cleanName,
+            must_change_password: true,
           },
           emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/admin" : undefined,
         },
