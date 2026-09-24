@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import {
@@ -5556,31 +5556,35 @@ function ChangePasswordModal({
 
   return (
     <div className="auth-overlay">
-      <section className="auth-box" role="dialog" aria-modal="true" style={{ maxWidth: 420 }}>
-        {!isForced && (
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "#6e4b1b",
-            }}
-            aria-label={lang === "en" ? "Close" : "Zavřít"}
-          >
-            <X size={18} />
-          </button>
-        )}
+      <section className="auth-box" role="dialog" aria-modal="true" style={{ maxWidth: 430, padding: "26px 22px" }}>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "rgba(0, 0, 0, 0.05)",
+            border: "1px solid rgba(139, 37, 0, 0.15)",
+            cursor: "pointer",
+            display: "grid",
+            placeItems: "center",
+            color: "#6e4b1b",
+            transition: "all 0.2s ease",
+          }}
+          aria-label={lang === "en" ? "Close" : "Zavřít"}
+        >
+          <X size={16} />
+        </button>
 
-        <div className="auth-box-seal" style={{ fontSize: 28 }}>
+        <div className="auth-box-seal" style={{ fontSize: 28, marginBottom: 10 }}>
           🔑
         </div>
 
-        <h2>
+        <h2 style={{ fontSize: "20px", margin: "0 0 6px" }}>
           {isForced
             ? (lang === "en" ? "Set Your Personal Password" : "Zvolte si své osobní heslo")
             : (lang === "en" ? "Change Account Password" : "Změna hesla k účtu")}
@@ -5589,26 +5593,28 @@ function ChangePasswordModal({
         {isForced ? (
           <div
             style={{
-              background: "rgba(212,175,55,0.2)",
+              background: "rgba(212, 175, 55, 0.18)",
               border: "1px solid #c9a030",
               borderRadius: 8,
-              padding: "10px 12px",
-              margin: "12px 0 16px",
+              padding: "10px 14px",
+              margin: "10px 0 16px",
               fontSize: "12px",
-              color: "#68440c",
+              color: "#5e3a09",
               textAlign: "left",
               lineHeight: 1.45,
             }}
           >
-            <strong>{lang === "en" ? "🛡️ Initial Sign-in Notice" : "🛡️ První přihlášení do skriptoria"}</strong>
-            <p style={{ margin: "4px 0 0" }}>
+            <strong style={{ display: "flex", alignItems: "center", gap: 5, color: "#8a6008", marginBottom: 3 }}>
+              🛡️ {lang === "en" ? "Initial Sign-in Notice" : "První přihlášení do skriptoria"}
+            </strong>
+            <p style={{ margin: "2px 0 0" }}>
               {lang === "en"
-                ? "The Master of the Scriptorium assigned you a temporary password. For safety, please set your personal secret password now."
-                : "Mistr skriptoria vám přidělil účet s výchozím heslem. Z bezpečnostních důvodů si prosím nyní nastavte své vlastní osobní heslo."}
+                ? "The Master of the Scriptorium assigned you a temporary password. Please set your personal secret password now."
+                : "Mistr skriptoria vám přidělil účet s výchozím heslem. Z bezpečnostních důvodů si prosím nastavte své vlastní osobní heslo."}
             </p>
           </div>
         ) : (
-          <p style={{ marginBottom: 14 }}>
+          <p style={{ margin: "0 0 16px", fontSize: "12px", color: "#5a3c1e", lineHeight: 1.4 }}>
             {lang === "en"
               ? "Choose a strong new password for your scribe account (minimum 6 characters)."
               : "Zadejte nové bezpečné heslo pro svůj písařský účet (minimálně 6 znaků)."}
@@ -5616,90 +5622,128 @@ function ChangePasswordModal({
         )}
 
         {error && (
-          <div className="auth-error-msg" role="alert" style={{ marginBottom: 12 }}>
-            <AlertCircle size={15} />
+          <div className="auth-error" role="alert" style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="auth-form" style={{ textAlign: "left" }}>
-          <label>
-            <span>{lang === "en" ? "New Password" : "Nové heslo"}</span>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              autoComplete="new-password"
-            />
-          </label>
-
-          <label>
-            <span>{lang === "en" ? "Confirm New Password" : "Potvrzení nového hesla"}</span>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              autoComplete="new-password"
-            />
-          </label>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              margin: "6px 0 16px",
-              fontSize: "12px",
-              color: "#5a3c1e",
-              cursor: "pointer",
-            }}
-            onClick={() => setShowPassword(p => !p)}
-          >
-            <input
-              type="checkbox"
-              checked={showPassword}
-              onChange={(e) => setShowPassword(e.target.checked)}
-              style={{ cursor: "pointer" }}
-            />
-            <span>{lang === "en" ? "Show password text" : "Zobrazit text hesla"}</span>
+        <form onSubmit={handleSubmit} className="auth-form" style={{ gap: 14, textAlign: "left" }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <label style={{ margin: 0, fontSize: "11px", fontWeight: 800, color: "var(--brown)", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                {lang === "en" ? "New Password" : "Nové heslo"}
+              </label>
+              <span style={{ fontSize: "10.5px", color: "#8a6008", fontWeight: 600 }}>
+                {lang === "en" ? "min. 6 chars" : "min. 6 znaků"}
+              </span>
+            </div>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                className="auth-input"
+                style={{ paddingRight: 40, height: 42, fontSize: "14px" }}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                tabIndex={-1}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  color: "#8a5a22",
+                  cursor: "pointer",
+                  padding: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title={showPassword ? (lang === "en" ? "Hide password" : "Skrýt heslo") : (lang === "en" ? "Show password" : "Zobrazit heslo")}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <div>
+            <label style={{ display: "block", marginBottom: 4, fontSize: "11px", fontWeight: 800, color: "var(--brown)", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+              {lang === "en" ? "Confirm New Password" : "Potvrzení nového hesla"}
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                className="auth-input"
+                style={{ paddingRight: 40, height: 42, fontSize: "14px" }}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
+            </div>
+            {confirmPassword.length > 0 && (
+              <div style={{ marginTop: 5, fontSize: "11px", display: "flex", alignItems: "center", gap: 5, color: newPassword === confirmPassword ? "#15803d" : "#b91c1c", fontWeight: 600 }}>
+                {newPassword === confirmPassword ? (
+                  <><CheckCircle2 size={13} /> {lang === "en" ? "Passwords match" : "Hesla se shodují"}</>
+                ) : (
+                  <><AlertCircle size={13} /> {lang === "en" ? "Passwords do not match yet" : "Hesla se zatím neshodují"}</>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary"
-              style={{ flex: 1, padding: "10px 14px", fontWeight: 700 }}
+              className="auth-submit-btn"
+              style={{
+                height: 42,
+                fontSize: "13px",
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
             >
+              <KeyRound size={15} />
               {loading
-                ? (lang === "en" ? "Saving..." : "Ukládám...")
-                : (lang === "en" ? "Save Password" : "Uložit nové heslo")}
+                ? (lang === "en" ? "Saving..." : "Ukládám nové heslo...")
+                : (lang === "en" ? "Save New Password" : "Uložit nové heslo")}
             </button>
-            {isForced ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-ghost"
-                style={{ fontSize: "11px", padding: "8px 10px", color: "#7a5528" }}
-              >
-                {lang === "en" ? "Remind later" : "Změnit později"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-ghost"
-                style={{ fontSize: "11px", padding: "8px 10px", color: "#7a5528" }}
-              >
-                {lang === "en" ? "Cancel" : "Zrušit"}
-              </button>
-            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: "100%",
+                padding: "8px 14px",
+                background: "rgba(255, 255, 255, 0.4)",
+                border: "1px dashed #bba37f",
+                borderRadius: "6px",
+                color: "#6e4b1b",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {isForced
+                ? (lang === "en" ? "Remind me later" : "Změnit později")
+                : (lang === "en" ? "Cancel" : "Zrušit")}
+            </button>
           </div>
         </form>
       </section>
