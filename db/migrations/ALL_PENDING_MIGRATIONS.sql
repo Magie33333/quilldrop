@@ -153,3 +153,35 @@ DROP POLICY IF EXISTS "Hráč upravuje svou sbírku karet" ON public.user_cards;
 CREATE POLICY "Hráč čte svou sbírku karet" ON public.user_cards FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Hráč upravuje svou sbírku karet" ON public.user_cards FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+-- 7. OPRÁVNĚNÍ PRO POSTGREST DATA API (Kompatibilita s novými pravidly Supabase od 30. října)
+-- Základní oprávnění čtení pro nepřihlášené návštěvníky
+GRANT SELECT ON public.manuscripts TO anon;
+GRANT SELECT ON public.colophons TO anon;
+GRANT SELECT ON public.cards TO anon;
+GRANT SELECT ON public.game_questions TO anon;
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT ON public.card_gifts TO anon;
+GRANT SELECT ON public.card_trades TO anon;
+
+-- Plná oprávnění pro přihlášené uživatele (zabezpečení a filtrování řádků řídí RLS)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.manuscripts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.colophons TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cards TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.game_questions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_cards TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.card_gifts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.card_trades TO authenticated;
+
+-- Plná oprávnění pro service_role (administrace a backend)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
+
+-- Výchozí oprávnění pro jakékoliv budoucí tabulky ve schématu public
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+

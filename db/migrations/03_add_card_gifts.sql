@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- Migrace 03: card_gifts (P2P Darování a výměna duplikátů mezi studenty)
 -- ==============================================================================
 
@@ -23,3 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_card_gifts_sender ON public.card_gifts(sender_id)
 -- Povolení RLS a veřejná politika pro čtení a správu darů v rámci hry
 ALTER TABLE public.card_gifts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Veřejná správa darů mezi studenty" ON public.card_gifts FOR ALL USING (true);
+
+-- Oprávnění pro Data API (Supabase / PostgREST)
+GRANT SELECT ON public.card_gifts TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.card_gifts TO authenticated;
+GRANT ALL ON public.card_gifts TO service_role;

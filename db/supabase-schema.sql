@@ -173,3 +173,33 @@ CREATE POLICY "Úpravy profilů v dev" ON public.profiles FOR ALL USING (true);
 
 CREATE POLICY "Hráč čte svou sbírku karet" ON public.user_cards FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Hráč upravuje svou sbírku karet" ON public.user_cards FOR ALL USING (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- OPRÁVNĚNÍ PRO POSTGREST DATA API (Zabezpečení pro změny od 30. října)
+-- ------------------------------------------------------------------------------
+-- Základní oprávnění pro anonymní návštěvníky (čtení veřejného obsahu)
+GRANT SELECT ON public.manuscripts TO anon;
+GRANT SELECT ON public.colophons TO anon;
+GRANT SELECT ON public.cards TO anon;
+GRANT SELECT ON public.game_questions TO anon;
+GRANT SELECT ON public.profiles TO anon;
+
+-- Plná oprávnění pro přihlášené uživatele (přístup k řádkům řídí RLS politiky)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.manuscripts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.colophons TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cards TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.game_questions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_cards TO authenticated;
+
+-- Plná oprávnění pro service_role (administrace a backend)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
+
+-- Výchozí oprávnění pro jakékoliv budoucí tabulky ve schématu public
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;

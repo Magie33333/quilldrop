@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- Migrace 05: card_trades (P2P Obchodování a smlouvy o směně kolofonů)
 -- ==============================================================================
 
@@ -23,3 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_card_trades_sender ON public.card_trades(sender_i
 ALTER TABLE public.card_trades ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Veřejná správa obchodů mezi studenty" ON public.card_trades;
 CREATE POLICY "Veřejná správa obchodů mezi studenty" ON public.card_trades FOR ALL USING (true);
+
+-- Oprávnění pro Data API (Supabase / PostgREST)
+GRANT SELECT ON public.card_trades TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.card_trades TO authenticated;
+GRANT ALL ON public.card_trades TO service_role;
