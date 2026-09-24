@@ -893,4 +893,9 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Vyřešena příčina nezobrazování spolužáků: Pokud v Supabase ještě nebyl spuštěn SQL skript přidávající sloupec `motto_card_id`, dotaz na databázi nehavaruje, nýbrž automaticky a transparentně použije fallback dotaz bez tohoto sloupce.
    - Hráči (např. *Alžběta Langfelnerová*, *Monika Syslová*) se nyní okamžitě načítají v žebříčku.
    - Do `ALL_PENDING_MIGRATIONS.sql` přidána politika `Veřejné čtení sbírky karet` na `user_cards`, aby bylo možné při prohlížení profilu tovaryšů vidět počty jejich unikátních karet.
+5. **Drobné úpravy terminologie, mozaiky a zlaťáků:**
+   - Nadpis žebříčku zjednodušen na čistý **Žebříček písařů** (odstraněno nadbytečné „& Kolegové“).
+   - Opraveno počítadlo dílků mozaiky v žebříčku i profilu z chybného `/9` na správné `/16` odpovídající 16dennímu cyklu iluminací (4×4).
+   - Zlaťáky z pokladnice přidány přímo do horní lišty `StatusBar` (s ikonou drahokamu) a jako 4. statistická dlaždice na profilu hráče.
+
 

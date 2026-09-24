@@ -2427,6 +2427,7 @@ function StatusBar({
       <div className="stats">
         <span title={lang === "en" ? "Daily streak without interruption" : "Dní v řadě bez přerušení"} aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
         <span title={lang === "en" ? "16-day illumination" : "16denní iluminace"} aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
+        <span title={lang === "en" ? "Guild Treasury: Gold coins" : "Cechovní pokladnice: Zlaťáky v měšci"} aria-label={`${state.coins} gold coins`}><Gem size={14} color="#d4af37" /> <b>{state.coins}</b></span>
         <span title={lang === "en" ? "Experience Points (XP)" : "Zkušenostní body (XP)"} aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
         {onToggleSound && (
           <button
@@ -4183,6 +4184,7 @@ function ProfileScreen({
       <div><strong>{uniqueOwned}</strong><span>{lang === "en" ? "unique" : "unikátních"}</span></div>
       <div><strong>{state.streak}</strong><span>{lang === "en" ? "day streak" : "dní v řadě"}</span></div>
       <div><strong>{duplicates}</strong><span>{lang === "en" ? "duplicates" : "duplikátů"}</span></div>
+      <div><strong style={{ color: "#9a6508" }}>{state.coins || 0}</strong><span>{lang === "en" ? "gold coins" : "zlatých v měšci"}</span></div>
     </div>
 
     <div className="section-title gallery-title">
@@ -4360,7 +4362,7 @@ function ProfileScreen({
       <div>
         <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span>🏆</span>
-          <span>{lang === "en" ? `Scriptorium Leaderboard & Fellows (${rankedPlayers.length})` : `Žebříček písařů & Kolegové (${rankedPlayers.length})`}</span>
+          <span>{lang === "en" ? `Scriptorium Leaderboard (${rankedPlayers.length})` : `Žebříček písařů (${rankedPlayers.length})`}</span>
         </h2>
         <div style={{ fontSize: "11px", color: "#8a6538", fontStyle: "italic", marginTop: 2 }}>
           {lang === "en"
@@ -4611,8 +4613,8 @@ function ProfileScreen({
                     🔥 {player.streak || 1} {lang === "en" ? "days" : "dní"}
                   </span>
                   <span>·</span>
-                  <span title={lang === "en" ? "Illumination Mosaic progress" : "Složeno dílků mozaiky"}>
-                    🧩 {player.puzzle_progress || 0}/9
+                  <span title={lang === "en" ? `${player.puzzle_progress || 0} of 16 illumination mosaic pieces revealed` : `Mozaika: ${player.puzzle_progress || 0} ze 16 dílků odhaleno`}>
+                    🧩 {player.puzzle_progress || 0}/16
                   </span>
                 </div>
 
@@ -6879,7 +6881,7 @@ function PlayerProfileModal({
               🧩 {lang === "en" ? "Mosaic Pieces" : "Dílky mozaiky"}
             </div>
             <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
-              {player.puzzle_progress || 0} / 9
+              {player.puzzle_progress || 0} / 16
             </div>
           </div>
 
