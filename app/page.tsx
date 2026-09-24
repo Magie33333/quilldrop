@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Search, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Search, Send, Smile, Sparkles, Store, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import {
@@ -64,6 +64,7 @@ import {
   playQuillScratch,
   playTriumphFanfare,
   playSoftClick,
+  playCoinClink,
 } from "./audio";
 import {
   type TrophyItem,
@@ -164,6 +165,12 @@ type GameState = {
   completedQuestionsToday?: string[];
   dailyTradedPartners?: string[];
   bonusPacks: PackQuality[];
+  dailyMarketPurchases?: {
+    date: string;
+    standard: number;
+    refined: number;
+    masterwork: number;
+  };
   lastLoginDate: string;
   gallery: string[];
   avatarArt: string | null;
@@ -205,6 +212,7 @@ const INITIAL_STATE: GameState = {
   completedQuestionsToday: [],
   dailyTradedPartners: [],
   bonusPacks: [],
+  dailyMarketPurchases: { date: "", standard: 0, refined: 0, masterwork: 0 },
   lastLoginDate: "",
   gallery: [],
   avatarArt: null,
@@ -230,6 +238,7 @@ const EMPTY_PLAYER_STATE: GameState = {
   completedQuestionsToday: [],
   dailyTradedPartners: [],
   bonusPacks: [],
+  dailyMarketPurchases: { date: "", standard: 0, refined: 0, masterwork: 0 },
   lastLoginDate: "",
   gallery: [],
   avatarArt: null,
@@ -266,8 +275,25 @@ function markDailyPopupSeenToday(userId?: string) {
   localStorage.setItem(getDailyPopupStorageKey(userId), "true");
 }
 
+export {
+  xpNeededForNextLevel,
+  levelForXp,
+  getLevelProgress,
+  getTitleForLevel,
+  STATIONER_PRICES,
+  getDailyStationerStock,
+} from "./levels";
+import {
+  xpNeededForNextLevel,
+  levelForXp,
+  getLevelProgress,
+  getTitleForLevel,
+  STATIONER_PRICES,
+  getDailyStationerStock,
+} from "./levels";
+
 const XP_PER_LEVEL = 100;
-const levelForXp = (xp: number) => Math.floor(xp / XP_PER_LEVEL) + 1;
+const levelForXpLegacy = (xp: number) => levelForXp(xp);
 const qualityLabel = (quality: PackQuality, lang?: Language) => {
   if (lang === "en") {
     if (quality === "masterwork") return "Masterwork Pack";
@@ -336,6 +362,14 @@ function loadState(userId?: string): GameState {
         ? sanitizeCollection(saved.collection, COLOPHONS)
         : (userId ? {} : { ...INITIAL_STATE.collection }),
       bonusPacks: Array.isArray(validatedData.bonusPacks) ? validatedData.bonusPacks : [],
+      dailyMarketPurchases: (validatedData.dailyMarketPurchases && typeof validatedData.dailyMarketPurchases === "object")
+        ? {
+            date: String(validatedData.dailyMarketPurchases.date || ""),
+            standard: Number(validatedData.dailyMarketPurchases.standard) || 0,
+            refined: Number(validatedData.dailyMarketPurchases.refined) || 0,
+            masterwork: Number(validatedData.dailyMarketPurchases.masterwork) || 0,
+          }
+        : { date: "", standard: 0, refined: 0, masterwork: 0 },
       gallery: Array.isArray(validatedData.gallery) ? validatedData.gallery : [],
       mottoCardId: validatedData.mottoCardId !== undefined ? validatedData.mottoCardId : baseTemplate.mottoCardId,
       trophyTimestamps: validatedData.trophyTimestamps || (userId ? {} : { "first-spark": new Date().toISOString() }),
@@ -359,8 +393,23 @@ function loadState(userId?: string): GameState {
     const isNewDay = base.lastPlayed !== todayStr && !isClockRollback;
 
     const dailyReset: GameState = isNewDay
-      ? { ...base, packsOpened: 0, gamesPlayed: 0, dailyGamesHistory: [], completedQuestionsToday: [], dailyTradedPartners: [], bonusPacks: [], lastPlayed: todayStr }
-      : base;
+      ? {
+          ...base,
+          packsOpened: 0,
+          gamesPlayed: 0,
+          dailyGamesHistory: [],
+          completedQuestionsToday: [],
+          dailyTradedPartners: [],
+          bonusPacks: base.bonusPacks || [],
+          dailyMarketPurchases: { date: todayStr, standard: 0, refined: 0, masterwork: 0 },
+          lastPlayed: todayStr,
+        }
+      : {
+          ...base,
+          dailyMarketPurchases: base.dailyMarketPurchases?.date === todayStr
+            ? base.dailyMarketPurchases
+            : { date: todayStr, standard: 0, refined: 0, masterwork: 0 },
+        };
 
     // Pokud byl detekován rollback nebo se uživatel již dnes přihlásil, streak neměníme
     if (isClockRollback || dailyReset.lastLoginDate === todayStr) {
@@ -1459,6 +1508,55 @@ export default function Home() {
     }
   };
 
+  const handleBuyFromStationer = (tier: PackQuality) => {
+    const price = STATIONER_PRICES[tier];
+    if (state.coins < price) {
+      setToast(
+        lang === "en"
+          ? `Not enough gold! You need ${price} 🪙, but you only have ${state.coins} 🪙 in your purse.`
+          : `Nedostatek zlaťáků! Potřebujete ${price} 🪙, ale v měšci máte pouze ${state.coins} 🪙.`
+      );
+      return;
+    }
+
+    const todayStr = today();
+    const currentPurchases = (state.dailyMarketPurchases?.date === todayStr)
+      ? state.dailyMarketPurchases
+      : { date: todayStr, standard: 0, refined: 0, masterwork: 0 };
+
+    const dailyStock = getDailyStationerStock(todayStr);
+    const stockRemaining = Math.max(0, dailyStock[tier] - currentPurchases[tier]);
+
+    if (stockRemaining <= 0) {
+      setToast(
+        lang === "en"
+          ? "Today's stock for this quire is sold out! The Stationer will replenish at tomorrow's dawn."
+          : "Tento druh balíčku je pro dnešek vyprodán! Stacionář naskladní nové exempláře zítra za svítání."
+      );
+      return;
+    }
+
+    playSealCrack();
+    playCoinClink();
+    const nextPurchases = {
+      ...currentPurchases,
+      [tier]: currentPurchases[tier] + 1,
+    };
+
+    setState(prev => ({
+      ...prev,
+      coins: prev.coins - price,
+      bonusPacks: [...prev.bonusPacks, tier],
+      dailyMarketPurchases: nextPurchases,
+    }));
+
+    setToast(
+      lang === "en"
+        ? `Purchased ${qualityLabel(tier, lang)} from the Stationer (-${price} 🪙)! Ready to unseal.`
+        : `Zakoupen ${qualityLabel(tier, lang)} od stacionáře (-${price} 🪙)! Připraven k otevření.`
+    );
+  };
+
   const startGame = (questType: "mood" | "scholar" | "cipher" | "script" | "paleo") => {
     if (state.gamesPlayed >= MAX_DAILY_GAMES) {
       setToast(lang === "en" ? `You have completed today's ${MAX_DAILY_GAMES} challenges. Return tomorrow at dawn.` : `Dnešních ${MAX_DAILY_GAMES} výzev jste již dokončili. Vraťte se zítra za svítání.`);
@@ -2095,7 +2193,15 @@ export default function Home() {
               lang={lang}
             />
           )}
-          {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} lang={lang} />}
+          {tab === "packs" && (
+            <PacksScreen
+              state={state}
+              onOpen={openPack}
+              onGame={startGame}
+              onBuyFromStationer={handleBuyFromStationer}
+              lang={lang}
+            />
+          )}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} lang={lang} />}
           {tab === "trophies" && (
             <TrophiesScreen
@@ -3055,11 +3161,13 @@ function PacksScreen({
   state,
   onOpen,
   onGame,
+  onBuyFromStationer,
   lang = "cs",
 }: {
   state: GameState;
   onOpen: (tier?: PackQuality | "daily") => void;
   onGame: (g: "mood" | "scholar" | "cipher" | "script" | "paleo") => void;
+  onBuyFromStationer?: (tier: PackQuality) => void;
   lang?: Language;
 }) {
   const [selectedTier, setSelectedTier] = useState<PackQuality>("standard");
@@ -3079,6 +3187,23 @@ function PacksScreen({
 
   const packsLeft = Math.max(0, MAX_DAILY_PACKS - state.packsOpened);
   const gamesLeft = Math.max(0, MAX_DAILY_GAMES - state.gamesPlayed);
+
+  const todayStr = today();
+  const purchasesToday = state.dailyMarketPurchases?.date === todayStr
+    ? state.dailyMarketPurchases
+    : { date: todayStr, standard: 0, refined: 0, masterwork: 0 };
+  const dailyStock = getDailyStationerStock(todayStr);
+
+  const stockStandard = Math.max(0, dailyStock.standard - purchasesToday.standard);
+  const stockRefined = Math.max(0, dailyStock.refined - purchasesToday.refined);
+  const stockMasterwork = Math.max(0, dailyStock.masterwork - purchasesToday.masterwork);
+
+  const stockForSelected =
+    selectedTier === "masterwork"
+      ? stockMasterwork
+      : selectedTier === "refined"
+      ? stockRefined
+      : stockStandard;
 
   return (
     <div className="screen packs-screen">
@@ -3187,6 +3312,9 @@ function PacksScreen({
           {standardCount > 0 && <span className="tier-count-pill">{standardCount}</span>}
           <strong>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</strong>
           <span>{standardCount > 0 ? (lang === "en" ? `${standardCount} available` : `${standardCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
+          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.standard} gold` : `Cena u stacionáře: ${STATIONER_PRICES.standard} zlaťáků`}>
+            🪙 {STATIONER_PRICES.standard}
+          </span>
         </button>
 
         <button
@@ -3199,6 +3327,9 @@ function PacksScreen({
           {scholarCount > 0 && <span className="tier-count-pill">{scholarCount}</span>}
           <strong>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</strong>
           <span>{scholarCount > 0 ? (lang === "en" ? `${scholarCount} available` : `${scholarCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
+          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.refined} gold` : `Cena u stacionáře: ${STATIONER_PRICES.refined} zlaťáků`}>
+            🪙 {STATIONER_PRICES.refined}
+          </span>
         </button>
 
         <button
@@ -3211,6 +3342,9 @@ function PacksScreen({
           {masterworkCount > 0 && <span className="tier-count-pill">{masterworkCount}</span>}
           <strong>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</strong>
           <span>{masterworkCount > 0 ? (lang === "en" ? `${masterworkCount} available` : `${masterworkCount} k dispozici`) : (lang === "en" ? "0 available" : "0 k dispozici")}</span>
+          <span className="tier-stationer-price-tag" title={lang === "en" ? `Stationer price: ${STATIONER_PRICES.masterwork} gold` : `Cena u stacionáře: ${STATIONER_PRICES.masterwork} zlaťáků`}>
+            🪙 {STATIONER_PRICES.masterwork}
+          </span>
         </button>
       </div>
 
@@ -3272,8 +3406,8 @@ function PacksScreen({
                 ? "Daily scriptorium pack containing 5 cards of all rarities including a chance for Legendary and Unique treasures."
                 : "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendary a Unique poklady.")
             : (lang === "en"
-                ? "Standard daily allowance exhausted. Earn additional packs by completing challenges below."
-                : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže.")}
+                ? "Standard daily allowance exhausted. Earn additional packs by completing challenges below or buy from the Stationer."
+                : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže nebo nákupem u stacionáře.")}
         </p>
 
         {countForSelected > 0 ? (
@@ -3286,6 +3420,28 @@ function PacksScreen({
           </button>
         ) : (
           <div className="empty-pack-prompt">
+            {stockForSelected > 0 && onBuyFromStationer && (
+              <button
+                type="button"
+                className="illuminated-button stationer-inline-buy"
+                disabled={state.coins < STATIONER_PRICES[selectedTier]}
+                onClick={() => onBuyFromStationer(selectedTier)}
+                style={{
+                  width: "auto",
+                  minWidth: "220px",
+                  padding: "10px 18px",
+                  fontSize: "12px",
+                  marginBottom: "8px",
+                  borderColor: "#d4af37",
+                  background: state.coins >= STATIONER_PRICES[selectedTier] ? "linear-gradient(135deg, #442a12, #2a1807)" : "#221c17",
+                }}
+              >
+                <Store size={14} style={{ marginRight: 6, color: "#d4af37" }} />
+                {state.coins < STATIONER_PRICES[selectedTier]
+                  ? (lang === "en" ? `Buy at Stationer (${STATIONER_PRICES[selectedTier]} 🪙 - Not enough gold)` : `Koupit u stacionáře (${STATIONER_PRICES[selectedTier]} 🪙 - Málo zlaťáků)`)
+                  : (lang === "en" ? `Buy at Stationer (${STATIONER_PRICES[selectedTier]} 🪙 · ${stockForSelected} left)` : `Koupit u stacionáře (${STATIONER_PRICES[selectedTier]} 🪙 · skladem ${stockForSelected} ks)`)}
+              </button>
+            )}
             <span>
               {selectedTier === "masterwork"
                 ? (lang === "en" ? "Earn a Masterwork Pack by transcribing lines in Palaeographical Master." : "Královský balíček získáte úspěšným přepisem v Paleografickém mistrovi.")
@@ -3325,6 +3481,134 @@ function PacksScreen({
             )}
           </div>
         )}
+      </section>
+
+      {/* OFFICINA STATIONARII - Stacionářova dílna & trh rukopisů */}
+      <section className="stationer-market-card">
+        <div className="stationer-market-header">
+          <div className="stationer-market-title-group">
+            <div className="stationer-market-icon">
+              <Store size={22} color="#b8860b" />
+            </div>
+            <div>
+              <h3>
+                {lang === "en" ? "Officina Stationarii · University Scriptorium Market" : "Officina Stationarii · Stacionářova dílna & trh rukopisů"}
+              </h3>
+              <p className="stationer-market-subtitle">
+                {lang === "en"
+                  ? "A sworn university stationer (stationarius) offering authentic parchment quires (peciae) and illuminated masterworks in exchange for gold."
+                  : "Přísežný univerzitní stacionář (stationarius) nabízející ověřené opisované složky (peciae) a iluminované kodexy výměnou za cechovní zlaťáky."}
+              </p>
+            </div>
+          </div>
+          <div className="stationer-player-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
+            <Gem size={16} color="#d4af37" />
+            <span><strong>{state.coins}</strong> {lang === "en" ? "coins" : "zlaťáků"}</span>
+          </div>
+        </div>
+
+        <div className="stationer-wares-grid">
+          {/* 1. Běžný balíček */}
+          <div className={`stationer-ware-card tier-standard ${stockStandard <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge standard">📜 {lang === "en" ? "Standard Quire" : "Běžná pecia"}</div>
+            <h4>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Pecia exemplaris — 5 loose folios of academic and monastic transcriptions with standard odds."
+                : "Pecia exemplaris — 5 pergamenových listů univerzitních traktátů a opisů se standardními šancemi."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockStandard === 0 ? "depleted" : ""}`}>
+                {stockStandard > 0
+                  ? (lang === "en" ? `${stockStandard} in stock today` : `Dnes na skladě: ${stockStandard} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-standard"
+              disabled={stockStandard <= 0 || state.coins < STATIONER_PRICES.standard}
+              onClick={() => onBuyFromStationer?.("standard")}
+            >
+              {stockStandard <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.standard
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.standard} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.standard} 🪙)`)
+                : (lang === "en" ? `Buy Quire (${STATIONER_PRICES.standard} 🪙)` : `Zakoupit pecii (${STATIONER_PRICES.standard} 🪙)`)}
+            </button>
+          </div>
+
+          {/* 2. Učencův balíček */}
+          <div className={`stationer-ware-card tier-refined ${stockRefined <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge refined">✨ {lang === "en" ? "Scholar Quire" : "Učenecký svazek"}</div>
+            <h4>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Collectio scholarium — bound fascicle with glosses and rubrics, boosted Rare & Epic odds."
+                : "Collectio scholarium — svázané kvaterny s glosami a rubrikami, zvýšená šance na Rare a Epic."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.refined}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockRefined === 0 ? "depleted" : ""}`}>
+                {stockRefined > 0
+                  ? (lang === "en" ? `${stockRefined} in stock today` : `Dnes na skladě: ${stockRefined} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-refined"
+              disabled={stockRefined <= 0 || state.coins < STATIONER_PRICES.refined}
+              onClick={() => onBuyFromStationer?.("refined")}
+            >
+              {stockRefined <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.refined
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.refined} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.refined} 🪙)`)
+                : (lang === "en" ? `Buy Fascicle (${STATIONER_PRICES.refined} 🪙)` : `Zakoupit svazek (${STATIONER_PRICES.refined} 🪙)`)}
+            </button>
+          </div>
+
+          {/* 3. Královský balíček */}
+          <div className={`stationer-ware-card tier-masterwork ${stockMasterwork <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge masterwork">💎 {lang === "en" ? "Royal Codex" : "Královský kodex"}</div>
+            <h4>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Codex regius illuminatus — illuminated masterpiece on vellum with gold leaf; guarantees Rare+ cards."
+                : "Codex regius illuminatus — iluminovaný velínový skvost se zlatem; garantuje pouze Rare a vyšší karty."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.masterwork}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockMasterwork === 0 ? "depleted" : ""}`}>
+                {stockMasterwork > 0
+                  ? (lang === "en" ? `${stockMasterwork} in stock today` : `Dnes na skladě: ${stockMasterwork} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-masterwork"
+              disabled={stockMasterwork <= 0 || state.coins < STATIONER_PRICES.masterwork}
+              onClick={() => onBuyFromStationer?.("masterwork")}
+            >
+              {stockMasterwork <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.masterwork
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.masterwork} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.masterwork} 🪙)`)
+                : (lang === "en" ? `Buy Codex (${STATIONER_PRICES.masterwork} 🪙)` : `Zakoupit kodex (${STATIONER_PRICES.masterwork} 🪙)`)}
+            </button>
+          </div>
+        </div>
+
+        <div className="stationer-market-note">
+          <small>
+            {lang === "en"
+              ? "⚖️ Medieval Guild Ordinance: The stationer's inventory is regulated daily by university seal. Purchased quires are added directly to your scriptorium packs."
+              : "⚖️ Univerzitní a cechovní řád: Zásoby stacionáře jsou kontrolovány každý den pečetí rektora. Zakoupené balíčky se ihned přenesou do vašeho skriptoria."}
+          </small>
+        </div>
       </section>
 
       {/* Výzvy o další balíčky */}
@@ -3846,9 +4130,9 @@ function ProfileScreen({
     return cards.find(c => String(c.id) === String(state.mottoCardId) || c.uuid === String(state.mottoCardId)) || null;
   }, [state.mottoCardId, cards]);
 
-  const level = levelForXp(state.xp);
-  const levelXp = state.xp % XP_PER_LEVEL;
-  const title = level >= 10 ? (lang === "en" ? "Master Illuminator" : "Mistr iluminátor") : level >= 6 ? (lang === "en" ? "Journeyman Scribe" : "Písařský tovaryš") : (lang === "en" ? "Scriptorium Apprentice" : "Učedník ve skriptoriu");
+  const progress = getLevelProgress(state.xp);
+  const level = progress.level;
+  const title = getTitleForLevel(level, lang, currentProfile?.role);
   const scribeName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || (currentUser ? currentUser.email?.split("@")[0] : (lang === "en" ? "Master Scribe" : "Mistr písař"));
 
   // Sestavení a seřazení všech hráčů pro žebříček skriptoria
@@ -4253,8 +4537,8 @@ function ProfileScreen({
           )}
         </div>
         <p>{title} · {lang === "en" ? "Level" : "Úroveň"} {level}</p>
-        <div className="level-progress" aria-label={`${levelXp} z ${XP_PER_LEVEL} XP do úrovně ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div>
-        <small>{levelXp} / {XP_PER_LEVEL} XP · {lang === "en" ? `Remaining: ${XP_PER_LEVEL - levelXp} XP to Level ${level + 1}` : `Zbývá ${XP_PER_LEVEL - levelXp} XP do úrovně ${level + 1}`}</small>
+        <div className="level-progress" aria-label={`${progress.currentXpInLevel} z ${progress.xpNeededForNextLevel} XP do úrovně ${level + 1}`}><i style={{ width: `${progress.percent}%` }} /></div>
+        <small>{progress.currentXpInLevel} / {progress.xpNeededForNextLevel} XP · {lang === "en" ? `Remaining: ${progress.remainingXp} XP to Level ${level + 1}` : `Zbývá ${progress.remainingXp} XP do úrovně ${level + 1}`}</small>
       </div>
     </section>
     {mottoCard ? (
@@ -5693,11 +5977,16 @@ function TradeReviewModal({
 }
 
 function LevelUpModal({ level, onClose, lang = "cs" }: { level: number; onClose: () => void; lang?: Language }) {
+  const title = getTitleForLevel(level, lang);
   return <div className="modal-backdrop level-up-backdrop"><section className="level-up-modal" role="dialog" aria-modal="true" aria-label={lang === "en" ? `Level ${level} Reached` : `Dosažena úroveň ${level}`}>
     <div className="level-rays" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
     <Sparkles size={28} aria-hidden="true" />
-    <p>{lang === "en" ? "Scribal Enlightenment" : "Písařské osvícení"}</p><h2>{lang === "en" ? "Level" : "Úroveň"} {level}</h2>
+    <p>{lang === "en" ? "Scribal Enlightenment" : "Písařské osvícení"}</p>
+    <h2>{lang === "en" ? "Level" : "Úroveň"} {level}</h2>
     <div className="level-seal"><span>{level}</span></div>
+    <div style={{ fontSize: "14px", fontWeight: 700, color: "#ffd700", textShadow: "0 2px 4px rgba(0,0,0,0.5)", marginBottom: 6 }}>
+      {title}
+    </div>
     <strong>{lang === "en" ? "Masterwork Reward Unlocked" : "Odemčena královská odměna"}</strong>
     <small>{lang === "en" ? "A Masterwork Pack with high chances for rare colophons is ready to open." : "Jeden Královský balíček s vysokou šancí na vzácné kolofony je připraven k otevření."}</small>
     <button onClick={onClose}>{lang === "en" ? "Claim Reward" : "Převzít odměnu"}</button>
@@ -7095,15 +7384,9 @@ function PlayerProfileModal({
   }, [player.id]);
 
   const pXp = player.xp || 0;
-  const level = levelForXp(pXp);
-  const levelXp = pXp % XP_PER_LEVEL;
-  const title = player.role === "admin"
-    ? (lang === "en" ? "Master of Scriptorium" : "Mistr skriptoria")
-    : level >= 10
-    ? (lang === "en" ? "Master Illuminator" : "Mistr iluminátor")
-    : level >= 6
-    ? (lang === "en" ? "Journeyman Scribe" : "Písařský tovaryš")
-    : (lang === "en" ? "Scriptorium Apprentice" : "Učedník ve skriptoriu");
+  const progress = getLevelProgress(pXp);
+  const level = progress.level;
+  const title = getTitleForLevel(level, lang, player.role);
 
   const playerArtSource = player.avatar_id
     ? illuminations.find((a) => a.id === player.avatar_id)?.source ||
@@ -7248,13 +7531,13 @@ function PlayerProfileModal({
             {/* Postupový bar úrovně */}
             <div style={{ marginTop: 6, maxWidth: 280 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#8a6c48", marginBottom: 2 }}>
-                <span>{levelXp} / {XP_PER_LEVEL} XP</span>
+                <span>{progress.currentXpInLevel} / {progress.xpNeededForNextLevel} XP</span>
                 <span>{lang === "en" ? "Next Level" : "Další úroveň"}</span>
               </div>
               <div style={{ width: "100%", height: 6, background: "#e8dcbe", borderRadius: 3, overflow: "hidden", border: "1px solid #cfbfa0" }}>
                 <div
                   style={{
-                    width: `${Math.min(100, Math.round((levelXp / XP_PER_LEVEL) * 100))}%`,
+                    width: `${progress.percent}%`,
                     height: "100%",
                     background: "linear-gradient(90deg, #d4af37, #996515)",
                     borderRadius: 3,

@@ -258,3 +258,38 @@ export function playSoftClick() {
   osc.start(now);
   osc.stop(now + 0.05);
 }
+
+/**
+ * Zvonivý zvuk cinknutí zlatých mincí při nákupu či získání zlaťáků
+ */
+export function playCoinClink() {
+  if (!isSoundEnabled()) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+  const coins = [
+    { freq: 2400, delay: 0, dur: 0.28 },
+    { freq: 3100, delay: 0.04, dur: 0.32 },
+  ];
+
+  coins.forEach(({ freq, delay, dur }) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now + delay);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.92, now + delay + dur);
+
+    gain.gain.setValueAtTime(0.001, now + delay);
+    gain.gain.linearRampToValueAtTime(0.18, now + delay + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + dur);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now + delay);
+    osc.stop(now + delay + dur);
+  });
+}
+

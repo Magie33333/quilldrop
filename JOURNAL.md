@@ -9,6 +9,65 @@
 
 ---
 
+## 📅 Záznam ze dne 24. 9. 2026 — Progresivní level systém písařského cechu a historický trh rukopisů (Officina Stationarii)
+
+**Cíl etapy:** Zmodernizovat a prohloubit herní ekonomiku a progresi písaře:
+1. Nahradit plochou úroveň 100 XP/level nelineární progresivní křivkou náročnosti a rozšířit písařské tituly po každých 5 úrovních až do úrovně 51+.
+2. Vytvořit historicky věrný trh rukopisů (*Officina Stationarii*) pro nákup balíčků za cechovní zlaťáky s vyváženou ekonomikou a ochranou proti podvádění.
+
+**Realizované úpravy:**
+1. **Progresivní XP křivka a úroveň písaře (`app/levels.ts`, `app/page.tsx`, `app/data/trophies.ts`):**
+   - Zaveden modul `app/levels.ts` s dynamickou kalkulací `xpNeededForNextLevel(lvl)`:
+     - Úroveň 1–5: 100 XP / úroveň (rychlý rozjezd pro začínající písaře).
+     - Úroveň 6–10: 150 XP.
+     - Úroveň 11–15: 220 XP.
+     - Úroveň 16–20: 300 XP.
+     - Úroveň 21–25: 400 XP.
+     - Úroveň 26–30: 500 XP.
+     - Úroveň 31–35: 650 XP.
+     - Úroveň 36–40: 800 XP.
+     - Úroveň 41–45: 1000 XP.
+     - Úroveň 46–50: 1250 XP.
+     - Úroveň 51+: 1500 XP.
+   - Vytvořena funkce `getLevelProgress(xp)` vracející přesný postup, procenta a chybějící XP do další úrovně.
+   - Trofejní podmínka `player_level` v `app/data/trophies.ts` sjednocena na výpočet `levelForXp(xp)`.
+
+2. **Autentické středověké tituly po 5 úrovních:**
+   - Každých 5 úrovní hráč získává prestižní historický cechovní a univerzitní titul:
+     - Úroveň 1–5: *Učedník ve skriptoriu* (Scriptorium Apprentice).
+     - Úroveň 6–10: *Písařský tovaryš* (Journeyman Scribe).
+     - Úroveň 11–15: *Písař kopiář & kaligraf* (Copyist & Calligrapher).
+     - Úroveň 16–20: *Rubrikátor a glosátor* (Rubricator & Glossator).
+     - Úroveň 21–25: *Mistr iluminátor* (Master Illuminator).
+     - Úroveň 26–30: *Cechovní notář & listinář* (Guild Notary).
+     - Úroveň 31–35: *Kustod kodexů & bibliotékář* (Keeper of the Codices).
+     - Úroveň 36–40: *Korektor a cenzor textů* (Master Corrector & Censor).
+     - Úroveň 41–45: *Kancelářský protonotář* (Protonotary Chancellor).
+     - Úroveň 46–50: *Představený skriptoria* (Prior of the Scriptorium).
+     - Úroveň 51+: *Nejvyšší velmistr kodexu* (Supreme Grandmaster of the Codex).
+     - Administrátor: *👑 Mistr skriptoria*.
+   - Tituly i progresivní ukazatele integrovány do `ProfileScreen`, `PlayerProfileModal`, modalu dosažení úrovně `LevelUpModal` i žebříčku písařů.
+
+3. **Středověký trh rukopisů — Officina Stationarii (`app/levels.ts`, `app/page.tsx`, `app/globals.css`):**
+   - V souladu s historickými univerzitními řády 13.–15. století provozuje certifikovaný univerzitní **stacionář** (*stationarius*) oficiální prodej rukopisů a pecií:
+     - **Běžný balíček (Pecia exemplaris)**: 40 zlaťáků — volné pergamenové složky univerzitních traktátů.
+     - **Učencův balíček (Collectio scholarium)**: 90 zlaťáků — svázané kvaterny s glosami a rubrikami (zvýšená šance na Rare a Epic).
+     - **Královský balíček (Codex regius illuminatus)**: 220 zlaťáků — velínový iluminovaný skvost se zlatem (garance Rare+).
+   - **Vyvážená ekonomika**: Hráč získává až 75 zlaťáků denně z miniher (3 × 25 zlaťáků) + 50 startovních zlaťáků. Ceny motivují k pravidelnému bádání.
+   - **Ochrana proti zneužití a deterministické zásoby**:
+     - Zásoby se generují deterministickým PRNG hashem z kalendářního data (`YYYY-MM-DD`). Obnovení stránky zásoby nezresetuje.
+     - Běžné pecie: 2–4 ks denně; Učenecké svazky: 1–2 ks denně; Královský kodex: 0–1 ks denně (některé dny není k dispozici).
+     - V herním stavu se ukládá `dailyMarketPurchases` pro daný den.
+     - Při denním resetu o půlnoci se zakoupené balíčky (`bonusPacks`) **nemažou**, hráč o zakoupené balíčky nepřichází.
+     - Zlaťáky v měšci jsou kryptograficky chráněny `computeStateSignature` a synchronizovány se Supabase profilem.
+   - **Uživatelské rozhraní a Web Audio**:
+     - Na kartě *Balíčky* doplněn luxusní iluminovaný cechovní panel *Officina Stationarii* s měšcem hráče, cenami, zbývajícími kusy na skladě a tlačítky nákupu.
+     - Na přepínacích záložkách balíčků zobrazeny cenovky s mincí (`🪙 40`, `🪙 90`, `🪙 220`).
+     - Při prázdném balíčku zobrazeno tlačítko rychlého nákupu u stacionáře.
+     - Přidán procedurální zvuk cinknutí mincí `playCoinClink()` do `app/audio.ts`.
+
+---
+
 ## 📅 Záznam ze dne 22. 9. 2026 — Příprava na ostrý provoz: 3 herní disciplíny, 5 her denně se strategií rizika a 5 pokusů u přepisu
 
 **Cíl etapy:** Připravit Quilldrop na ostrý provoz se studentskými brigádníky a hráči. Zjednodušit a sjednotit klientské rozhraní do 3 vyvážených dlaždic (odpovídajících 3 druhům balíčků), zavést denní limit 5 miniher s herním rizikem, nastavit 5 pokusů k odevzdání paleografického přepisu s okamžitou zpětnou vazbou shody a zajistit zobrazení didaktického řešení i při neúspěchu.

@@ -1,3 +1,5 @@
+import { levelForXp } from "../levels";
+
 export type TrophyDifficulty = "easy" | "medium" | "hard" | "impossible";
 
 export interface TrophyCategoryItem {
@@ -1315,7 +1317,7 @@ export function evaluateCondition(
       return compareValues(state?.puzzle || 0, numVal || 16, cond.operator) || (cond.operator !== "<=" && Boolean(state?.gallery && state.gallery.length > 0));
 
     case "player_level": {
-      const currentLevel = state?.level || Math.floor((state?.xp || 0) / 100) + 1;
+      const currentLevel = state?.level || levelForXp(state?.xp || 0);
       return compareValues(currentLevel, numVal || 1, cond.operator);
     }
 
