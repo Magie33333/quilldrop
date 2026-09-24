@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Search, Send, Smile, Sparkles, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import {
@@ -449,7 +449,9 @@ export default function Home() {
   const [curios, setCurios] = useState<Curio[]>(DEFAULT_CURIOS);
   const [curioIndex, setCurioIndex] = useState(0);
 
-  // Kolegové ve skriptoriu a P2P darování karet (Social Trading)
+  // Žebříček písařů, kolegové a prohlížení profilu
+  const [allPlayers, setAllPlayers] = useState<UserProfile[]>([]);
+  const [inspectedPlayer, setInspectedPlayer] = useState<UserProfile | null>(null);
   const [colleagues, setColleagues] = useState<any[]>([]);
   const [pendingGifts, setPendingGifts] = useState<any[]>([]);
   const [giftModalTarget, setGiftModalTarget] = useState<any | null>(null);
@@ -681,14 +683,15 @@ export default function Home() {
         setPendingTrades(trades || []);
       } catch {}
 
-      // Načíst reálné kolegy z tabulky profiles
+      // Načíst všechny hráče z tabulky profiles pro žebříček a kolegy
       try {
         const { data: profs } = await supabase
           .from("profiles")
-          .select("id, username, display_name, streak, xp, avatar_id, role, motto_card_id")
-          .order("streak", { ascending: false })
-          .limit(30);
+          .select("id, username, display_name, streak, xp, coins, avatar_id, role, motto_card_id, puzzle_progress, trophies, created_at")
+          .order("xp", { ascending: false })
+          .limit(200);
         if (profs && profs.length > 0) {
+          setAllPlayers(profs as UserProfile[]);
           const filtered = profs.filter((p: any) => p.id !== user.id);
           filtered.sort((a: any, b: any) => {
             if (a.role === "admin" && b.role !== "admin") return -1;
@@ -697,6 +700,7 @@ export default function Home() {
           });
           setColleagues(filtered);
         } else {
+          setAllPlayers([]);
           setColleagues([]);
         }
       } catch {}
@@ -952,14 +956,15 @@ export default function Home() {
               }
             } catch {}
           }
-          // Načíst reálné kolegy z tabulky profiles
+          // Načíst všechny hráče z tabulky profiles pro žebříček a kolegy
           try {
             const { data: profs } = await supabase
               .from("profiles")
-              .select("id, username, display_name, streak, xp, avatar_id, role, motto_card_id")
-              .order("streak", { ascending: false })
-              .limit(30);
+              .select("id, username, display_name, streak, xp, coins, avatar_id, role, motto_card_id, puzzle_progress, trophies, created_at")
+              .order("xp", { ascending: false })
+              .limit(200);
             if (profs && profs.length > 0) {
+              setAllPlayers(profs as UserProfile[]);
               const filtered = user ? profs.filter((p: any) => p.id !== user.id) : profs;
               // Seřadit: mistři skriptoria (admini) nahoře, dále podle XP sestupně
               filtered.sort((a: any, b: any) => {
@@ -969,6 +974,7 @@ export default function Home() {
               });
               setColleagues(filtered);
             } else {
+              setAllPlayers([]);
               setColleagues([]);
             }
           } catch {}
@@ -1962,7 +1968,21 @@ export default function Home() {
           )}
           {tab === "packs" && <PacksScreen state={state} onOpen={openPack} onGame={startGame} lang={lang} />}
           {tab === "collection" && <CollectionScreen state={state} cards={cards} filter={filter} setFilter={setFilter} onDetail={setDetail} lang={lang} />}
-          {tab === "trophies" && <TrophiesScreen state={state} cards={cards} activeIllumination={activeIllumination} lang={lang} />}
+          {tab === "trophies" && (
+            <TrophiesScreen
+              state={state}
+              cards={cards}
+              activeIllumination={activeIllumination}
+              lang={lang}
+              onViewLeaderboard={() => {
+                setTab("profile");
+                setTimeout(() => {
+                  const el = document.getElementById("leaderboard");
+                  el?.scrollIntoView({ behavior: "smooth" });
+                }, 100);
+              }}
+            />
+          )}
           {tab === "profile" && (
             <ProfileScreen
               state={state}
@@ -1973,6 +1993,7 @@ export default function Home() {
               currentProfile={currentProfile}
               activeIllumination={activeIllumination}
               illuminations={illuminations}
+              allPlayers={allPlayers}
               colleagues={colleagues}
               pendingGifts={pendingGifts}
               pendingTrades={pendingTrades}
@@ -1993,6 +2014,7 @@ export default function Home() {
               onSetLang={handleSetLang}
               cards={cards}
               onRemoveMotto={handleRemoveMotto}
+              onInspectPlayer={(p) => setInspectedPlayer(p)}
             />
           )}
         </div>
@@ -2283,6 +2305,25 @@ export default function Home() {
               dismissedPasswordNoticeRef.current = true;
               setToast(lang === "en" ? "Password changed successfully!" : "Heslo bylo úspěšně změněno!");
             }}
+          />
+        )}
+        {inspectedPlayer && (
+          <PlayerProfileModal
+            player={inspectedPlayer}
+            cards={cards}
+            illuminations={illuminations}
+            currentUser={currentUser}
+            isSelf={currentUser?.id === inspectedPlayer.id}
+            onClose={() => setInspectedPlayer(null)}
+            onOpenTrade={(p) => {
+              setInspectedPlayer(null);
+              handleOpenTradeModal(p);
+            }}
+            onSendGift={(p) => {
+              setInspectedPlayer(null);
+              handleOpenGiftModal(p);
+            }}
+            lang={lang}
           />
         )}
         {toast && <div className="toast" role="status">{toast}</div>}
@@ -3327,11 +3368,13 @@ function TrophiesScreen({
   cards,
   activeIllumination,
   lang = "cs",
+  onViewLeaderboard,
 }: {
   state: GameState;
   cards: Colophon[];
   activeIllumination: IlluminationMosaicItem;
   lang?: Language;
+  onViewLeaderboard?: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<"all" | "earned" | "locked">("all");
   const [diffFilter, setDiffFilter] = useState<"all" | TrophyDifficulty>("all");
@@ -3394,6 +3437,53 @@ function TrophiesScreen({
         </div>
         <IlluminationMosaic pieces={state.puzzle} compact illumination={activeIllumination} />
       </section>
+
+      {/* Rychlý odkaz na celkový žebříček písařů */}
+      <div
+        style={{
+          margin: "14px 0 18px",
+          padding: "10px 14px",
+          background: "linear-gradient(135deg, #fefbf3 0%, #f6ebd5 100%)",
+          border: "1px solid #d4af37",
+          borderRadius: 8,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+          boxShadow: "0 2px 8px rgba(184,134,11,0.12)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Trophy size={16} color="#b8860b" />
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#54380e" }}>
+            {lang === "en" ? "Curious how other scribes in the guild are doing?" : "Zajímá vás, jak si v cechu vedou ostatní písaři?"}
+          </span>
+        </div>
+        {onViewLeaderboard && (
+          <button
+            type="button"
+            onClick={onViewLeaderboard}
+            style={{
+              padding: "6px 12px",
+              background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+              color: "#fff4d4",
+              border: "1px solid #3d2206",
+              borderRadius: 6,
+              fontSize: "11px",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              boxShadow: "0 2px 5px rgba(0,0,0,0.15)",
+            }}
+          >
+            <span>🏆</span>
+            <span>{lang === "en" ? "View Scribe Leaderboard →" : "Zobrazit žebříček písařů →"}</span>
+          </button>
+        )}
+      </div>
 
       <div className="section-title">
         <h2>{lang === "en" ? "Scribal Honors" : "Získané pocty"}</h2>
@@ -3551,6 +3641,7 @@ function ProfileScreen({
   currentProfile,
   activeIllumination,
   illuminations,
+  allPlayers = [],
   colleagues = [],
   pendingGifts = [],
   pendingTrades = [],
@@ -3571,6 +3662,7 @@ function ProfileScreen({
   onSetLang,
   cards = [],
   onRemoveMotto,
+  onInspectPlayer,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -3580,6 +3672,7 @@ function ProfileScreen({
   currentProfile?: UserProfile | null;
   activeIllumination: IlluminationMosaicItem;
   illuminations: IlluminationMosaicItem[];
+  allPlayers?: UserProfile[];
   colleagues?: any[];
   pendingGifts?: any[];
   pendingTrades?: CardTrade[];
@@ -3600,26 +3693,95 @@ function ProfileScreen({
   onSetLang?: (l: Language) => void;
   cards?: Colophon[];
   onRemoveMotto?: () => void;
+  onInspectPlayer?: (player: UserProfile) => void;
 }) {
   const [colleagueQuery, setColleagueQuery] = useState("");
+  const [leaderboardSort, setLeaderboardSort] = useState<"xp" | "streak" | "puzzle" | "name">("xp");
   const mottoCard = useMemo(() => {
     if (!state.mottoCardId) return null;
     return cards.find(c => String(c.id) === String(state.mottoCardId) || c.uuid === String(state.mottoCardId)) || null;
   }, [state.mottoCardId, cards]);
-  const filteredColleagues = useMemo(() => {
-    if (!colleagueQuery.trim()) return colleagues;
-    const q = colleagueQuery.toLowerCase();
-    return colleagues.filter(
-      (f) =>
-        (f.display_name || "").toLowerCase().includes(q) ||
-        (f.username || "").toLowerCase().includes(q)
-    );
-  }, [colleagues, colleagueQuery]);
 
   const level = levelForXp(state.xp);
   const levelXp = state.xp % XP_PER_LEVEL;
   const title = level >= 10 ? (lang === "en" ? "Master Illuminator" : "Mistr iluminátor") : level >= 6 ? (lang === "en" ? "Journeyman Scribe" : "Písařský tovaryš") : (lang === "en" ? "Scriptorium Apprentice" : "Učedník ve skriptoriu");
   const scribeName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || (currentUser ? currentUser.email?.split("@")[0] : (lang === "en" ? "Master Scribe" : "Mistr písař"));
+
+  // Sestavení a seřazení všech hráčů pro žebříček skriptoria
+  const rankedPlayers = useMemo(() => {
+    const listMap = new Map<string, UserProfile>();
+
+    for (const p of allPlayers) {
+      if (p && p.id) {
+        listMap.set(p.id, { ...p });
+      }
+    }
+
+    for (const c of colleagues) {
+      if (c && c.id && !listMap.has(c.id)) {
+        listMap.set(c.id, { ...c });
+      }
+    }
+
+    if (currentUser?.id) {
+      const existing = listMap.get(currentUser.id);
+      listMap.set(currentUser.id, {
+        id: currentUser.id,
+        username: currentProfile?.username || existing?.username || currentUser.email?.split("@")[0] || "ja",
+        display_name: currentProfile?.display_name || existing?.display_name || scribeName,
+        role: currentProfile?.role || existing?.role || "user",
+        avatar_id: state.avatarArt || currentProfile?.avatar_id || existing?.avatar_id || null,
+        motto_card_id: (state.mottoCardId as string) || currentProfile?.motto_card_id || existing?.motto_card_id || null,
+        xp: state.xp !== undefined ? state.xp : existing?.xp || 0,
+        streak: state.streak !== undefined ? state.streak : existing?.streak || 1,
+        puzzle_progress: typeof state.puzzle === "number" ? state.puzzle : existing?.puzzle_progress || 0,
+        coins: state.coins !== undefined ? state.coins : existing?.coins || 0,
+        trophies: state.trophies || existing?.trophies || [],
+        created_at: currentProfile?.created_at || existing?.created_at,
+      });
+    }
+
+    const arr = Array.from(listMap.values());
+
+    arr.sort((a, b) => {
+      if (leaderboardSort === "xp") {
+        const diff = (b.xp || 0) - (a.xp || 0);
+        if (diff !== 0) return diff;
+        return (b.streak || 0) - (a.streak || 0);
+      }
+      if (leaderboardSort === "streak") {
+        const diff = (b.streak || 0) - (a.streak || 0);
+        if (diff !== 0) return diff;
+        return (b.xp || 0) - (a.xp || 0);
+      }
+      if (leaderboardSort === "puzzle") {
+        const diff = (b.puzzle_progress || 0) - (a.puzzle_progress || 0);
+        if (diff !== 0) return diff;
+        return (b.xp || 0) - (a.xp || 0);
+      }
+      if (leaderboardSort === "name") {
+        const nameA = (a.display_name || a.username || "").toLowerCase();
+        const nameB = (b.display_name || b.username || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      }
+      return 0;
+    });
+
+    return arr.map((player, index) => ({
+      ...player,
+      rank: index + 1,
+    }));
+  }, [allPlayers, colleagues, currentUser, currentProfile, scribeName, state.xp, state.streak, state.puzzle, state.coins, state.avatarArt, state.mottoCardId, state.trophies, leaderboardSort]);
+
+  const filteredRankedPlayers = useMemo(() => {
+    if (!colleagueQuery.trim()) return rankedPlayers;
+    const q = colleagueQuery.toLowerCase().trim();
+    return rankedPlayers.filter(
+      (p) =>
+        (p.display_name || "").toLowerCase().includes(q) ||
+        (p.username || "").toLowerCase().includes(q)
+    );
+  }, [rankedPlayers, colleagueQuery]);
 
   return <div className="screen profile-screen">
     <PageTitle kicker={lang === "en" ? "Your place in the margins of the codex" : "Vaše místo na okrajích kodexu"}>
@@ -4165,9 +4327,20 @@ function ProfileScreen({
       </div>
     )}
 
-    <div className="section-title">
-      <h2>{lang === "en" ? `Fellow Scribes (${colleagues.length})` : `Kolegové ve skriptoriu (${colleagues.length})`}</h2>
-      <div style={{ display: "flex", gap: 8 }}>
+    {/* Žebříček písařů & Kolegové ve skriptoriu */}
+    <div id="leaderboard" className="section-title" style={{ marginTop: 24, paddingTop: 12, borderTop: "1px dashed #d8c7a6" }}>
+      <div>
+        <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span>🏆</span>
+          <span>{lang === "en" ? `Scriptorium Leaderboard & Fellows (${rankedPlayers.length})` : `Žebříček písařů & Kolegové (${rankedPlayers.length})`}</span>
+        </h2>
+        <div style={{ fontSize: "11px", color: "#8a6538", fontStyle: "italic", marginTop: 2 }}>
+          {lang === "en"
+            ? "Codex of honor: rankings of scribes by prestige, daily streak and completed illuminations."
+            : "Zlatá kniha skriptoria: pořadí tovaryšů a mistrů podle věhlasu, vytrvalosti a složených iluminací."}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {onOpenTrade && (
           <button className="icon-label" onClick={() => onOpenTrade()}>
             <ArrowLeftRight size={13} /> {lang === "en" ? "Start Trade" : "Zahájit směnu"}
@@ -4179,121 +4352,345 @@ function ProfileScreen({
       </div>
     </div>
 
-    {colleagues.length > 2 && (
-      <div style={{ marginBottom: 10 }}>
+    {/* Lišta řazení žebříčku */}
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, alignItems: "center" }}>
+      <span style={{ fontSize: "11px", fontWeight: 700, color: "#684824", marginRight: 4 }}>
+        {lang === "en" ? "Sort by:" : "Řadit podle:"}
+      </span>
+      {[
+        { id: "xp" as const, label: lang === "en" ? "⚡ Prestige (XP)" : "⚡ Věhlas (XP)" },
+        { id: "streak" as const, label: lang === "en" ? "🔥 Daily Streak" : "🔥 Denní série" },
+        { id: "puzzle" as const, label: lang === "en" ? "🧩 Mosaic" : "🧩 Mozaika" },
+        { id: "name" as const, label: lang === "en" ? "🔤 Name (A–Z)" : "🔤 Jméno (A–Z)" },
+      ].map((tab) => {
+        const active = leaderboardSort === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setLeaderboardSort(tab.id)}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              fontSize: "11px",
+              fontWeight: active ? 700 : 500,
+              cursor: "pointer",
+              border: active ? "1px solid #9c6c21" : "1px solid #d5c4a1",
+              background: active ? "linear-gradient(180deg, #9a6816, #6b4308)" : "#fffdf8",
+              color: active ? "#fff5dc" : "#5d401e",
+              boxShadow: active ? "0 2px 5px rgba(107,67,8,0.25)" : "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+
+    {/* Vyhledávací pole */}
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <Search
+          size={14}
+          color="#9c7a4b"
+          style={{ position: "absolute", left: 10, pointerEvents: "none" }}
+        />
         <input
           type="text"
-          placeholder={lang === "en" ? "Search fellow scribe by name..." : "Hledat kolegu podle jména či přezdívky..."}
+          placeholder={lang === "en" ? "Search scribes by name or @username..." : "Hledat písaře podle jména či @přezdívky..."}
           value={colleagueQuery}
           onChange={(e) => setColleagueQuery(e.target.value)}
           style={{
             width: "100%",
-            padding: "8px 12px",
+            padding: "8px 32px 8px 30px",
             borderRadius: 6,
             border: "1px solid #d0bc93",
             background: "#fffdf9",
             fontSize: "12px",
             color: "var(--ink)",
+            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)",
           }}
         />
+        {colleagueQuery && (
+          <button
+            type="button"
+            onClick={() => setColleagueQuery("")}
+            style={{
+              position: "absolute",
+              right: 8,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#8c683b",
+              padding: 2,
+              display: "flex",
+              alignItems: "center",
+            }}
+            title={lang === "en" ? "Clear search" : "Vymazat hledání"}
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
-    )}
+      {colleagueQuery.trim() && (
+        <div style={{ fontSize: "11px", color: "#8a6538", marginTop: 4, paddingLeft: 4 }}>
+          {lang === "en"
+            ? `Showing ${filteredRankedPlayers.length} of ${rankedPlayers.length} scribes`
+            : `Zobrazeno ${filteredRankedPlayers.length} z ${rankedPlayers.length} písařů`}
+        </div>
+      )}
+    </div>
 
+    {/* Seznam hráčů */}
     <div className="friends">
-      {filteredColleagues.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "16px 10px", color: "#8c683b", fontSize: "12px", fontStyle: "italic" }}>
+      {filteredRankedPlayers.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "20px 14px", color: "#8c683b", fontSize: "12px", fontStyle: "italic", background: "#fbf7ed", border: "1px dashed #d8c7a6", borderRadius: 8 }}>
           {colleagueQuery.trim()
             ? (lang === "en" ? `No fellow scribe found matching "${colleagueQuery}".` : `Nenalezen žádný kolega odpovídající hledání „${colleagueQuery}“.`)
-            : (lang === "en" ? "Zatím se do skriptoria nezaregistrovali žádní další kolegové. Pozvěte spolužáky a kolegy ke směně kolofonů!" : "Zatím se do skriptoria nezaregistrovali žádní další kolegové. Pozvěte spolužáky a kolegy ke směně kolofonů!")}
+            : (lang === "en" ? "No other scribes have registered in the scriptorium yet. Invite fellow scholars to trade colophons!" : "Zatím se do skriptoria nezaregistrovali žádní další kolegové. Pozvěte spolužáky a kolegy ke směně kolofonů!")}
         </div>
       ) : (
-        filteredColleagues.map((friend) => (
-          <article
-            key={friend.id}
-            style={{
-              border: friend.role === "admin" ? "1px solid #d4af37" : undefined,
-              background: friend.role === "admin" ? "linear-gradient(90deg, #fffcf0 0%, #faf3db 100%)" : undefined,
-            }}
-          >
-            <div
-              className="friend-avatar"
+        filteredRankedPlayers.map((player) => {
+          const isSelf = currentUser && player.id === currentUser.id;
+          const isTop3 = player.rank <= 3;
+          const rankMedal = player.rank === 1 ? "🥇" : player.rank === 2 ? "🥈" : player.rank === 3 ? "🥉" : `#${player.rank}`;
+
+          // Portrét nebo iniciála hráče
+          const playerArtSource = player.avatar_id
+            ? illuminations.find((a) => a.id === player.avatar_id)?.source ||
+              DEFAULT_ILLUMINATIONS.find((a) => a.id === player.avatar_id)?.source ||
+              null
+            : null;
+
+          return (
+            <article
+              key={player.id}
+              onClick={() => onInspectPlayer?.(player)}
               style={{
-                background: friend.role === "admin" ? "linear-gradient(135deg, #b8860b, #6b4e05)" : undefined,
-                color: friend.role === "admin" ? "#fff9e6" : undefined,
-                fontWeight: 700,
-                boxShadow: friend.role === "admin" ? "0 2px 8px rgba(184,134,11,0.35)" : undefined,
+                cursor: "pointer",
+                border: player.rank === 1
+                  ? "1px solid #d4af37"
+                  : isSelf
+                  ? "1px solid #b8860b"
+                  : player.role === "admin"
+                  ? "1px solid #d4af37"
+                  : undefined,
+                background: player.rank === 1
+                  ? "linear-gradient(90deg, #fffdf2 0%, #faf3da 100%)"
+                  : isSelf
+                  ? "linear-gradient(90deg, #fffcf5 0%, #fbf4e2 100%)"
+                  : player.role === "admin"
+                  ? "linear-gradient(90deg, #fffcf0 0%, #faf3db 100%)"
+                  : undefined,
+                boxShadow: player.rank === 1 ? "0 2px 10px rgba(212,175,55,0.22)" : undefined,
+                transition: "all 0.15s ease",
               }}
+              title={lang === "en" ? "Click to view full player profile & statistics" : "Klepnutím otevřete detailní profil a statistiky hráče"}
             >
-              {friend.display_name ? friend.display_name.substring(0, 1).toUpperCase() : "K"}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <strong>{friend.display_name || friend.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}</strong>
-                {friend.role === "admin" ? (
-                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
-                    {lang === "en" ? "👑 Master of Scriptorium (Admin)" : "👑 Mistr skriptoria (Admin)"}
-                  </span>
+              {/* Odznak pořadí / medaile */}
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: isTop3 ? "18px" : "12px",
+                  fontWeight: 800,
+                  color: player.rank === 1 ? "#966f10" : player.rank === 2 ? "#6b7280" : player.rank === 3 ? "#92400e" : "#7c5a31",
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                  background: isTop3
+                    ? "radial-gradient(circle, #fffaf0 0%, #f3e6ca 100%)"
+                    : "#f4ede0",
+                  border: isTop3 ? "1px solid #d4af37" : "1px solid #dfcfb2",
+                  boxShadow: isTop3 ? "0 1px 4px rgba(0,0,0,0.12)" : "none",
+                }}
+              >
+                {rankMedal}
+              </div>
+
+              {/* Avatar hráče */}
+              <div
+                className="friend-avatar"
+                style={{
+                  background: playerArtSource
+                    ? "#fff"
+                    : player.role === "admin"
+                    ? "linear-gradient(135deg, #b8860b, #6b4e05)"
+                    : isSelf
+                    ? "linear-gradient(135deg, #7c4f18, #442a0a)"
+                    : undefined,
+                  color: player.role === "admin" || isSelf ? "#fff9e6" : undefined,
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: player.role === "admin" ? "0 2px 8px rgba(184,134,11,0.35)" : undefined,
+                }}
+              >
+                {playerArtSource ? (
+                  <img
+                    src={playerArtSource}
+                    alt={player.display_name || player.username}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                  />
                 ) : (
-                  <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.15)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
-                    {lang === "en" ? "✦ Seminar Colleague" : "✦ Kolega ze semináře"}
-                  </span>
+                  (player.display_name || player.username || "K").substring(0, 1).toUpperCase()
                 )}
               </div>
-              <small>{friend.streak || 1} {lang === "en" ? "days streak" : "dní v řadě"} · {friend.xp !== undefined ? `${friend.xp} XP` : (lang === "en" ? "Scriptorium Fellow" : "Tovaryš skriptoria")}</small>
-              {(() => {
-                if (!friend.motto_card_id) return null;
-                const fCard = cards?.find(c => String(c.id) === String(friend.motto_card_id) || c.uuid === String(friend.motto_card_id));
-                if (!fCard) return null;
-                return (
-                  <div
-                    style={{
-                      marginTop: 3,
-                      fontSize: "11px",
-                      fontStyle: "italic",
-                      color: "#684824",
-                      display: "flex",
-                      alignItems: "baseline",
-                      gap: 4,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={`“${fCard.quote}” (${getCardScribe(fCard.scribe, lang)})`}
-                  >
-                    <span style={{ fontStyle: "normal", opacity: 0.85, fontSize: "11px" }}>📜</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>“{fCard.quote}”</span>
-                  </div>
-                );
-              })()}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              {onOpenTrade && (
+
+              {/* Informace o hráči */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <strong style={{ fontSize: "13px", color: "var(--ink)" }}>
+                    {player.display_name || player.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}
+                  </strong>
+                  {player.username && (
+                    <span style={{ fontSize: "11px", color: "#8a6c42", fontFamily: "var(--font-mono, monospace)" }}>
+                      @{player.username}
+                    </span>
+                  )}
+                  {isSelf && (
+                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(184,134,11,0.22)", border: "1px solid #b8860b", color: "#68450a", fontWeight: 700 }}>
+                      ⭐ {lang === "en" ? "You" : "Vy"}
+                    </span>
+                  )}
+                  {player.role === "admin" ? (
+                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
+                      {lang === "en" ? "👑 Master of Scriptorium" : "👑 Mistr skriptoria"}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.12)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
+                      {lang === "en" ? "✦ Colleague" : "✦ Tovaryš"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Statistiky hráče v řádku */}
+                <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "11px", color: "#5d411f" }}>
+                  <span title={lang === "en" ? "Prestige Points (XP)" : "Věhlas (XP)"}>
+                    <strong>⚡ {player.xp || 0} XP</strong> (Úr. {levelForXp(player.xp || 0)})
+                  </span>
+                  <span>·</span>
+                  <span title={lang === "en" ? "Consecutive Daily Streak" : "Dní v řadě bez přerušení"}>
+                    🔥 {player.streak || 1} {lang === "en" ? "days" : "dní"}
+                  </span>
+                  <span>·</span>
+                  <span title={lang === "en" ? "Illumination Mosaic progress" : "Složeno dílků mozaiky"}>
+                    🧩 {player.puzzle_progress || 0}/9
+                  </span>
+                </div>
+
+                {/* Osobní motto / kolofon hráče */}
+                {(() => {
+                  if (!player.motto_card_id) return null;
+                  const fCard = cards?.find(c => String(c.id) === String(player.motto_card_id) || c.uuid === String(player.motto_card_id));
+                  if (!fCard) return null;
+                  return (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: "11px",
+                        fontStyle: "italic",
+                        color: "#684824",
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 4,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={`“${fCard.quote}” (${getCardScribe(fCard.scribe, lang)})`}
+                    >
+                      <span style={{ fontStyle: "normal", opacity: 0.85, fontSize: "11px" }}>📜</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>“{fCard.quote}”</span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Tlačítka akcí */}
+              <div
+                style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Tlačítko náhledu profilu */}
                 <button
                   type="button"
-                  onClick={() => onOpenTrade(friend)}
+                  onClick={() => onInspectPlayer?.(player)}
                   style={{
-                    padding: "5px 10px",
+                    padding: "5px 9px",
                     borderRadius: 6,
-                    background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
-                    color: "#fff4d4",
-                    border: "1px solid #3d2206",
+                    background: "#fdf8ee",
+                    color: "#543710",
+                    border: "1px solid #c9b084",
                     fontSize: "11px",
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 4,
+                    gap: 3,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   }}
+                  title={lang === "en" ? "Inspect full player profile" : "Prohlédnout celý profil hráče"}
                 >
-                  <ArrowLeftRight size={11} /> {lang === "en" ? "Trade" : "Směna"}
+                  <Eye size={12} />
+                  <span>{lang === "en" ? "Profile" : "Profil"}</span>
                 </button>
-              )}
-              <button onClick={() => onSend(friend)}>
-                <Send size={12} /> {lang === "en" ? "Gift" : "Darovat"}
-              </button>
-            </div>
-          </article>
-        ))
+
+                {!isSelf && onOpenTrade && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenTrade(player)}
+                    style={{
+                      padding: "5px 9px",
+                      borderRadius: 6,
+                      background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+                      color: "#fff4d4",
+                      border: "1px solid #3d2206",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    title={lang === "en" ? "Start trade with this scribe" : "Zahájit směnu s tímto tovaryšem"}
+                  >
+                    <ArrowLeftRight size={11} /> {lang === "en" ? "Trade" : "Směna"}
+                  </button>
+                )}
+
+                {!isSelf && (
+                  <button
+                    type="button"
+                    onClick={() => onSend(player)}
+                    style={{
+                      padding: "5px 9px",
+                      borderRadius: 6,
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    title={lang === "en" ? "Send a duplicate card as a gift" : "Darovat duplikát karty"}
+                  >
+                    <Send size={11} /> {lang === "en" ? "Gift" : "Darovat"}
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })
       )}
     </div>
 
@@ -6178,6 +6575,473 @@ function CardDetail({
               {lang === "en" ? "Acquire this card to set its colophon as your profile motto." : "Získejte tuto kartu do sbírky, abyste si mohli její kolofon nastavit jako motto."}
             </div>
           )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PlayerProfileModal({
+  player,
+  cards,
+  illuminations,
+  currentUser,
+  isSelf,
+  onClose,
+  onOpenTrade,
+  onSendGift,
+  lang = "cs",
+}: {
+  player: UserProfile & { rank?: number };
+  cards: Colophon[];
+  illuminations: IlluminationMosaicItem[];
+  currentUser?: any;
+  isSelf: boolean;
+  onClose: () => void;
+  onOpenTrade?: (player: UserProfile) => void;
+  onSendGift?: (player: UserProfile) => void;
+  lang?: Language;
+}) {
+  const [cardStats, setCardStats] = useState<{ uniqueCount: number; totalCount: number } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Esc klávesa pro zavření
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Načíst reálná data karet hráče z user_cards
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchCards() {
+      try {
+        setLoadingStats(true);
+        const { data, error } = await supabase
+          .from("user_cards")
+          .select("card_id, count")
+          .eq("user_id", player.id);
+        if (!isMounted) return;
+        if (!error && data) {
+          const unique = data.filter((r: any) => (r.count || 0) > 0).length;
+          const total = data.reduce((acc: number, r: any) => acc + (r.count || 0), 0);
+          setCardStats({ uniqueCount: unique, totalCount: total });
+        } else {
+          setCardStats({ uniqueCount: 0, totalCount: 0 });
+        }
+      } catch {
+        if (isMounted) setCardStats({ uniqueCount: 0, totalCount: 0 });
+      } finally {
+        if (isMounted) setLoadingStats(false);
+      }
+    }
+    fetchCards();
+    return () => {
+      isMounted = false;
+    };
+  }, [player.id]);
+
+  const pXp = player.xp || 0;
+  const level = levelForXp(pXp);
+  const levelXp = pXp % XP_PER_LEVEL;
+  const title = player.role === "admin"
+    ? (lang === "en" ? "Master of Scriptorium" : "Mistr skriptoria")
+    : level >= 10
+    ? (lang === "en" ? "Master Illuminator" : "Mistr iluminátor")
+    : level >= 6
+    ? (lang === "en" ? "Journeyman Scribe" : "Písařský tovaryš")
+    : (lang === "en" ? "Scriptorium Apprentice" : "Učedník ve skriptoriu");
+
+  const playerArtSource = player.avatar_id
+    ? illuminations.find((a) => a.id === player.avatar_id)?.source ||
+      DEFAULT_ILLUMINATIONS.find((a) => a.id === player.avatar_id)?.source ||
+      null
+    : null;
+
+  const mottoCard = useMemo(() => {
+    if (!player.motto_card_id) return null;
+    return cards.find((c) => String(c.id) === String(player.motto_card_id) || c.uuid === String(player.motto_card_id)) || null;
+  }, [player.motto_card_id, cards]);
+
+  const earnedTrophies = useMemo(() => {
+    if (!player.trophies || !Array.isArray(player.trophies) || player.trophies.length === 0) return [];
+    const allDefs = getStoredTrophies();
+    return allDefs.filter((t) => player.trophies!.includes(t.id));
+  }, [player.trophies]);
+
+  const joinedDate = useMemo(() => {
+    if (!player.created_at) return null;
+    try {
+      const d = new Date(player.created_at);
+      return d.toLocaleDateString(lang === "en" ? "en-GB" : "cs-CZ", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return null;
+    }
+  }, [player.created_at, lang]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={player.display_name || player.username}
+        style={{
+          maxWidth: 620,
+          background: "radial-gradient(circle at 50% 0%, #fffdf4 0%, #f6ebd5 100%)",
+          border: "2px solid #b8860b",
+          borderRadius: 12,
+          padding: 24,
+          boxShadow: "0 18px 45px rgba(0,0,0,0.45)",
+          color: "var(--ink)",
+        }}
+      >
+        <button className="close" onClick={onClose} aria-label={lang === "en" ? "Close" : "Zavřít"}>×</button>
+
+        {/* Hlavička písařské listiny */}
+        <div style={{ textAlign: "center", borderBottom: "1px dashed #d8c7a6", paddingBottom: 16, marginBottom: 16 }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#8b5a19", marginBottom: 4 }}>
+            ✦ {lang === "en" ? "Scriptorium Guild Charter" : "Písařská listina tovaryše"} ✦
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+            {player.rank && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "2px 8px",
+                  borderRadius: 12,
+                  background: player.rank <= 3 ? "linear-gradient(135deg, #fef3d6, #fae69e)" : "#f0e5cf",
+                  border: player.rank <= 3 ? "1px solid #d4af37" : "1px solid #d0bc93",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  color: player.rank === 1 ? "#966f10" : player.rank === 2 ? "#555" : player.rank === 3 ? "#8a4000" : "#5d411f",
+                }}
+              >
+                <span>🏆</span>
+                <span>#{player.rank} {lang === "en" ? "in Scriptorium" : "ve skriptoriu"}</span>
+              </span>
+            )}
+            {joinedDate && (
+              <span style={{ fontSize: "11px", color: "#8a6c48", fontStyle: "italic" }}>
+                {lang === "en" ? `Member since ${joinedDate}` : `V cechu od ${joinedDate}`}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Profilová karta hráče */}
+        <div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 20 }}>
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              overflow: "hidden",
+              border: player.role === "admin" ? "3px solid #d4af37" : "3px solid #9c7333",
+              boxShadow: player.role === "admin" ? "0 0 14px rgba(212,175,55,0.45)" : "0 4px 10px rgba(0,0,0,0.15)",
+              background: playerArtSource ? "#fff" : "linear-gradient(135deg, #7c4f18, #3e2205)",
+              color: "#fff7dd",
+              fontSize: "36px",
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {playerArtSource ? (
+              <img
+                src={playerArtSource}
+                alt={player.display_name || player.username}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              (player.display_name || player.username || "K").substring(0, 1).toUpperCase()
+            )}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontSize: "20px", color: "#42280d", fontWeight: 800, lineHeight: 1.2 }}>
+                {player.display_name || player.username}
+              </h2>
+              {isSelf && (
+                <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: 4, background: "#f5e4b8", border: "1px solid #c89d38", color: "#6e4708", fontWeight: 700 }}>
+                  ⭐ {lang === "en" ? "You" : "Vy"}
+                </span>
+              )}
+              {player.role === "admin" && (
+                <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
+                  👑 {lang === "en" ? "Master of Scriptorium" : "Mistr skriptoria"}
+                </span>
+              )}
+            </div>
+            {player.username && (
+              <div style={{ fontSize: "12px", color: "#8a6c42", fontFamily: "var(--font-mono, monospace)", marginTop: 2 }}>
+                @{player.username}
+              </div>
+            )}
+            <div style={{ fontSize: "12px", color: "#63431d", fontWeight: 600, marginTop: 4 }}>
+              {title} · <span style={{ color: "#8a5814" }}>{lang === "en" ? `Level ${level}` : `Úroveň ${level}`}</span>
+            </div>
+
+            {/* Postupový bar úrovně */}
+            <div style={{ marginTop: 6, maxWidth: 280 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#8a6c48", marginBottom: 2 }}>
+                <span>{levelXp} / {XP_PER_LEVEL} XP</span>
+                <span>{lang === "en" ? "Next Level" : "Další úroveň"}</span>
+              </div>
+              <div style={{ width: "100%", height: 6, background: "#e8dcbe", borderRadius: 3, overflow: "hidden", border: "1px solid #cfbfa0" }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.round((levelXp / XP_PER_LEVEL) * 100))}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #d4af37, #996515)",
+                    borderRadius: 3,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mřížka statistik hráče */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+            gap: 10,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              ⚡ {lang === "en" ? "Prestige (XP)" : "Věhlas (XP)"}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {pXp.toLocaleString()} XP
+            </div>
+          </div>
+
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              🔥 {lang === "en" ? "Daily Streak" : "Denní série"}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {player.streak || 1} {lang === "en" ? "days" : "dní"}
+            </div>
+          </div>
+
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              🧩 {lang === "en" ? "Mosaic Pieces" : "Dílky mozaiky"}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {player.puzzle_progress || 0} / 9
+            </div>
+          </div>
+
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              🪙 {lang === "en" ? "Guild Treasury" : "V pokladnici"}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {player.coins !== undefined ? `${player.coins} zlatých` : "—"}
+            </div>
+          </div>
+
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              📜 {lang === "en" ? "Colophons" : "Sbírka kolofonů"}
+            </div>
+            <div style={{ fontSize: "14px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {loadingStats ? (
+                <span style={{ fontSize: "12px", color: "#8a6839", fontWeight: 500 }}>{lang === "en" ? "Reading codex..." : "Listuji kodexem..."}</span>
+              ) : (
+                <span>
+                  {cardStats?.uniqueCount || 0} {lang === "en" ? "unique" : "unikátních"}
+                  <span style={{ fontSize: "11px", fontWeight: 500, color: "#7a582b", display: "block" }}>
+                    ({cardStats?.totalCount || 0} {lang === "en" ? "total copies" : "celkem listů"})
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ background: "#fbf6e9", border: "1px solid #decbb0", borderRadius: 8, padding: "10px 12px" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: 1, color: "#8a6839", fontWeight: 700 }}>
+              🏆 {lang === "en" ? "Honors" : "Získané pocty"}
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 800, color: "#42280d", marginTop: 2 }}>
+              {player.trophies?.length || 0} {lang === "en" ? "trophies" : "poct"}
+            </div>
+          </div>
+        </div>
+
+        {/* Osobní motto / kolofon hráče */}
+        <div style={{ background: "#fffdf8", border: "1px solid #d5c4a1", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#7a531b", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>📜</span>
+            <span>{lang === "en" ? "Personal Scribe Motto & Colophon" : "Osobní písařské motto & kolofon"}</span>
+          </div>
+
+          {mottoCard ? (
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 6,
+                  overflow: "hidden",
+                  border: "1px solid #c4b08a",
+                  flexShrink: 0,
+                  background: "#e8dcbe",
+                }}
+              >
+                <ColophonImage card={mottoCard} alt={getCardTitle(mottoCard, lang)} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <blockquote
+                  style={{
+                    margin: "0 0 6px 0",
+                    fontStyle: "italic",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                    color: "#3a220b",
+                    fontFamily: "var(--font-display, Georgia, serif)",
+                  }}
+                >
+                  “{mottoCard.quote}”
+                </blockquote>
+                <div style={{ fontSize: "11px", color: "#6b4a23", marginBottom: 4 }}>
+                  {getCardTranslation(mottoCard, lang)}
+                </div>
+                <div style={{ fontSize: "10.5px", color: "#8a6a42" }}>
+                  <strong>{getCardScribe(mottoCard.scribe, lang)}</strong> · {getCardPlace(mottoCard.place, lang)}, {mottoCard.year}
+                  {(mottoCard.manuscript || mottoCard.locus) && (
+                    <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                      ({[mottoCard.manuscript, mottoCard.locus].filter(Boolean).join(", ")})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: "12px", color: "#8c683b", fontStyle: "italic", padding: "6px 0" }}>
+              {lang === "en"
+                ? "This scribe has not yet set a personal motto from their colophon collection."
+                : "Tento tovaryš si dosud nezvolil své osobní motto z kolofonů."}
+            </div>
+          )}
+        </div>
+
+        {/* Získané pocty / trofeje */}
+        {earnedTrophies.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#7a531b", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>🎖️</span>
+              <span>{lang === "en" ? `Scribal Honors (${earnedTrophies.length})` : `Získané pocty & medaile (${earnedTrophies.length})`}</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {earnedTrophies.map((trophy) => (
+                <div
+                  key={trophy.id}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    background: "#fbf5e6",
+                    border: "1px solid #d4af37",
+                    borderRadius: 6,
+                    fontSize: "11px",
+                    color: "#4e3110",
+                  }}
+                  title={lang === "en" ? (trophy.text_en || trophy.text) : (trophy.text || trophy.text_en)}
+                >
+                  <span style={{ fontSize: "13px" }}>{trophy.initial || "🏆"}</span>
+                  <strong style={{ fontSize: "11px" }}>{lang === "en" ? (trophy.title_en || trophy.title) : trophy.title}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Spodní tlačítka akcí */}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 14, borderTop: "1px dashed #d8c7a6" }}>
+          {!isSelf && onOpenTrade && (
+            <button
+              type="button"
+              onClick={() => onOpenTrade(player)}
+              style={{
+                padding: "8px 14px",
+                background: "linear-gradient(180deg, #8b5a19, #5e3a09)",
+                color: "#fff4d4",
+                border: "1px solid #3d2206",
+                borderRadius: 6,
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              }}
+            >
+              <ArrowLeftRight size={13} />
+              <span>{lang === "en" ? "Propose Trade" : "Navrhnout směnu"}</span>
+            </button>
+          )}
+
+          {!isSelf && onSendGift && (
+            <button
+              type="button"
+              onClick={() => onSendGift(player)}
+              style={{
+                padding: "8px 14px",
+                background: "#fdf8ee",
+                color: "#543710",
+                border: "1px solid #c9b084",
+                borderRadius: 6,
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Send size={13} />
+              <span>{lang === "en" ? "Send Gift" : "Poslat dar"}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "8px 16px",
+              background: "#ede3cb",
+              color: "#4a3014",
+              border: "1px solid #c9b897",
+              borderRadius: 6,
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {lang === "en" ? "Close" : "Zavřít"}
+          </button>
         </div>
       </section>
     </div>

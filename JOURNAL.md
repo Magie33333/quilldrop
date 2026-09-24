@@ -859,3 +859,33 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
      - Pokud hráč ještě žádný kolofon nezvolil, zobrazuje se výchozí tradiční písařský povzdech s tipem na výběr motta ve Sbírce.
 5. **Prezentace motta v seznamu spolužáků:**
    - U kolegů ve skriptoriu se pod jménem a streaked zobrazuje jejich nastavené písařské motto s ikonou pergamenu, takže studenti vidí, jaké kolofony si jejich spolužáci vybrali.
+
+---
+
+## 📅 Záznam ze dne 24. 9. 2026 — Žebříček písařů (Leaderboard) a náhled profilů tovaryšů
+
+**Cíl etapy:** Připravit komplexní žebříček všech reálných hráčů ve skriptoriu seřazených od nejlepších, s vyhledáváním v reálném čase, filtrováním podle různých kritérií a možností nahlédnout do detailního profilu a statistik kteréhokoliv hráče.
+
+**Provedené úpravy:**
+1. **Žebříček písařů ve skriptoriu (`ProfileScreen` v `app/page.tsx`):**
+   - Načítání až 200 hráčů z tabulky `profiles` (s okamžitou synchronizací lokálních čerstvých dat pro přihlášeného hráče).
+   - Možnost přepínat kritéria řazení pomocí pergamenových přepínačů:
+     - ⚡ **Věhlas (XP)**
+     - 🔥 **Denní série (Streak)**
+     - 🧩 **Mozaika (Složené dílky iluminací)**
+     - 🔤 **Abecedně (A–Z podle jména či přezdívky)**
+   - Udělování medailí a pořadí: 🥇 Zlato pro #1, 🥈 Stříbro pro #2, 🥉 Bronz pro #3 a elegantní pergamenové odznaky pro #4+.
+   - Vyhledávací pole s ikonou lupy, tlačítkem pro rychlé vymazání (X) a dynamickým počítadlem nalezených tovaryšů.
+   - Odznaky role (`👑 Mistr skriptoria` vs `✦ Tovaryš cechu`) a označení vlastního účtu (`⭐ Vy`).
+   - Přímá tlačítka rychlých akcí: **[ 👁️ Profil ]**, **[ 🔄 Směna ]** a **[ 🎁 Dar ]**.
+2. **Detailní náhled profilu tovaryše (`PlayerProfileModal`):**
+   - Po klepnutí na libovolného hráče v žebříčku se otevře pergamenová cechovní listina:
+     - Velký iluminovaný portrét či iniciála hráče s hodností a úrovní.
+     - Informace o datu vstupu do cechu a celkové pořadí ve skriptoriu (`#X ve skriptoriu`).
+     - Postupový ukazatel (XP bar) do další úrovně tovaryše.
+     - Šestice klíčových metrik: Věhlas (XP), Denní série (Streak), Dílky mozaiky, Zlaťáky v pokladnici, Sbírka kolofonů (asynchronně načtený počet unikátních i celkových karet z `user_cards`) a Počet získaných poct.
+     - Osobní písařské motto/kolofon daného tovaryše včetně výřezu rukopisu, latinské citace, překladu a signatury.
+     - Přehled odemčených trofejí a poct hráče.
+     - Možnost přímo z modálu zahájit směnu kolofonů nebo odeslat dar z duplikátů.
+3. **Propojení z obrazovky Výzev (`TrophiesScreen`):**
+   - Zlatý cechovní banner na kartě Výzev nabízí okamžitý přechod na žebříček s plynulým posunem na sekci `#leaderboard`.
