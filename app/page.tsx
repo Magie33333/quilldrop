@@ -511,6 +511,7 @@ export default function Home() {
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -1256,6 +1257,107 @@ export default function Home() {
       setToast(lang === "en" ? "Your account and all game data have been successfully deleted." : "Váš účet a veškerá herní data byla úspěšně smazána.");
     } catch (err: any) {
       setToast((lang === "en" ? "Error deleting account: " : "Chyba při mazání účtu: ") + (err.message || (lang === "en" ? "Please try again" : "Zkuste to znovu")));
+    }
+  };
+
+  const handleUpdateProfile = async (newDisplayName: string, newUsername: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser?.id) {
+      return { success: false, error: lang === "en" ? "User not signed in." : "Uživatel není přihlášen." };
+    }
+    const cleanDisplayName = newDisplayName.trim();
+    const cleanUsername = newUsername.replace(/^@+/, "").toLowerCase().trim();
+
+    if (!cleanDisplayName) {
+      return { success: false, error: lang === "en" ? "Name cannot be empty." : "Zobrazované jméno nemůže být prázdné." };
+    }
+    if (!cleanUsername) {
+      return { success: false, error: lang === "en" ? "Guild handle cannot be empty." : "Cechovní přezdívka nemůže být prázdná." };
+    }
+    if (!/^[a-z0-9_.-]{3,30}$/.test(cleanUsername)) {
+      return {
+        success: false,
+        error: lang === "en"
+          ? "Handle must be 3–30 characters long and can contain only letters, numbers, dots, hyphens, and underscores."
+          : "Přezdívka musí mít 3–30 znaků (pouze malá písmena bez diakritiky, číslice, tečky, pomlčky a podtržítka).",
+      };
+    }
+
+    // Kontrola unikátnosti v profiles, pokud se přezdívka změnila
+    if (cleanUsername !== currentProfile?.username) {
+      try {
+        const { data: existingUser, error: checkErr } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", cleanUsername)
+          .neq("id", currentUser.id)
+          .maybeSingle();
+
+        if (!checkErr && existingUser) {
+          return {
+            success: false,
+            error: lang === "en"
+              ? "This guild handle is already taken by another scribe. Please choose a different one."
+              : "Tato cechovní přezdívka je již obsazena jiným písařem. Zvolte prosím jinou.",
+          };
+        }
+      } catch {
+        // Pokračovat k update, který zachytí PostgreSQL unikátní constraint v případě chyby
+      }
+    }
+
+    try {
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({
+          display_name: cleanDisplayName,
+          username: cleanUsername,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentUser.id);
+
+      if (updateErr) {
+        if (updateErr.code === "23505") {
+          return {
+            success: false,
+            error: lang === "en"
+              ? "This guild handle is already taken by another scribe."
+              : "Tato cechovní přezdívka je již obsazena jiným písařem.",
+          };
+        }
+        return {
+          success: false,
+          error: updateErr.message || (lang === "en" ? "Failed to update profile." : "Nepodařilo se uložit profil."),
+        };
+      }
+
+      // Aktualizovat metadata účtu v Supabase Auth
+      try {
+        await supabase.auth.updateUser({
+          data: { display_name: cleanDisplayName, full_name: cleanDisplayName },
+        });
+      } catch {
+        // Nepovinné
+      }
+
+      // Aktualizovat lokální stav aktuálního hráče
+      setCurrentProfile((prev) =>
+        prev ? { ...prev, display_name: cleanDisplayName, username: cleanUsername } : null
+      );
+      setAllPlayers((prev) =>
+        prev.map((p) =>
+          p.id === currentUser.id
+            ? { ...p, display_name: cleanDisplayName, username: cleanUsername }
+            : p
+        )
+      );
+
+      setToast(lang === "en" ? "Guild identity updated!" : "Cechovní vizitka byla úspěšně uložena!");
+      return { success: true };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || (lang === "en" ? "Failed to update profile." : "Chyba při ukládání profilu."),
+      };
     }
   };
 
@@ -2042,6 +2144,7 @@ export default function Home() {
               cards={cards}
               onRemoveMotto={handleRemoveMotto}
               onInspectPlayer={(p) => setInspectedPlayer(p)}
+              onEditProfile={() => setShowEditProfileModal(true)}
             />
           )}
         </div>
@@ -2351,6 +2454,16 @@ export default function Home() {
               setInspectedPlayer(null);
               handleOpenGiftModal(p);
             }}
+            onEditProfile={() => setShowEditProfileModal(true)}
+            lang={lang}
+          />
+        )}
+        {showEditProfileModal && currentUser && (
+          <EditProfileModal
+            currentProfile={currentProfile}
+            currentUser={currentUser}
+            onClose={() => setShowEditProfileModal(false)}
+            onSave={handleUpdateProfile}
             lang={lang}
           />
         )}
@@ -3692,6 +3805,7 @@ function ProfileScreen({
   cards = [],
   onRemoveMotto,
   onInspectPlayer,
+  onEditProfile,
 }: {
   state: GameState;
   uniqueOwned: number;
@@ -3723,6 +3837,7 @@ function ProfileScreen({
   cards?: Colophon[];
   onRemoveMotto?: () => void;
   onInspectPlayer?: (player: UserProfile) => void;
+  onEditProfile?: () => void;
 }) {
   const [colleagueQuery, setColleagueQuery] = useState("");
   const [leaderboardSort, setLeaderboardSort] = useState<"xp" | "streak" | "puzzle" | "name">("xp");
@@ -4001,6 +4116,20 @@ function ProfileScreen({
             </a>
           ) : <span />}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {onEditProfile && (
+              <button
+                type="button"
+                className="profile-logout-btn"
+                onClick={onEditProfile}
+                style={{
+                  background: "#fffbf2",
+                  borderColor: "#c9b48c",
+                  color: "#6b4308",
+                }}
+              >
+                <PenTool size={13} /> {lang === "en" ? "Edit Name & @Handle" : "Upravit jméno a přezdívku"}
+              </button>
+            )}
             {onChangePassword && (
               <button
                 type="button"
@@ -4089,7 +4218,40 @@ function ProfileScreen({
         )}
       </div>
       <div>
-        <h2>{scribeName}</h2>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>{scribeName}</h2>
+            {currentProfile?.username && (
+              <span style={{ fontSize: "12px", color: "#8a6c42", fontFamily: "var(--font-mono, monospace)", fontWeight: 600 }}>
+                @{currentProfile.username}
+              </span>
+            )}
+          </div>
+          {currentUser && onEditProfile && (
+            <button
+              type="button"
+              onClick={onEditProfile}
+              style={{
+                background: "#fdf8ee",
+                border: "1px solid #c9b084",
+                borderRadius: 6,
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: "#543710",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}
+              title={lang === "en" ? "Edit scribe display name and @handle" : "Upravit zobrazované jméno a @přezdívku"}
+            >
+              <PenTool size={11} />
+              <span>{lang === "en" ? "Edit Name & @Handle" : "Upravit jméno a přezdívku"}</span>
+            </button>
+          )}
+        </div>
         <p>{title} · {lang === "en" ? "Level" : "Úroveň"} {level}</p>
         <div className="level-progress" aria-label={`${levelXp} z ${XP_PER_LEVEL} XP do úrovně ${level + 1}`}><i style={{ width: `${levelXp}%` }} /></div>
         <small>{levelXp} / {XP_PER_LEVEL} XP · {lang === "en" ? `Remaining: ${XP_PER_LEVEL - levelXp} XP to Level ${level + 1}` : `Zbývá ${XP_PER_LEVEL - levelXp} XP do úrovně ${level + 1}`}</small>
@@ -4499,6 +4661,12 @@ function ProfileScreen({
               onClick={() => onInspectPlayer?.(player)}
               style={{
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "10px 14px",
+                flexWrap: "wrap",
                 border: player.rank === 1
                   ? "1px solid #d4af37"
                   : isSelf
@@ -4518,137 +4686,141 @@ function ProfileScreen({
               }}
               title={lang === "en" ? "Click to view full player profile & statistics" : "Klepnutím otevřete detailní profil a statistiky hráče"}
             >
-              {/* Odznak pořadí / medaile */}
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: isTop3 ? "18px" : "12px",
-                  fontWeight: 800,
-                  color: player.rank === 1 ? "#966f10" : player.rank === 2 ? "#6b7280" : player.rank === 3 ? "#92400e" : "#7c5a31",
-                  flexShrink: 0,
-                  borderRadius: "50%",
-                  background: isTop3
-                    ? "radial-gradient(circle, #fffaf0 0%, #f3e6ca 100%)"
-                    : "#f4ede0",
-                  border: isTop3 ? "1px solid #d4af37" : "1px solid #dfcfb2",
-                  boxShadow: isTop3 ? "0 1px 4px rgba(0,0,0,0.12)" : "none",
-                }}
-              >
-                {rankMedal}
-              </div>
-
-              {/* Avatar hráče */}
-              <div
-                className="friend-avatar"
-                style={{
-                  background: playerArtSource
-                    ? "#fff"
-                    : player.role === "admin"
-                    ? "linear-gradient(135deg, #b8860b, #6b4e05)"
-                    : isSelf
-                    ? "linear-gradient(135deg, #7c4f18, #442a0a)"
-                    : undefined,
-                  color: player.role === "admin" || isSelf ? "#fff9e6" : undefined,
-                  fontWeight: 700,
-                  overflow: "hidden",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: player.role === "admin" ? "0 2px 8px rgba(184,134,11,0.35)" : undefined,
-                }}
-              >
-                {playerArtSource ? (
-                  <img
-                    src={playerArtSource}
-                    alt={player.display_name || player.username}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  (player.display_name || player.username || "K").substring(0, 1).toUpperCase()
-                )}
-              </div>
-
-              {/* Informace o hráči */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <strong style={{ fontSize: "13px", color: "var(--ink)" }}>
-                    {player.display_name || player.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}
-                  </strong>
-                  {player.username && (
-                    <span style={{ fontSize: "11px", color: "#8a6c42", fontFamily: "var(--font-mono, monospace)" }}>
-                      @{player.username}
-                    </span>
-                  )}
-                  {isSelf && (
-                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(184,134,11,0.22)", border: "1px solid #b8860b", color: "#68450a", fontWeight: 700 }}>
-                      ⭐ {lang === "en" ? "You" : "Vy"}
-                    </span>
-                  )}
-                  {player.role === "admin" ? (
-                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
-                      {lang === "en" ? "👑 Master of Scriptorium" : "👑 Mistr skriptoria"}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.12)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
-                      {lang === "en" ? "✦ Colleague" : "✦ Tovaryš"}
-                    </span>
-                  )}
+              {/* Levý blok: Medaile + Portrét + Jméno, role, přezdívka, statistiky a motto */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 260px", minWidth: 0 }}>
+                {/* Odznak pořadí / medaile */}
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: isTop3 ? "18px" : "12px",
+                    fontWeight: 800,
+                    color: player.rank === 1 ? "#966f10" : player.rank === 2 ? "#6b7280" : player.rank === 3 ? "#92400e" : "#7c5a31",
+                    flexShrink: 0,
+                    borderRadius: "50%",
+                    background: isTop3
+                      ? "radial-gradient(circle, #fffaf0 0%, #f3e6ca 100%)"
+                      : "#f4ede0",
+                    border: isTop3 ? "1px solid #d4af37" : "1px solid #dfcfb2",
+                    boxShadow: isTop3 ? "0 1px 4px rgba(0,0,0,0.12)" : "none",
+                  }}
+                >
+                  {rankMedal}
                 </div>
 
-                {/* Statistiky hráče v řádku */}
-                <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "11px", color: "#5d411f" }}>
-                  <span title={lang === "en" ? "Prestige Points (XP)" : "Věhlas (XP)"}>
-                    <strong>⚡ {player.xp || 0} XP</strong> (Úr. {levelForXp(player.xp || 0)})
-                  </span>
-                  <span>·</span>
-                  <span title={lang === "en" ? "Consecutive Daily Streak" : "Dní v řadě bez přerušení"}>
-                    🔥 {player.streak || 1} {lang === "en" ? "days" : "dní"}
-                  </span>
-                  <span>·</span>
-                  <span title={lang === "en" ? `${player.puzzle_progress || 0} of 16 illumination mosaic pieces revealed` : `Mozaika: ${player.puzzle_progress || 0} ze 16 dílků odhaleno`}>
-                    🧩 {player.puzzle_progress || 0}/16
-                  </span>
-                </div>
-
-                {/* Osobní motto / kolofon hráče */}
-                {(() => {
-                  if (!player.motto_card_id) return null;
-                  const fCard = cards?.find(c => String(c.id) === String(player.motto_card_id) || c.uuid === String(player.motto_card_id));
-                  if (!fCard) return null;
-                  return (
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: "11px",
-                        fontStyle: "italic",
-                        color: "#684824",
-                        display: "flex",
-                        alignItems: "baseline",
-                        gap: 4,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
+                {/* Avatar hráče */}
+                <div
+                  className="friend-avatar"
+                  style={{
+                    flexShrink: 0,
+                    background: playerArtSource
+                      ? "#fff"
+                      : player.role === "admin"
+                      ? "linear-gradient(135deg, #b8860b, #6b4e05)"
+                      : isSelf
+                      ? "linear-gradient(135deg, #7c4f18, #442a0a)"
+                      : undefined,
+                    color: player.role === "admin" || isSelf ? "#fff9e6" : undefined,
+                    fontWeight: 700,
+                    overflow: "hidden",
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: player.role === "admin" ? "0 2px 8px rgba(184,134,11,0.35)" : undefined,
+                  }}
+                >
+                  {playerArtSource ? (
+                    <img
+                      src={playerArtSource}
+                      alt={player.display_name || player.username}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
                       }}
-                      title={`“${fCard.quote}” (${getCardScribe(fCard.scribe, lang)})`}
-                    >
-                      <span style={{ fontStyle: "normal", opacity: 0.85, fontSize: "11px" }}>📜</span>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>“{fCard.quote}”</span>
-                    </div>
-                  );
-                })()}
+                    />
+                  ) : (
+                    (player.display_name || player.username || "K").substring(0, 1).toUpperCase()
+                  )}
+                </div>
+
+                {/* Informace o hráči */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: "13px", color: "var(--ink)" }}>
+                      {player.display_name || player.username || (lang === "en" ? "Fellow Scribe" : "Kolega")}
+                    </strong>
+                    {player.username && (
+                      <span style={{ fontSize: "11px", color: "#8a6c42", fontFamily: "var(--font-mono, monospace)" }}>
+                        @{player.username}
+                      </span>
+                    )}
+                    {isSelf && (
+                      <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(184,134,11,0.22)", border: "1px solid #b8860b", color: "#68450a", fontWeight: 700 }}>
+                        ⭐ {lang === "en" ? "You" : "Vy"}
+                      </span>
+                    )}
+                    {player.role === "admin" ? (
+                      <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(212,175,55,0.25)", border: "1px solid #d4af37", color: "#8a6008", fontWeight: 700 }}>
+                        {lang === "en" ? "👑 Master of Scriptorium" : "👑 Mistr skriptoria"}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: 4, background: "rgba(46,125,50,0.12)", border: "1px solid #4caf50", color: "#2e7d32", fontWeight: 600 }}>
+                        {lang === "en" ? "✦ Colleague" : "✦ Tovaryš"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Statistiky hráče v řádku */}
+                  <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "11px", color: "#5d411f" }}>
+                    <span title={lang === "en" ? "Prestige Points (XP)" : "Věhlas (XP)"}>
+                      <strong>⚡ {player.xp || 0} XP</strong> (Úr. {levelForXp(player.xp || 0)})
+                    </span>
+                    <span>·</span>
+                    <span title={lang === "en" ? "Consecutive Daily Streak" : "Dní v řadě bez přerušení"}>
+                      🔥 {player.streak || 1} {lang === "en" ? "days" : "dní"}
+                    </span>
+                    <span>·</span>
+                    <span title={lang === "en" ? `${player.puzzle_progress || 0} of 16 illumination mosaic pieces revealed` : `Mozaika: ${player.puzzle_progress || 0} ze 16 dílků odhaleno`}>
+                      🧩 {player.puzzle_progress || 0}/16
+                    </span>
+                  </div>
+
+                  {/* Osobní motto / kolofon hráče */}
+                  {(() => {
+                    if (!player.motto_card_id) return null;
+                    const fCard = cards?.find(c => String(c.id) === String(player.motto_card_id) || c.uuid === String(player.motto_card_id));
+                    if (!fCard) return null;
+                    return (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: "11px",
+                          fontStyle: "italic",
+                          color: "#684824",
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 4,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={`“${fCard.quote}” (${getCardScribe(fCard.scribe, lang)})`}
+                      >
+                        <span style={{ fontStyle: "normal", opacity: 0.85, fontSize: "11px" }}>📜</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>“{fCard.quote}”</span>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
 
-              {/* Tlačítka akcí */}
+              {/* Pravý blok: Tlačítka akcí */}
               <div
-                style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center" }}
+                style={{ display: "flex", gap: 5, flexShrink: 0, alignItems: "center", marginLeft: "auto" }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Tlačítko náhledu profilu */}
@@ -6611,6 +6783,248 @@ function CardDetail({
   );
 }
 
+function EditProfileModal({
+  currentProfile,
+  currentUser,
+  onClose,
+  onSave,
+  lang = "cs",
+}: {
+  currentProfile: UserProfile | null;
+  currentUser: any;
+  onClose: () => void;
+  onSave: (displayName: string, username: string) => Promise<{ success: boolean; error?: string }>;
+  lang?: Language;
+}) {
+  const initialDisplayName = currentProfile?.display_name || currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "";
+  const initialUsername = currentProfile?.username || currentUser?.email?.split("@")[0] || "";
+
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [username, setUsername] = useState(initialUsername);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const trimmedName = displayName.trim();
+    const cleanUsername = username.replace(/^@+/, "").toLowerCase().trim();
+
+    if (!trimmedName) {
+      setError(lang === "en" ? "Please enter your display name." : "Zadejte prosím své zobrazované jméno.");
+      return;
+    }
+
+    if (!cleanUsername) {
+      setError(lang === "en" ? "Please enter your guild handle." : "Zadejte prosím svou cechovní přezdívku.");
+      return;
+    }
+
+    if (!/^[a-z0-9_.-]{3,30}$/.test(cleanUsername)) {
+      setError(
+        lang === "en"
+          ? "Handle must be 3–30 characters long and can contain only letters, numbers, dots, hyphens, and underscores."
+          : "Přezdívka musí mít 3–30 znaků (pouze malá písmena bez diakritiky, číslice, tečky, pomlčky a podtržítka)."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await onSave(trimmedName, cleanUsername);
+      if (!res.success) {
+        setError(res.error || (lang === "en" ? "Failed to save profile." : "Nepodařilo se uložit profil."));
+      } else {
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err?.message || (lang === "en" ? "Failed to save profile." : "Chyba při ukládání profilu."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-overlay" onClick={onClose}>
+      <section
+        className="auth-box"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 440, padding: "26px 22px" }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: "rgba(0, 0, 0, 0.05)",
+            border: "1px solid rgba(139, 37, 0, 0.15)",
+            cursor: "pointer",
+            display: "grid",
+            placeItems: "center",
+            color: "#6e4b1b",
+            transition: "all 0.2s ease",
+          }}
+          aria-label={lang === "en" ? "Close" : "Zavřít"}
+        >
+          <X size={16} />
+        </button>
+
+        <div className="auth-box-seal" style={{ fontSize: 28, marginBottom: 10 }}>
+          ✒️
+        </div>
+
+        <h2 style={{ fontSize: "20px", margin: "0 0 6px" }}>
+          {lang === "en" ? "Guild Scribe Identity" : "Cechovní vizitka tovaryše"}
+        </h2>
+
+        <p style={{ margin: "0 0 16px", fontSize: "12px", color: "#5a3c1e", lineHeight: 1.45 }}>
+          {lang === "en"
+            ? "Choose how your fellow scribes recognize you in the leaderboard and during illumination trades."
+            : "Zvolte si své zobrazované jméno a unikátní cechovní přezdívku (@handle), pod kterou vás uvidí ostatní písaři v žebříčku."}
+        </p>
+
+        {error && (
+          <div className="auth-error" role="alert" style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="auth-form" style={{ gap: 14, textAlign: "left" }}>
+          {/* Zobrazované jméno */}
+          <div>
+            <label style={{ display: "block", marginBottom: 4, fontSize: "11px", fontWeight: 800, color: "var(--brown)", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+              {lang === "en" ? "Display Name" : "Zobrazované jméno"}
+            </label>
+            <input
+              type="text"
+              className="auth-input"
+              style={{ height: 42, fontSize: "14px" }}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder={lang === "en" ? "e.g. Master Scribe John" : "např. Alžběta Přemyslovna"}
+              required
+              maxLength={40}
+            />
+            <small style={{ display: "block", fontSize: "10.5px", color: "#8a6838", marginTop: 4 }}>
+              {lang === "en"
+                ? "Your public name in the scriptorium. Can contain spaces and accents."
+                : "Vaše veřejné jméno ve skriptoriu. Může obsahovat háčky, čárky i mezery."}
+            </small>
+          </div>
+
+          {/* Cechovní přezdívka (@handle) */}
+          <div>
+            <label style={{ display: "block", marginBottom: 4, fontSize: "11px", fontWeight: 800, color: "var(--brown)", textTransform: "uppercase", letterSpacing: "0.6px" }}>
+              {lang === "en" ? "Guild Handle (@handle)" : "Cechovní přezdívka (@přezdívka)"}
+            </label>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <span
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  fontWeight: 700,
+                  color: "#9c723b",
+                  fontFamily: "var(--font-mono, monospace)",
+                  fontSize: "14px",
+                  pointerEvents: "none",
+                }}
+              >
+                @
+              </span>
+              <input
+                type="text"
+                className="auth-input"
+                style={{
+                  height: 42,
+                  fontSize: "14px",
+                  paddingLeft: 30,
+                  fontFamily: "var(--font-mono, monospace)",
+                }}
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/^@+/, "").toLowerCase().trim())}
+                placeholder={lang === "en" ? "scribe_handle" : "prezdivka"}
+                required
+                minLength={3}
+                maxLength={30}
+              />
+            </div>
+            <small style={{ display: "block", fontSize: "10.5px", color: "#8a6838", marginTop: 4 }}>
+              {lang === "en"
+                ? "Unique identifier for searches in the leaderboard. Only lowercase letters, numbers, dots, and underscores."
+                : "Unikátní označení pro vyhledávání a identifikaci v žebříčku (3–30 znaků, malá písmena, číslice, podtržítka)."}
+            </small>
+          </div>
+
+          {/* Info o e-mailu */}
+          <div
+            style={{
+              background: "#faf3e3",
+              border: "1px dashed #d5c39c",
+              borderRadius: 6,
+              padding: "8px 12px",
+              fontSize: "11px",
+              color: "#6b4a20",
+              lineHeight: 1.4,
+            }}
+          >
+            <strong>💡 {lang === "en" ? "Sign-in vs. Handle:" : "Přihlašování vs. přezdívka:"}</strong>{" "}
+            {lang === "en"
+              ? `You continue signing in with your email (${currentUser?.email}). The @handle is only your public identifier for other players.`
+              : `K přihlašování do hry nadále slouží váš e-mail (${currentUser?.email}). Přezdívka s @ slouží pouze jako vaše veřejná vizitka pro ostatní tovaryše.`}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              className="auth-submit-btn"
+              style={{
+                height: 42,
+                fontSize: "13px",
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <CheckCircle2 size={15} />
+              {loading
+                ? (lang === "en" ? "Saving identity..." : "Ukládám vizitku...")
+                : (lang === "en" ? "Save Identity" : "Uložit jméno a přezdívku")}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#725639",
+                fontSize: "12px",
+                cursor: "pointer",
+                padding: "4px",
+                textDecoration: "underline",
+              }}
+            >
+              {lang === "en" ? "Cancel" : "Zrušit"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function PlayerProfileModal({
   player,
   cards,
@@ -6621,6 +7035,7 @@ function PlayerProfileModal({
   onClose,
   onOpenTrade,
   onSendGift,
+  onEditProfile,
   lang = "cs",
 }: {
   player: UserProfile & { rank?: number };
@@ -6632,6 +7047,7 @@ function PlayerProfileModal({
   onClose: () => void;
   onOpenTrade?: (player: UserProfile) => void;
   onSendGift?: (player: UserProfile) => void;
+  onEditProfile?: () => void;
   lang?: Language;
 }) {
   const [cardStats, setCardStats] = useState<{ uniqueCount: number; totalCount: number } | null>(
@@ -7057,6 +7473,32 @@ function PlayerProfileModal({
             >
               <Send size={13} />
               <span>{lang === "en" ? "Send Gift" : "Poslat dar"}</span>
+            </button>
+          )}
+
+          {isSelf && onEditProfile && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onEditProfile();
+              }}
+              style={{
+                padding: "8px 14px",
+                background: "#fdf8ee",
+                color: "#543710",
+                border: "1px solid #c9b084",
+                borderRadius: 6,
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <PenTool size={13} />
+              <span>{lang === "en" ? "Edit My Name & @Handle" : "Upravit mé jméno a přezdívku"}</span>
             </button>
           )}
 

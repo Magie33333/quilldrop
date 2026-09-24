@@ -898,4 +898,31 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - Opraveno počítadlo dílků mozaiky v žebříčku i profilu z chybného `/9` na správné `/16` odpovídající 16dennímu cyklu iluminací (4×4).
    - Zlaťáky z pokladnice přidány přímo do horní lišty `StatusBar` (s ikonou drahokamu) a jako 4. statistická dlaždice na profilu hráče.
 
+---
+
+## 📅 Záznam ze dne 24. 9. 2026 (část 2) — Oprava layoutu žebříčku a volba cechovní přezdívky & jména
+
+**Cíl etapy:** 
+1. Opravit layout řádků v Žebříčku písařů tak, aby jméno, role, cechovní @přezdívka a statistiky byly zarovnané přímo vlevo vedle profilového portrétu a akční tlačítka (`[ 👁️ Profil ]`, `[ 🔄 Směna ]`, `[ 🎁 Darovat ]`) zůstala na pravé straně.
+2. Umožnit každému hráči přizpůsobit si své zobrazované jméno i unikátní cechovní přezdívku (@handle).
+3. Jasně vysvětlit rozdíl mezi přihlašovacím e-mailem, zobrazovaným jménem a veřejnou cechovní @přezdívkou.
+
+**Provedené úpravy:**
+1. **Oprava rozložení řádků v žebříčku (`app/globals.css` a `app/page.tsx`):**
+   - V `globals.css` byla nahrazena stará 3sloupcová CSS mřížka (`grid-template-columns: 42px 1fr auto`) moderním flexboxem (`display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;`).
+   - Řádek hráče v `app/page.tsx` je rozdělen do dvou flex bloků:
+     - **Levý blok:** Medaile pořadí + Portrét/Avatar + Textový sloupec (Jméno, role, unikátní @přezdívka, statistiky XP/streak/mozaika a motto).
+     - **Pravý blok (`marginLeft: "auto"`):** Akční tlačítka Profil, Směna a Darovat.
+2. **Možnost úpravy jména a cechovní přezdívky (`EditProfileModal`):**
+   - Vytvořen nový pergamenový modál `EditProfileModal` s pečetí pergamenu ✒️:
+     - **Zobrazované jméno (`display_name`):** Veřejné jméno hráče s podporou diakritiky i mezer.
+     - **Cechovní přezdívka (@handle, `username`):** Unikátní identifikátor (3–30 znaků, malá písmena bez diakritiky, číslice, tečky, pomlčky, podtržítka). Vstupní pole má integrovaný prefix `@`.
+     - Validace formátu a kontrola unikátnosti v tabulce `profiles` v Supabase (včetně ošetření chyby PostgreSQL 23505).
+     - Aktualizace profilu v databázi, metadat uživatele v Supabase Auth i lokálních stavů v aplikaci.
+3. **Umístění tlačítek pro úpravu identity:**
+   - Na profilové kartě hráče (`profile-card`) vedle jména a @přezdívky.
+   - V kartě účtu (`profile-account-card`) vedle tlačítka pro změnu hesla.
+   - V náhledu vlastního profilu (`PlayerProfileModal`) pro přihlášeného tovaryše.
+
+
 
