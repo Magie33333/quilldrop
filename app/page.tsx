@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, ExternalLink, Eye, EyeOff, Flame, Gem, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Search, Send, Smile, Sparkles, Store, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Award, BookOpen, CheckCircle2, Coins, ExternalLink, Eye, EyeOff, Flame, Grid3X3, Home as HomeIcon, KeyRound, Languages, LibraryBig, LockKeyhole, LogIn, LogOut, MapPinned, PenTool, Puzzle, RotateCcw, ScrollText, Search, Send, Smile, Sparkles, Store, Trash2, Trophy, User, UserPlus, UserRound, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { HEURIST_COLOPHONS } from "./data/colophons.generated";
 import { supabase } from "@/lib/supabase";
 import {
@@ -2646,7 +2646,7 @@ function StatusBar({
       <div className="stats">
         <span title={lang === "en" ? "Daily streak without interruption" : "Dní v řadě bez přerušení"} aria-label={`${state.streak} day streak`}><Flame size={14} /> <b>{state.streak}</b></span>
         <span title={lang === "en" ? "16-day illumination" : "16denní iluminace"} aria-label={`${state.puzzle} of 16 daily illumination fragments`}><Puzzle size={14} /> <b>{state.puzzle}/16</b></span>
-        <span title={lang === "en" ? "Guild Treasury: Gold coins" : "Cechovní pokladnice: Zlaťáky v měšci"} aria-label={`${state.coins} gold coins`}><Gem size={14} color="#d4af37" /> <b>{state.coins}</b></span>
+        <span title={lang === "en" ? "Guild Treasury: Gold coins" : "Cechovní pokladnice: Zlaťáky v měšci"} aria-label={`${state.coins} gold coins`}><Coins size={14} color="#d4af37" /> <b>{state.coins}</b></span>
         <span title={lang === "en" ? "Experience Points (XP)" : "Zkušenostní body (XP)"} aria-label={`${state.xp} experience points`}><Sparkles size={14} /> <b>{state.xp}</b></span>
         {onToggleSound && (
           <button
@@ -3342,7 +3342,7 @@ function PacksScreen({
       {/* Rychlý přechod na trh stacionáře za zlaťáky */}
       <div className="pack-stationer-shortcut-bar">
         <span className="pack-stationer-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
-          <Gem size={13} color="#d4af37" />
+          <Coins size={13} color="#d4af37" />
           <span>{lang === "en" ? "Purse:" : "V měšci:"}</span> <b>{state.coins}</b> {lang === "en" ? "gold" : "zlaťáků"}
         </span>
         <button
@@ -3513,7 +3513,7 @@ function PacksScreen({
             </div>
           </div>
           <div className="stationer-player-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
-            <Gem size={16} color="#d4af37" />
+            <Coins size={16} color="#d4af37" />
             <span><strong>{state.coins}</strong> {lang === "en" ? "coins" : "zlaťáků"}</span>
           </div>
         </div>
@@ -3529,7 +3529,7 @@ function PacksScreen({
                 : "Pecia exemplaris — 5 pergamenových listů univerzitních traktátů a opisů se standardními šancemi."}
             </p>
             <div className="ware-meta">
-              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
               <span className={`ware-stock ${stockStandard === 0 ? "depleted" : ""}`}>
                 {stockStandard > 0
                   ? (lang === "en" ? `${stockStandard} in stock today` : `Dnes na skladě: ${stockStandard} ks`)
@@ -3560,7 +3560,7 @@ function PacksScreen({
                 : "Collectio scholarium — svázané kvaterny s glosami a rubrikami, zvýšená šance na Rare a Epic."}
             </p>
             <div className="ware-meta">
-              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.refined}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.refined}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
               <span className={`ware-stock ${stockRefined === 0 ? "depleted" : ""}`}>
                 {stockRefined > 0
                   ? (lang === "en" ? `${stockRefined} in stock today` : `Dnes na skladě: ${stockRefined} ks`)
@@ -3591,7 +3591,7 @@ function PacksScreen({
                 : "Codex regius illuminatus — iluminovaný velínový skvost se zlatem; garantuje pouze Rare a vyšší karty."}
             </p>
             <div className="ware-meta">
-              <span className="ware-price"><Gem size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.masterwork}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.masterwork}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
               <span className={`ware-stock ${stockMasterwork === 0 ? "depleted" : ""}`}>
                 {stockMasterwork > 0
                   ? (lang === "en" ? `${stockMasterwork} in stock today` : `Dnes na skladě: ${stockMasterwork} ks`)

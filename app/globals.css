@@ -2066,7 +2066,9 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
 .friends button svg, .settings-button svg, .trophy-list article > span svg, .bonus-vault svg { display: block; }
 .stats span { gap: 4px; padding: 3px 6px; border: 1px solid #98652830; border-radius: 999px; background: #fff5da70; }
 .stats span:nth-child(1) svg { color: #c55a27; filter: drop-shadow(0 1px 2px #b6482866); }
-.stats span:nth-child(2) svg { color: #173f9c; }.stats span:nth-child(3) svg { color: #a46909; }
+.stats span:nth-child(2) svg { color: #173f9c; }
+.stats span:nth-child(3) svg { color: #d4af37; filter: drop-shadow(0 1px 2px rgba(184, 134, 11, 0.4)); }
+.stats span:nth-child(4) svg { color: #a46909; }
 
 .sound-toggle-btn {
   display: inline-flex;
