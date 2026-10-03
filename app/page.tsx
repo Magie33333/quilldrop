@@ -183,7 +183,7 @@ const ILLUMINATIONS = DEFAULT_ILLUMINATIONS;
 
 const CARDS_OVERRIDES_KEY = "quilldrop-cards-overrides";
 
-function getStoredCardOverrides(): Record<string, { title_en?: string | null; rarity_reason_en?: string | null }> {
+function getStoredCardOverrides(): Record<string, { title_en?: string | null; rarity_reason_en?: string | null; translation_en?: string | null }> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(CARDS_OVERRIDES_KEY);
@@ -984,7 +984,7 @@ export default function Home() {
               quote: c.colophons?.quote || "Explicit...",
               translation: c.colophons?.translation_cs || "Překlad se připravuje",
               translation_cs: c.colophons?.translation_cs || undefined,
-              translation_en: c.colophons?.translation_en || undefined,
+              translation_en: c.colophons?.translation_en || ov?.translation_en || undefined,
               scribe: c.colophons?.scribe || "Neznámý písař",
               place: c.colophons?.place || "Neznámé místo",
               year: c.colophons?.year || 1400,

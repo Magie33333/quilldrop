@@ -90,10 +90,13 @@ ALTER TABLE public.card_trades ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Veřejná správa obchodů mezi studenty" ON public.card_trades;
 CREATE POLICY "Veřejná správa obchodů mezi studenty" ON public.card_trades FOR ALL USING (true);
 
--- 5. Anglická lokalizace karet (title_en, rarity_reason_en)
+-- 5. Anglická lokalizace karet a kolofonů (title_en, rarity_reason_en, translation_en)
 ALTER TABLE public.cards 
 ADD COLUMN IF NOT EXISTS title_en TEXT,
 ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;
+
+ALTER TABLE public.colophons
+ADD COLUMN IF NOT EXISTS translation_en TEXT;
 
 -- 6. Zabezpečení proti podvodům, RLS a bezpečný trigger registrace (Migrace 07)
 CREATE OR REPLACE FUNCTION public.handle_new_user()

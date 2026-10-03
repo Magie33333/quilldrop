@@ -467,36 +467,35 @@ export default function HeuristCatalogModal({
       let newCard: any = null;
       let cardError: any = null;
 
-      const res = await supabase
+      let selectCols = `
+        *,
+        colophons (
+          id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
+        )
+      `;
+
+      let res = await supabase
         .from("cards")
         .insert(cardPayload)
-        .select(
-          `
-          *,
-          colophons (
-            id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
-          )
-        `
-        )
+        .select(selectCols)
         .single();
 
       newCard = res.data;
       cardError = res.error;
 
-      // Pokud sloupec title_en v Supabase ještě nebyl přidán migrací, zopakujeme bez něj
-      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("title_en"))) {
+      // Pokud v Supabase schématu chybí translation_en v colophons, nebo title_en v cards
+      if (cardError && (cardError.code === "PGRST204" || cardError.message?.includes("translation_en") || cardError.message?.includes("title_en"))) {
         delete cardPayload.title_en;
+        selectCols = `
+          *,
+          colophons (
+            id, heurist_id, quote, translation_cs, scribe, place, year, locus, manuscript_shelfmark, visual_note
+          )
+        `;
         const retry = await supabase
           .from("cards")
           .insert(cardPayload)
-          .select(
-            `
-            *,
-            colophons (
-              id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
-            )
-          `
-          )
+          .select(selectCols)
           .single();
         newCard = retry.data;
         cardError = retry.error;
@@ -511,14 +510,7 @@ export default function HeuristCatalogModal({
         const retry2 = await supabase
           .from("cards")
           .insert(cardPayload)
-          .select(
-            `
-            *,
-            colophons (
-              id, heurist_id, quote, translation_cs, translation_en, scribe, place, year, locus, manuscript_shelfmark, visual_note
-            )
-          `
-          )
+          .select(selectCols)
           .single();
         newCard = retry2.data;
         cardError = retry2.error;
@@ -528,13 +520,16 @@ export default function HeuristCatalogModal({
         throw new Error(`Chyba při vytváření karty: ${cardError?.message || "Neznámá chyba"}`);
       }
 
-      // Uložit lokální override pro anglický název
+      // Uložit lokální override pro anglický název a překlad
       if (newCard) {
         const tEn = formTitleEn.trim() || null;
-        if (tEn) {
-          newCard.title_en = tEn;
+        const trEn = formTranslationEn.trim() || null;
+        if (tEn || trEn) {
+          if (tEn) newCard.title_en = tEn;
+          if (trEn && newCard.colophons) newCard.colophons.translation_en = trEn;
           saveStoredCardOverride(newCard.id, {
             title_en: tEn,
+            translation_en: trEn,
             updated_by_name: authorName,
             updated_at: new Date().toISOString(),
           });

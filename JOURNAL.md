@@ -983,5 +983,42 @@ Cílem je proměnit autentické zápisy písařů na koncích středověkých ru
    - V kartě účtu (`profile-account-card`) vedle tlačítka pro změnu hesla.
    - V náhledu vlastního profilu (`PlayerProfileModal`) pro přihlášeného tovaryše.
 
+---
+
+## 📅 Záznam ze dne 4. 10. 2026 — Oprava formuláře Studia: Odstranění samovolného mizení textů, spolehlivé ukládání karet a perzistence anglických polí
+
+**Cíl etapy:** Vyřešit závažný problém v Quilldrop Studiu (`app/admin/page.tsx`), kdy se editorům při psaní samovolně mazala rozepsaná formulářová pole (zejména anglický název a vysvětlení rarity), a odstranit nutnost opakovaného (až pětinásobného) klikání na tlačítko pro uložení změn.
+
+**Diagnostikované příčiny:**
+1. **Samovolné mazání při psaní v `fetchCards()`:**
+   - Kdykoliv na pozadí proběhlo načtení dat (např. automatické ověření session, obnovení tokenu, přepnutí záložky nebo dokončení předchozího dotazu), kód obsahoval direktivní volání `setEditTitleEn(fresh.title_en || "")` a `setEditRarityReasonEn(fresh.rarity_reason_en || "")`.
+   - Pokud editor zrovna psal, asynchronní odpověď ze serveru (kde ještě byla stará či prázdná hodnota) okamžitě přepsala rozepsaný text na prázdný řetězec.
+2. **Blokování ukládání při načítání obrázku:**
+   - Funkce `handleOpenSaveConfirmation()` i `executeSave()` obsahovaly striktní podmínku `if (!selectedCard || !imgRef.current || !completedCrop) return;`.
+   - Velkoformátová středověká folia z Heuristu mívají 5–25 MB. Dokud se obrázek plně nenačetl v prohlížeči a nevypočetl rozměry ořezu, kliknutí na tlačítko *„Uložit změny“* bylo naprosto ignorováno bez jakéhokoliv hlášení. Editor musel klikat opakovaně, dokud se snímek plně nenačetl.
+3. **Ztráta anglického překladu (`translation_en`):**
+   - Pole `translation_en` u kolofonů nebylo začleněno do `CardOverride` v `localStorage` ani do souhrnné migrace `ALL_PENDING_MIGRATIONS.sql`. Pokud v Supabase sloupec ještě nebyl vytvořen, hodnota se při uložení zahodila.
+
+**Provedené úpravy:**
+1. **Ochrana rozepsaného formuláře (`app/admin/page.tsx`):**
+   - V `fetchCards()` odstraněno destruktivní přemazávání aktivních stavů (`setEditTitleEn`, `setEditRarityReasonEn`).
+   - `fetchCards()` nyní pouze aktualizuje referenci `selectedCard` pro metadata (datum, autor), ale nikdy nesahá do rozepsaných vstupních polí editora.
+2. **Okamžité a spolehlivé ukládání na 1 kliknutí:**
+   - Odstraněna blokující závislost na `imgRef.current` a `completedCrop`. Pokud obrázek ještě není v DOMu plně doměřen, systém bezpečně použije stávající souřadnice ořezu z karty (`selectedCard.crop_*`).
+   - Ukládání textových úprav funguje okamžitě a bez prodlevy.
+3. **Klávesová zkratka Ctrl+S / Cmd+S:**
+   - Do administrace přidán globální listener pro okamžité uložení změn stiskem `Ctrl+S` (nebo `Cmd+S` na Macu).
+4. **Živý indikátor neuložených změn:**
+   - Tlačítko *„Uložit změny“* v záhlaví nyní dynamicky detekuje neuložené změny – při rozepsání textu se zvýrazní zlatým lemem a symbolem hvězdičky (`Uložit změny *`), po uložení se vrátí do klidového stavu se zeleným potvrzením.
+5. **Kompletní perzistence anglických dat:**
+   - Do `CardOverride` i `localStorage` přidána podpora pro `translation_en`.
+   - V `app/page.tsx` napojeno zobrazení `translation_en` i z lokálního override, takže hra funguje v angličtině okamžitě i před spuštěním SQL v Supabase.
+   - Do `HeuristCatalogModal.tsx` přidán odolný fallback při vytváření karet bez pádu na chybějícím sloupci.
+   - Do migrací `06_add_english_card_fields.sql` a `ALL_PENDING_MIGRATIONS.sql` doplněn `ALTER TABLE public.colophons ADD COLUMN IF NOT EXISTS translation_en TEXT;`.
+6. **Ověření a stabilita:**
+   - Úspěšná kontrola typů TypeScriptu (`tsc --noEmit`).
+   - Úspěšný ostrý produkční build Next.js 16 (`npm run build`) s návratovým kódem 0.
+
+
 
 

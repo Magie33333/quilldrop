@@ -156,6 +156,7 @@ export const CARDS_OVERRIDES_KEY = "quilldrop-cards-overrides";
 export interface CardOverride {
   title_en?: string | null;
   rarity_reason_en?: string | null;
+  translation_en?: string | null;
   updated_at?: string | null;
   updated_by_name?: string | null;
 }
@@ -1232,6 +1233,20 @@ export default function AdminPage() {
     }
   }, [selectedCard?.id, currentProfile]);
 
+  // Klávesová zkratka Ctrl+S / Cmd+S pro rychlé uložení karty
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (selectedCard && !saving) {
+          handleOpenSaveConfirmation();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedCard, saving, editTitle, editTitleEn, editQuote, editTranslation, editTranslationEn, editRarity, editRarityReason, editRarityReasonEn, editStatus, completedCrop]);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setAuthError("");
@@ -1439,6 +1454,12 @@ export default function AdminPage() {
           rarity_reason_en: card.rarity_reason_en || ov.rarity_reason_en || undefined,
           updated_at: card.updated_at || ov.updated_at || undefined,
           updated_by_name: card.updated_by_name || ov.updated_by_name || undefined,
+          colophons: card.colophons
+            ? {
+                ...card.colophons,
+                translation_en: card.colophons.translation_en || ov.translation_en || null,
+              }
+            : card.colophons,
         };
       });
 
@@ -1447,12 +1468,11 @@ export default function AdminPage() {
         if (!selectedCard) {
           selectCard(merged[0]);
         } else {
-          // Synchronizovat pole u vybrané karty (poslední úpravy, title_en, rarity_reason_en)
+          // Pouze aktualizovat referenční objekt selectedCard v paměti pro metadata (např. updated_at, autor),
+          // ale NIKDY nepřemazávat rozepsané hodnoty editora ve formuláři (setEditTitleEn apod.)!
           const fresh = merged.find((c) => c.id === selectedCard.id);
           if (fresh) {
             setSelectedCard(fresh);
-            setEditTitleEn(fresh.title_en || "");
-            setEditRarityReasonEn(fresh.rarity_reason_en || "");
           }
         }
       }
@@ -1802,7 +1822,7 @@ export default function AdminPage() {
   }
 
   function handleOpenSaveConfirmation() {
-    if (!selectedCard || !imgRef.current || !completedCrop) return;
+    if (!selectedCard) return;
     const changes = getPendingChanges();
     if (changes.length === 0) {
       setNoChangesNotice(true);
@@ -1814,15 +1834,26 @@ export default function AdminPage() {
   }
 
   async function executeSave() {
-    if (!selectedCard || !imgRef.current || !completedCrop) return;
+    if (!selectedCard) return;
     setSaving(true);
     setSaveSuccess(false);
 
-    const img = imgRef.current;
-    const pctX = Math.round((completedCrop.x / img.width) * 1000) / 10;
-    const pctY = Math.round((completedCrop.y / img.height) * 1000) / 10;
-    const pctW = Math.round((completedCrop.width / img.width) * 1000) / 10;
-    const pctH = Math.round((completedCrop.height / img.height) * 1000) / 10;
+    let pctX = Number(selectedCard.crop_x) || 10;
+    let pctY = Number(selectedCard.crop_y) || 10;
+    let pctW = Number(selectedCard.crop_w) || 70;
+    let pctH = Number(selectedCard.crop_h) || 52.5;
+
+    if (imgRef.current && completedCrop && imgRef.current.width > 0 && imgRef.current.height > 0) {
+      pctX = Math.round((completedCrop.x / imgRef.current.width) * 1000) / 10;
+      pctY = Math.round((completedCrop.y / imgRef.current.height) * 1000) / 10;
+      pctW = Math.round((completedCrop.width / imgRef.current.width) * 1000) / 10;
+      pctH = Math.round((completedCrop.height / imgRef.current.height) * 1000) / 10;
+    } else if (crop && crop.width && crop.height) {
+      pctX = Math.round(Number(crop.x) * 10) / 10;
+      pctY = Math.round(Number(crop.y) * 10) / 10;
+      pctW = Math.round(Number(crop.width) * 10) / 10;
+      pctH = Math.round(Number(crop.height) * 10) / 10;
+    }
 
     const editorName =
       currentProfile?.display_name ||
@@ -1831,10 +1862,11 @@ export default function AdminPage() {
 
     const nowIso = new Date().toISOString();
 
-    // Vždy uložit lokální override pro okamžitou spolehlivou perzistenci
+    // Vždy uložit lokální override pro okamžitou spolehlivou perzistenci (včetně translation_en)
     saveStoredCardOverride(selectedCard.id, {
       title_en: editTitleEn.trim() || null,
       rarity_reason_en: editRarityReasonEn.trim() || null,
+      translation_en: editTranslationEn.trim() || null,
       updated_at: nowIso,
       updated_by_name: editorName,
     });
@@ -1889,12 +1921,16 @@ export default function AdminPage() {
         translation_cs: editTranslation.trim(),
         updated_at: nowIso,
       };
-      if (editTranslationEn) colPayload.translation_en = editTranslationEn.trim();
+      if (editTranslationEn.trim()) {
+        colPayload.translation_en = editTranslationEn.trim();
+      } else {
+        colPayload.translation_en = null;
+      }
       const { error: colErr } = await supabase
         .from("colophons")
         .update(colPayload)
         .eq("id", selectedCard.colophon_id);
-      if (colErr && (colErr.code === "PGRST204" || colErr.message?.includes("translation_en"))) {
+      if (colErr && (colErr.code === "PGRST204" || colErr.message?.includes("translation_en") || colErr.message?.includes("column colophons.translation_en does not exist"))) {
         delete colPayload.translation_en;
         await supabase
           .from("colophons")
@@ -2555,15 +2591,24 @@ export default function AdminPage() {
             </span>
           )}
 
-          <button
-            onClick={handleOpenSaveConfirmation}
-            disabled={saving || !selectedCard}
-            className="flex items-center gap-2 bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer"
-            title="Zkontrolovat a uložit změny do databáze"
-          >
-            <Save size={14} />
-            {saving ? "Ukládám..." : "Uložit změny"}
-          </button>
+          {(() => {
+            const hasPending = selectedCard ? getPendingChanges().length > 0 : false;
+            return (
+              <button
+                onClick={handleOpenSaveConfirmation}
+                disabled={saving || !selectedCard}
+                className={`flex items-center gap-2 font-bold text-xs px-3.5 py-1.5 rounded-lg shadow transition disabled:opacity-50 cursor-pointer ${
+                  hasPending
+                    ? "bg-[#ffd580] hover:bg-[#ffe3a8] text-[#14100c] ring-2 ring-[#ffd580]/60"
+                    : "bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c]"
+                }`}
+                title="Zkontrolovat a uložit změny do databáze (Klávesová zkratka Ctrl+S)"
+              >
+                <Save size={14} />
+                {saving ? "Ukládám..." : hasPending ? "Uložit změny *" : "Uložit změny"}
+              </button>
+            );
+          })()}
 
           <button
             onClick={handleLogout}
