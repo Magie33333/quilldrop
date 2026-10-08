@@ -2717,30 +2717,6 @@ export default function AdminPage() {
             </button>
           )}
 
-          {/* Cloud Sync & Zálohy */}
-          {(() => {
-            const localCount = typeof window !== "undefined" ? Object.keys(getStoredCardOverrides()).length : 0;
-            return (
-              <button
-                onClick={() => setShowSyncModal(true)}
-                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border cursor-pointer transition font-medium ${
-                  localCount > 0
-                    ? "bg-amber-950/80 border-amber-600/80 text-[#ffd580] hover:bg-amber-900/80"
-                    : "bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] border-[#423425]"
-                }`}
-                title="Zálohy a synchronizace lokálních dat do Supabase"
-              >
-                <Database size={13} className={localCount > 0 ? "text-[#ffd580]" : ""} />
-                <span className="hidden sm:inline">Cloud Sync</span>
-                {localCount > 0 && (
-                  <span className="bg-[#ffd580] text-[#14100c] text-[10px] font-bold px-1.5 py-0.2 rounded-full">
-                    {localCount}
-                  </span>
-                )}
-              </button>
-            );
-          })()}
-
           {/* Uživatel a role */}
           <div className="hidden md:flex items-center gap-2 text-xs bg-[#1f1914] px-2.5 py-1 rounded-lg border border-[#382d20]">
             <span className="text-[#c9a96e] font-medium truncate max-w-[120px]">
