@@ -264,7 +264,6 @@ export default function AdminPage() {
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const [autoSyncBanner, setAutoSyncBanner] = useState<string | null>(null);
-  const hasAutoSyncedRef = useRef(false);
   const presenceChannelRef = useRef<any>(null);
 
   // Karty a data
@@ -1506,6 +1505,7 @@ export default function AdminPage() {
       let successCount = 0;
       let errorCount = 0;
       let colophonSuccessCount = 0;
+      const syncedIds: string[] = [];
 
       for (const cId of cardIds) {
         const item = overridesToSync[cId];
@@ -1513,6 +1513,7 @@ export default function AdminPage() {
         if (item.title_en) cardUpdate.title_en = item.title_en;
         if (item.rarity_reason_en) cardUpdate.rarity_reason_en = item.rarity_reason_en;
 
+        let wroteCard = false;
         if (Object.keys(cardUpdate).length > 0) {
           const { error } = await supabase.from("cards").update(cardUpdate).eq("id", cId);
           if (error) {
@@ -1520,13 +1521,17 @@ export default function AdminPage() {
             errorCount++;
           } else {
             successCount++;
+            wroteCard = true;
           }
         }
 
         // Pokud je v záloze i translation_en, aktualizujeme i tabulku colophons
         if (item.translation_en) {
-          const targetCard = cards.find((c) => c.id === cId);
-          const colId = targetCard?.colophon_id;
+          let colId = cards.find((c) => c.id === cId)?.colophon_id;
+          if (!colId) {
+            const { data: cRow } = await supabase.from("cards").select("colophon_id").eq("id", cId).single();
+            colId = cRow?.colophon_id;
+          }
           if (colId) {
             const { error: colErr } = await supabase
               .from("colophons")
@@ -1535,17 +1540,45 @@ export default function AdminPage() {
             if (!colErr) colophonSuccessCount++;
           }
         }
+
+        if (wroteCard) {
+          syncedIds.push(cId);
+        }
+      }
+
+      // Bezpečně archivovat úspěšně synchronizovaná data a vyčistit odeslané položky z aktivní fronty
+      if (syncedIds.length > 0 && !customData) {
+        try {
+          const backupKey = "quilldrop-cards-backup-history";
+          const oldHistory = JSON.parse(localStorage.getItem(backupKey) || "{}");
+          const newlySynced: Record<string, CardOverride> = {};
+          syncedIds.forEach((id) => {
+            if (overridesToSync[id]) newlySynced[id] = overridesToSync[id];
+          });
+          localStorage.setItem(backupKey, JSON.stringify({ ...oldHistory, ...newlySynced }));
+
+          // Vymazat z aktivních lokálních overrides ty, které už jsou 100% v cloudu
+          const currentActive = getStoredCardOverrides();
+          syncedIds.forEach((id) => {
+            delete currentActive[id];
+          });
+          if (Object.keys(currentActive).length > 0) {
+            localStorage.setItem(CARDS_OVERRIDES_KEY, JSON.stringify(currentActive));
+          } else {
+            localStorage.removeItem(CARDS_OVERRIDES_KEY);
+          }
+        } catch (err) {
+          console.warn("Chyba při archivaci zapsaných overrides:", err);
+        }
       }
 
       if (customData) {
-        const existing = getStoredCardOverrides();
-        const merged = { ...existing, ...customData };
-        localStorage.setItem(CARDS_OVERRIDES_KEY, JSON.stringify(merged));
+        fetchCards();
       }
 
       if (errorCount > 0 && successCount === 0) {
         setSyncResultMsg(
-          `⚠️ Databáze Supabase odmítla zápis (${errorCount} chyb). V tabulce 'cards' dosud nebyly vytvořeny sloupce 'title_en' a 'rarity_reason_en'. Spusťte níže uvedený SQL příkaz v Supabase SQL Editoru!`
+          `⚠️ Databáze Supabase odmítla zápis (${errorCount} chyb). V tabulce 'cards' dosud nebyly vytvořeny sloupce 'title_en' a 'rarity_reason_en'.`
         );
       } else {
         setSyncResultMsg(
@@ -1566,16 +1599,34 @@ export default function AdminPage() {
     }
   }
 
-  // Automatická synchronizace lokálních dat do Supabase po načtení
+  // Plně automatická kontrola rozdílů: při načtení, při návratu do okna a periodicky každých 20 sekund
   useEffect(() => {
-    if (!currentUser || cards.length === 0 || hasAutoSyncedRef.current) return;
-    const localOverrides = getStoredCardOverrides();
-    const count = Object.keys(localOverrides).length;
-    if (count > 0) {
-      hasAutoSyncedRef.current = true;
-      syncOverridesToSupabase();
+    if (!currentUser || cards.length === 0) return;
+
+    function checkAndAutoSync() {
+      if (syncingOverrides) return;
+      const localOverrides = getStoredCardOverrides();
+      const count = Object.keys(localOverrides).length;
+      if (count > 0) {
+        console.log(`[AutoSync] Nalezeno ${count} lokálních rozdílů k synchronizaci do Supabase...`);
+        syncOverridesToSupabase();
+      }
     }
-  }, [currentUser?.id, cards.length > 0]);
+
+    // 1. Ihned při spuštění / přihlášení
+    checkAndAutoSync();
+
+    // 2. Při návratu do okna (např. po přepnutí z jiné záložky)
+    window.addEventListener("focus", checkAndAutoSync);
+
+    // 3. Pravidelný tichý interval každých 20 sekund
+    const interval = setInterval(checkAndAutoSync, 20000);
+
+    return () => {
+      window.removeEventListener("focus", checkAndAutoSync);
+      clearInterval(interval);
+    };
+  }, [currentUser?.id, cards.length > 0, syncingOverrides]);
 
   function selectCard(card: CardData) {
     setSelectedCard(card);
