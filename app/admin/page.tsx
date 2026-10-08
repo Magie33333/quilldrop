@@ -278,6 +278,7 @@ export default function AdminPage() {
   const [lastSavedSummary, setLastSavedSummary] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [enFilter, setEnFilter] = useState<"all" | "with_en" | "missing_en">("all");
 
   // React-image-crop stavy (PowerPoint style úchyty a posun)
   const [crop, setCrop] = useState<Crop>();
@@ -2414,12 +2415,18 @@ export default function AdminPage() {
   }
 
   const filteredCards = cards.filter((c) => {
+    const s = search.toLowerCase();
     const matchSearch =
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.colophons?.quote.toLowerCase().includes(search.toLowerCase()) ||
-      c.colophons?.scribe.toLowerCase().includes(search.toLowerCase());
+      c.title.toLowerCase().includes(s) ||
+      (c.title_en && c.title_en.toLowerCase().includes(s)) ||
+      (c.colophons?.quote && c.colophons.quote.toLowerCase().includes(s)) ||
+      (c.colophons?.scribe && c.colophons.scribe.toLowerCase().includes(s));
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchEn =
+      enFilter === "all" ||
+      (enFilter === "with_en" && !!c.title_en) ||
+      (enFilter === "missing_en" && !c.title_en);
+    return matchSearch && matchStatus && matchEn;
   });
 
   // Uživatelé v reálném čase editující stejnou kartu (detekce kolizí)
@@ -2807,15 +2814,19 @@ export default function AdminPage() {
                 <span className="text-xs font-bold text-[#c9a96e] uppercase tracking-wider block">
                   Katalog karet
                 </span>
-                <small className="text-[10px] text-[#7d6f62]">
-                  {cards.length} ve hře · 3 640 v Heuristu
+                <small className="text-[10px] text-[#7d6f62] flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <span>{cards.length} ve hře</span>
+                  <span>·</span>
+                  <span className="text-emerald-400 font-medium">
+                    🇬🇧 {cards.filter((c) => !!c.title_en).length} přeloženo
+                  </span>
                 </small>
               </div>
             </div>
 
             <input
               type="text"
-              placeholder="Hledat kolofon, písaře..."
+              placeholder="Hledat česky i anglicky, písaře..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] placeholder-[#7d6f62] focus:outline-none focus:border-[#d4af37]"
@@ -2840,6 +2851,40 @@ export default function AdminPage() {
                   {st.label}
                 </button>
               ))}
+            </div>
+
+            <div className="flex gap-1 items-center flex-wrap pt-1 border-t border-[#241c16]/80">
+              <span className="text-[10px] text-[#7d6f62] mr-0.5">Angličtina:</span>
+              <button
+                onClick={() => setEnFilter("all")}
+                className={`text-[10px] px-1.5 py-0.5 rounded transition cursor-pointer ${
+                  enFilter === "all"
+                    ? "bg-[#3d3226] text-[#ffd580] font-semibold border border-[#5c4627]"
+                    : "text-[#8c7b6d] hover:text-[#d1c2b4]"
+                }`}
+              >
+                Vše
+              </button>
+              <button
+                onClick={() => setEnFilter("with_en")}
+                className={`text-[10px] px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-1 ${
+                  enFilter === "with_en"
+                    ? "bg-emerald-950 text-emerald-300 font-semibold border border-emerald-700/80"
+                    : "text-[#8c7b6d] hover:text-[#d1c2b4]"
+                }`}
+              >
+                🇬🇧 Má EN ({cards.filter((c) => !!c.title_en).length})
+              </button>
+              <button
+                onClick={() => setEnFilter("missing_en")}
+                className={`text-[10px] px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-1 ${
+                  enFilter === "missing_en"
+                    ? "bg-amber-950 text-amber-300 font-semibold border border-amber-700/80"
+                    : "text-[#8c7b6d] hover:text-[#d1c2b4]"
+                }`}
+              >
+                Chybí EN ({cards.filter((c) => !c.title_en).length})
+              </button>
             </div>
           </div>
 
@@ -2888,6 +2933,22 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
+
+                      {/* Anglický název z databáze */}
+                      {c.title_en ? (
+                        <p className="text-[10.5px] text-[#ffd580] truncate font-serif italic mt-0.5 flex items-center gap-1.5">
+                          <span className="text-[8px] bg-[#3a2c1a] text-[#ffd580] px-1 py-0.2 rounded font-sans not-italic border border-[#5c4627] font-bold shrink-0">
+                            EN
+                          </span>
+                          <span className="truncate">{c.title_en}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[9.5px] text-[#6e5d50] italic mt-0.5 flex items-center gap-1">
+                          <span className="text-[8px] bg-[#1a1410] text-[#6e5d50] px-1 py-0.2 rounded font-sans not-italic border border-[#2e241c] shrink-0">
+                            bez EN
+                          </span>
+                        </p>
+                      )}
                       <p className="text-[11px] text-[#9c8976] truncate italic mt-0.5">
                         {c.colophons?.quote || "Bez citátu"}
                       </p>
@@ -7019,80 +7080,73 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Živý stav centrální databáze Supabase */}
+              <div className="bg-[#152317] p-3.5 rounded-lg border border-emerald-700/60 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-bold text-emerald-300 flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 size={16} className="text-emerald-400" /> Stav v centrální databázi Supabase
+                  </span>
+                  <span className="text-[11px] bg-emerald-900/90 text-emerald-200 px-2.5 py-0.5 rounded font-mono font-bold border border-emerald-700/80">
+                    🇬🇧 {cards.filter((c) => !!c.title_en).length} z {cards.length} karet má anglický název v cloudu
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1 border-t border-emerald-800/40">
+                  <div className="bg-[#0f1a10] p-2 rounded border border-emerald-900/60">
+                    <span className="text-[#a89887] block text-[10px]">Monika Syslová:</span>
+                    <strong className="text-emerald-300 font-bold">
+                      {cards.filter((c) => (c.updated_by_name || "").includes("Monika") && !!c.title_en).length} přeložených karet
+                    </strong>
+                  </div>
+                  <div className="bg-[#0f1a10] p-2 rounded border border-emerald-900/60">
+                    <span className="text-[#a89887] block text-[10px]">Alžběta Langfelnerová:</span>
+                    <strong className="text-emerald-300 font-bold">
+                      {cards.filter((c) => (c.updated_by_name || "").includes("Alžběta") && !!c.title_en).length} přeložených karet
+                    </strong>
+                  </div>
+                  <div className="bg-[#0f1a10] p-2 rounded border border-emerald-900/60">
+                    <span className="text-[#a89887] block text-[10px]">Celý tým celkem:</span>
+                    <strong className="text-emerald-300 font-bold">
+                      {cards.filter((c) => !!c.title_en).length} karet v databázi
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
               {/* Informační vysvětlení */}
               <div className="bg-[#1c1713] p-3 rounded-lg border border-[#382d20] space-y-2 text-[#a89887]">
                 <p className="leading-relaxed">
-                  <strong className="text-[#ffd580]">Jak funguje ochrana dat:</strong> Pokud v databázi Supabase ještě neexistují sloupce <code className="text-[#ffd580] bg-[#29221b] px-1 rounded">title_en</code> a <code className="text-[#ffd580] bg-[#29221b] px-1 rounded">rarity_reason_en</code>, Quilldrop Studio vaše změny nezahazuje, ale bezpečně je ukládá do lokálního úložiště prohlížeče (LocalStorage) vašeho zařízení.
+                  <strong className="text-[#ffd580]">Plná automatická synchronizace:</strong> Kdykoliv kdokoliv ve Studiu upraví kartu, data se automaticky ukládají do centrální databáze Supabase a okamžitě jsou dostupná celému týmu. Prohlížeč si navíc udržuje lokální zálohu pro případ výpadku sítě.
                 </p>
-                <p className="leading-relaxed">
-                  Jakmile spustíte níže uvedený SQL příkaz v Supabase, klikněte na <strong className="text-[#ffd580]">Nahrát lokální data do Supabase</strong> a všechny uložené úpravy se okamžitě zapíší do centrální databáze pro všechny uživatele!
-                </p>
-              </div>
-
-              {/* Krok 1: SQL Migrace */}
-              <div className="bg-[#18130f] p-3.5 rounded-lg border border-[#3d3020] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#ffd580] flex items-center gap-1.5">
-                    1. SQL příkaz pro Supabase
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const sql = `ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS title_en TEXT, ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;\nALTER TABLE public.colophons ADD COLUMN IF NOT EXISTS translation_en TEXT;`;
-                        navigator.clipboard.writeText(sql);
-                        setCopiedSql(true);
-                        setTimeout(() => setCopiedSql(false), 2500);
-                      }}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-[#2e241b] hover:bg-[#3d3021] text-[#ffd580] border border-[#52412b] rounded text-[11px] transition cursor-pointer font-medium"
-                    >
-                      {copiedSql ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      {copiedSql ? "Zkopírováno!" : "Zkopírovat SQL"}
-                    </button>
-                    <a
-                      href="https://supabase.com/dashboard/project/xqsfjbmexokkmsfcsmdi/sql"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 px-2.5 py-1 bg-[#241c15] hover:bg-[#30261c] text-[#a89887] hover:text-[#e8ded1] border border-[#3d3020] rounded text-[11px] transition"
-                    >
-                      Otevřít Supabase SQL <ExternalLink size={11} />
-                    </a>
-                  </div>
-                </div>
-                <pre className="bg-[#0e0b09] p-2.5 rounded border border-[#2a2118] text-[11px] font-mono text-[#d4af37] overflow-x-auto select-all">
-{`ALTER TABLE public.cards 
-ADD COLUMN IF NOT EXISTS title_en TEXT,
-ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;
-
-ALTER TABLE public.colophons 
-ADD COLUMN IF NOT EXISTS translation_en TEXT;`}
-                </pre>
               </div>
 
               {/* Krok 2: Lokální data na tomto zařízení */}
               <div className="bg-[#18130f] p-3.5 rounded-lg border border-[#3d3020] space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <span className="font-bold text-[#ffd580] block">
-                      2. Vaše lokální data na tomto počítači
+                      Lokální data a záloha na tomto počítači
                     </span>
                     <span className="text-[11px] text-[#8c7b6d]">
-                      Nalezeno {Object.keys(getStoredCardOverrides()).length} upravených karet v tomto prohlížeči.
+                      {Object.keys(getStoredCardOverrides()).length === 0
+                        ? "Všechny rozpracované úpravy na tomto zařízení jsou již 100% zapsané v cloudu."
+                        : `Nalezeno ${Object.keys(getStoredCardOverrides()).length} lokálně čekajících karet k synchronizaci.`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        const data = getStoredCardOverrides();
+                        const active = getStoredCardOverrides();
+                        const backup = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("quilldrop-cards-backup-history") || "{}") : {};
+                        const data = { ...backup, ...active };
                         navigator.clipboard.writeText(JSON.stringify(data, null, 2));
                         setCopiedJson(true);
                         setTimeout(() => setCopiedJson(false), 2500);
                       }}
-                      disabled={Object.keys(getStoredCardOverrides()).length === 0}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#29221b] hover:bg-[#3d3226] text-[#c9a96e] border border-[#42372d] rounded-lg text-xs transition disabled:opacity-40 cursor-pointer"
-                      title="Zkopírovat celou zálohu do schránky pro přenos do jiného PC"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#29221b] hover:bg-[#3d3226] text-[#c9a96e] border border-[#42372d] rounded-lg text-xs transition cursor-pointer"
+                      title="Zkopírovat kompletní data do schránky pro přenos do jiného PC"
                     >
                       {copiedJson ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                      {copiedJson ? "Zkopírováno!" : "Exportovat (Zkopírovat JSON)"}
+                      {copiedJson ? "Zkopírováno!" : "Exportovat kompletní JSON zálohu"}
                     </button>
                     <button
                       onClick={() => syncOverridesToSupabase()}
@@ -7100,7 +7154,7 @@ ADD COLUMN IF NOT EXISTS translation_en TEXT;`}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] font-bold rounded-lg text-xs transition disabled:opacity-40 cursor-pointer shadow-sm"
                     >
                       <RefreshCw size={13} className={syncingOverrides ? "animate-spin" : ""} />
-                      {syncingOverrides ? "Nahrávám..." : "Nahrát do Supabase"}
+                      {syncingOverrides ? "Nahrávám..." : "Nahrát čekající do Supabase"}
                     </button>
                   </div>
                 </div>
