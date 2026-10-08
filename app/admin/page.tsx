@@ -263,6 +263,8 @@ export default function AdminPage() {
   const [importJsonText, setImportJsonText] = useState("");
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
+  const [autoSyncBanner, setAutoSyncBanner] = useState<string | null>(null);
+  const hasAutoSyncedRef = useRef(false);
   const presenceChannelRef = useRef<any>(null);
 
   // Karty a data
@@ -1551,6 +1553,10 @@ export default function AdminPage() {
             colophonSuccessCount > 0 ? ` (a ${colophonSuccessCount} překladů v colophons)` : ""
           }${errorCount > 0 ? ` (U ${errorCount} položek došlo k chybě)` : ""}`
         );
+        if (successCount > 0) {
+          setAutoSyncBanner(`Automaticky nahráno ${successCount} karet do Supabase cloudu`);
+          setTimeout(() => setAutoSyncBanner(null), 8000);
+        }
         fetchCards();
       }
     } catch (err: any) {
@@ -1562,10 +1568,11 @@ export default function AdminPage() {
 
   // Automatická synchronizace lokálních dat do Supabase po načtení
   useEffect(() => {
-    if (!currentUser || cards.length === 0) return;
+    if (!currentUser || cards.length === 0 || hasAutoSyncedRef.current) return;
     const localOverrides = getStoredCardOverrides();
     const count = Object.keys(localOverrides).length;
     if (count > 0) {
+      hasAutoSyncedRef.current = true;
       syncOverridesToSupabase();
     }
   }, [currentUser?.id, cards.length > 0]);
@@ -2701,6 +2708,12 @@ export default function AdminPage() {
           {saveSuccess && (
             <span className="text-xs text-[#73d13d] hidden sm:flex items-center gap-1 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-800">
               <Check size={14} /> {lastSavedSummary || "Uloženo"}
+            </span>
+          )}
+
+          {autoSyncBanner && (
+            <span className="text-xs text-[#73d13d] hidden sm:flex items-center gap-1 bg-emerald-950/90 px-2.5 py-1 rounded border border-emerald-700 shadow-sm animate-pulse">
+              <Check size={14} /> {autoSyncBanner}
             </span>
           )}
 
