@@ -48,6 +48,8 @@ import {
   Trophy,
   Search,
   Filter,
+  Database,
+  Download,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -255,6 +257,12 @@ export default function AdminPage() {
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const [showPresenceModal, setShowPresenceModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncingOverrides, setSyncingOverrides] = useState(false);
+  const [syncResultMsg, setSyncResultMsg] = useState("");
+  const [importJsonText, setImportJsonText] = useState("");
+  const [copiedSql, setCopiedSql] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
   const presenceChannelRef = useRef<any>(null);
 
   // Karty a data
@@ -1481,6 +1489,87 @@ export default function AdminPage() {
     fetchAllGames();
   }
 
+  async function syncOverridesToSupabase(customData?: Record<string, CardOverride>) {
+    setSyncingOverrides(true);
+    setSyncResultMsg("");
+    try {
+      const overridesToSync = customData || getStoredCardOverrides();
+      const cardIds = Object.keys(overridesToSync);
+      if (cardIds.length === 0) {
+        setSyncResultMsg("Žádná lokální data k synchronizaci nebyla nalezena.");
+        setSyncingOverrides(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      let colophonSuccessCount = 0;
+
+      for (const cId of cardIds) {
+        const item = overridesToSync[cId];
+        const cardUpdate: any = {};
+        if (item.title_en) cardUpdate.title_en = item.title_en;
+        if (item.rarity_reason_en) cardUpdate.rarity_reason_en = item.rarity_reason_en;
+
+        if (Object.keys(cardUpdate).length > 0) {
+          const { error } = await supabase.from("cards").update(cardUpdate).eq("id", cId);
+          if (error) {
+            console.warn(`Chyba při synchronizaci karty ${cId}:`, error);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        }
+
+        // Pokud je v záloze i translation_en, aktualizujeme i tabulku colophons
+        if (item.translation_en) {
+          const targetCard = cards.find((c) => c.id === cId);
+          const colId = targetCard?.colophon_id;
+          if (colId) {
+            const { error: colErr } = await supabase
+              .from("colophons")
+              .update({ translation_en: item.translation_en })
+              .eq("id", colId);
+            if (!colErr) colophonSuccessCount++;
+          }
+        }
+      }
+
+      if (customData) {
+        const existing = getStoredCardOverrides();
+        const merged = { ...existing, ...customData };
+        localStorage.setItem(CARDS_OVERRIDES_KEY, JSON.stringify(merged));
+      }
+
+      if (errorCount > 0 && successCount === 0) {
+        setSyncResultMsg(
+          `⚠️ Databáze Supabase odmítla zápis (${errorCount} chyb). V tabulce 'cards' dosud nebyly vytvořeny sloupce 'title_en' a 'rarity_reason_en'. Spusťte níže uvedený SQL příkaz v Supabase SQL Editoru!`
+        );
+      } else {
+        setSyncResultMsg(
+          `✅ Úspěšně nahráno ${successCount} anglických názvů/rarit do databáze Supabase!${
+            colophonSuccessCount > 0 ? ` (a ${colophonSuccessCount} překladů v colophons)` : ""
+          }${errorCount > 0 ? ` (U ${errorCount} položek došlo k chybě)` : ""}`
+        );
+        fetchCards();
+      }
+    } catch (err: any) {
+      setSyncResultMsg(`Chyba při synchronizaci: ${err.message || "Neznámá chyba"}`);
+    } finally {
+      setSyncingOverrides(false);
+    }
+  }
+
+  // Automatická synchronizace lokálních dat do Supabase po načtení
+  useEffect(() => {
+    if (!currentUser || cards.length === 0) return;
+    const localOverrides = getStoredCardOverrides();
+    const count = Object.keys(localOverrides).length;
+    if (count > 0) {
+      syncOverridesToSupabase();
+    }
+  }, [currentUser?.id, cards.length > 0]);
+
   function selectCard(card: CardData) {
     setSelectedCard(card);
     setEditTitle(card.title || "");
@@ -2562,6 +2651,30 @@ export default function AdminPage() {
               <Shield size={13} /> Účty ({teamProfiles.length || "..."})
             </button>
           )}
+
+          {/* Cloud Sync & Zálohy */}
+          {(() => {
+            const localCount = typeof window !== "undefined" ? Object.keys(getStoredCardOverrides()).length : 0;
+            return (
+              <button
+                onClick={() => setShowSyncModal(true)}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border cursor-pointer transition font-medium ${
+                  localCount > 0
+                    ? "bg-amber-950/80 border-amber-600/80 text-[#ffd580] hover:bg-amber-900/80"
+                    : "bg-[#241c16] hover:bg-[#30261e] text-[#c9a96e] border-[#423425]"
+                }`}
+                title="Zálohy a synchronizace lokálních dat do Supabase"
+              >
+                <Database size={13} className={localCount > 0 ? "text-[#ffd580]" : ""} />
+                <span className="hidden sm:inline">Cloud Sync</span>
+                {localCount > 0 && (
+                  <span className="bg-[#ffd580] text-[#14100c] text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                    {localCount}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
 
           {/* Uživatel a role */}
           <div className="hidden md:flex items-center gap-2 text-xs bg-[#1f1914] px-2.5 py-1 rounded-lg border border-[#382d20]">
@@ -6794,6 +6907,186 @@ export default function AdminPage() {
                 className="px-4 py-1.5 bg-[#292017] hover:bg-[#3a2e21] text-[#ffd580] border border-[#52412d] rounded-lg text-xs font-semibold transition cursor-pointer"
               >
                 Rozumím
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Cloud Sync & Záchrana lokálních dat */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#14110f] border border-[#3b322a] rounded-xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-[#2e2721] flex items-center justify-between bg-[#1a1511]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-600/50 flex items-center justify-center text-[#ffd580]">
+                  <Database size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#e8ded1]">
+                    Cloud Sync & Záchrana dat (Disaster Recovery)
+                  </h3>
+                  <p className="text-[11px] text-[#8c7b6d]">
+                    Synchronizace lokálních úprav (LocalStorage) do databáze Supabase
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSyncModal(false)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded-lg hover:bg-[#29221b] transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 overflow-y-auto text-xs text-[#c9a96e]">
+              {/* Oznámení / Výsledek */}
+              {syncResultMsg && (
+                <div
+                  className={`p-3 rounded-lg border text-xs leading-relaxed ${
+                    syncResultMsg.startsWith("✅")
+                      ? "bg-emerald-950/80 border-emerald-700 text-emerald-200"
+                      : syncResultMsg.startsWith("⚠️")
+                      ? "bg-amber-950/80 border-amber-600 text-[#ffd580]"
+                      : "bg-red-950/80 border-red-700 text-red-200"
+                  }`}
+                >
+                  {syncResultMsg}
+                </div>
+              )}
+
+              {/* Informační vysvětlení */}
+              <div className="bg-[#1c1713] p-3 rounded-lg border border-[#382d20] space-y-2 text-[#a89887]">
+                <p className="leading-relaxed">
+                  <strong className="text-[#ffd580]">Jak funguje ochrana dat:</strong> Pokud v databázi Supabase ještě neexistují sloupce <code className="text-[#ffd580] bg-[#29221b] px-1 rounded">title_en</code> a <code className="text-[#ffd580] bg-[#29221b] px-1 rounded">rarity_reason_en</code>, Quilldrop Studio vaše změny nezahazuje, ale bezpečně je ukládá do lokálního úložiště prohlížeče (LocalStorage) vašeho zařízení.
+                </p>
+                <p className="leading-relaxed">
+                  Jakmile spustíte níže uvedený SQL příkaz v Supabase, klikněte na <strong className="text-[#ffd580]">Nahrát lokální data do Supabase</strong> a všechny uložené úpravy se okamžitě zapíší do centrální databáze pro všechny uživatele!
+                </p>
+              </div>
+
+              {/* Krok 1: SQL Migrace */}
+              <div className="bg-[#18130f] p-3.5 rounded-lg border border-[#3d3020] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[#ffd580] flex items-center gap-1.5">
+                    1. SQL příkaz pro Supabase
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const sql = `ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS title_en TEXT, ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;\nALTER TABLE public.colophons ADD COLUMN IF NOT EXISTS translation_en TEXT;`;
+                        navigator.clipboard.writeText(sql);
+                        setCopiedSql(true);
+                        setTimeout(() => setCopiedSql(false), 2500);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#2e241b] hover:bg-[#3d3021] text-[#ffd580] border border-[#52412b] rounded text-[11px] transition cursor-pointer font-medium"
+                    >
+                      {copiedSql ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      {copiedSql ? "Zkopírováno!" : "Zkopírovat SQL"}
+                    </button>
+                    <a
+                      href="https://supabase.com/dashboard/project/xqsfjbmexokkmsfcsmdi/sql"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#241c15] hover:bg-[#30261c] text-[#a89887] hover:text-[#e8ded1] border border-[#3d3020] rounded text-[11px] transition"
+                    >
+                      Otevřít Supabase SQL <ExternalLink size={11} />
+                    </a>
+                  </div>
+                </div>
+                <pre className="bg-[#0e0b09] p-2.5 rounded border border-[#2a2118] text-[11px] font-mono text-[#d4af37] overflow-x-auto select-all">
+{`ALTER TABLE public.cards 
+ADD COLUMN IF NOT EXISTS title_en TEXT,
+ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;
+
+ALTER TABLE public.colophons 
+ADD COLUMN IF NOT EXISTS translation_en TEXT;`}
+                </pre>
+              </div>
+
+              {/* Krok 2: Lokální data na tomto zařízení */}
+              <div className="bg-[#18130f] p-3.5 rounded-lg border border-[#3d3020] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-[#ffd580] block">
+                      2. Vaše lokální data na tomto počítači
+                    </span>
+                    <span className="text-[11px] text-[#8c7b6d]">
+                      Nalezeno {Object.keys(getStoredCardOverrides()).length} upravených karet v tomto prohlížeči.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const data = getStoredCardOverrides();
+                        navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                        setCopiedJson(true);
+                        setTimeout(() => setCopiedJson(false), 2500);
+                      }}
+                      disabled={Object.keys(getStoredCardOverrides()).length === 0}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#29221b] hover:bg-[#3d3226] text-[#c9a96e] border border-[#42372d] rounded-lg text-xs transition disabled:opacity-40 cursor-pointer"
+                      title="Zkopírovat celou zálohu do schránky pro přenos do jiného PC"
+                    >
+                      {copiedJson ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                      {copiedJson ? "Zkopírováno!" : "Exportovat (Zkopírovat JSON)"}
+                    </button>
+                    <button
+                      onClick={() => syncOverridesToSupabase()}
+                      disabled={syncingOverrides || Object.keys(getStoredCardOverrides()).length === 0}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#d4af37] hover:bg-[#c39e2e] text-[#14100c] font-bold rounded-lg text-xs transition disabled:opacity-40 cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw size={13} className={syncingOverrides ? "animate-spin" : ""} />
+                      {syncingOverrides ? "Nahrávám..." : "Nahrát do Supabase"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Krok 3: Import dat od brigádníků / kolegů */}
+              <div className="bg-[#18130f] p-3.5 rounded-lg border border-[#3d3020] space-y-2.5">
+                <div>
+                  <span className="font-bold text-[#ffd580] block">
+                    3. Záchrana dat od kolegy / brigádníka (Přenos z jiného PC)
+                  </span>
+                  <p className="text-[11px] text-[#8c7b6d] leading-relaxed">
+                    Pokud brigádník (Monika, Bětka...) zadával/a data na svém notebooku a vy jste na jiném počítači:
+                    nechte ji kliknout na tlačítko <em>Exportovat (Zkopírovat JSON)</em> na jejím notebooku a poslat vám text přes Slack/email. Text sem vložte a klikněte na Nahrát.
+                  </p>
+                </div>
+                <textarea
+                  value={importJsonText}
+                  onChange={(e) => setImportJsonText(e.target.value)}
+                  placeholder="Sem vložte JSON text od kolegy (např. { &quot;id-karty&quot;: { &quot;title_en&quot;: ... } })..."
+                  rows={3}
+                  className="w-full bg-[#0e0b09] border border-[#2a2118] rounded-lg p-2.5 text-xs text-[#e8ded1] font-mono placeholder-[#635548] focus:outline-none focus:border-[#d4af37]"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      if (!importJsonText.trim()) return;
+                      try {
+                        const parsed = JSON.parse(importJsonText);
+                        syncOverridesToSupabase(parsed);
+                      } catch (err) {
+                        alert("Neplatný formát JSON dat. Zkontrolujte, zda jste zkopírovali celý text.");
+                      }
+                    }}
+                    disabled={syncingOverrides || !importJsonText.trim()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#2e241b] hover:bg-[#3d3021] text-[#ffd580] border border-[#52412b] rounded-lg text-xs font-bold transition disabled:opacity-40 cursor-pointer"
+                  >
+                    <Upload size={13} />
+                    Nahrát importovaná data do Supabase
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#2e2721] bg-[#1a1511] flex justify-end">
+              <button
+                onClick={() => setShowSyncModal(false)}
+                className="px-4 py-1.5 bg-[#292017] hover:bg-[#3a2e21] text-[#ffd580] border border-[#52412d] rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Zavřít
               </button>
             </div>
           </div>

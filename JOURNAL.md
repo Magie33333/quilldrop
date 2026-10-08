@@ -9,6 +9,31 @@
 
 ---
 
+## 📅 Záznam ze dne 8. 10. 2026 — Disaster Recovery: Ochrana a synchronizace anglických polí karet (title_en, rarity_reason_en)
+
+**Cíl etapy:** Vyšetřit a vyřešit hlášenou ztrátu anglických názvů karet a zdůvodnění rarity u 75 karet upravovaných editory/brigádníky (Monika Syslová, Alžběta Langfelnerová). Zabezpečit 100% perzistenci a zavést systém záchrany a přenosu dat mezi zařízeními.
+
+**Diagnostika a zjištěné skutečnosti:**
+1. **Analýza centrální databáze Supabase:**
+   - Přímým REST dotazem na Supabase (`https://xqsfjbmexokkmsfcsmdi.supabase.co`) ověřeno, že v databázi existuje 80 karet a editoři (60 karet Monika Syslová, 15 karet Alžběta Langfelnerová) je úspěšně ukládali.
+   - V tabulce `cards` v Supabase však dosud **fyzicky neexistovaly sloupce `title_en` a `rarity_reason_en`**, protože SQL migrace (`ALTER TABLE public.cards ADD COLUMN IF NOT EXISTS title_en TEXT, ADD COLUMN IF NOT EXISTS rarity_reason_en TEXT;`) dosud nebyla spuštěna v Supabase SQL Editoru.
+   - PostgREST API při pokusu o zápis těchto sloupců vracelo chybu `column "title_en" does not exist`.
+2. **Potvrzení záchrany dat (Data nebyla ztracena):**
+   - Díky bezpečnostnímu fallback mechanismu v `executeSave()` Studio při chybě neznámého sloupce očistilo zápis do Supabase o nepodporované sloupce a kompletní data (včetně `title_en` a `rarity_reason_en`) uložilo do `localStorage` prohlížeče daného editora pod klíčem `quilldrop-cards-overrides`.
+   - Všechny úpravy provedené Monikou i Bětkou jsou bezpečně uloženy v jejich prohlížečích na jejich počítačích.
+   - Na počítači administrátora se data jevila jako prázdná, protože jeho prohlížeč načítal čistý stav ze Supabase a jeho vlastní `localStorage` byl prázdný.
+
+**Realizované úpravy a Disaster Recovery (`app/admin/page.tsx`):**
+1. **Automatická synchronizace do cloudu (`syncOverridesToSupabase`):**
+   - Do `AdminPage` přidána funkce, která po načtení rozhraní automaticky zkontroluje existenci lokálních záloh v `localStorage` a pokusí se je zapsat do Supabase. Jakmile editoři otevřou Studio po spuštění SQL migrace, jejich data se automaticky nahrají do Supabase.
+2. **Centrum záchrany dat v záhlaví Studia (Tlačítko a Modal "Cloud Sync"):**
+   - V hlavičce Studia přidáno tlačítko *Cloud Sync* s dynamickým odznakem počtu lokálně uložených karet na daném zařízení.
+   - **Krok 1 (SQL Migrace):** Přehledné zobrazení přesného SQL skriptu s tlačítkem pro zkopírování do schránky na 1 klik a přímým odkazem do Supabase SQL Editoru.
+   - **Krok 2 (Správa lokálních dat):** Tlačítko pro manuální nahrání lokálních dat do Supabase a tlačítko *Exportovat (Zkopírovat JSON)* pro případ, že editor potřebuje data zkopírovat a poslat administrátorovi.
+   - **Krok 3 (Import dat od kolegů):** Textové pole pro vložení exportovaného JSONu od kolegů z jiného počítače s tlačítkem *Nahrát importovaná data do Supabase*, umožňující administrátorovi synchronizovat data brigádníků bez nutnosti čekat na jejich opětovné přihlášení.
+
+---
+
 ## 📅 Záznam ze dne 24. 9. 2026 — Progresivní level systém písařského cechu a historický trh rukopisů (Officina Stationarii)
 
 **Cíl etapy:** Zmodernizovat a prohloubit herní ekonomiku a progresi písaře:
