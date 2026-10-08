@@ -264,6 +264,7 @@ export default function AdminPage() {
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const [autoSyncBanner, setAutoSyncBanner] = useState<string | null>(null);
+  const [teamActivityNotice, setTeamActivityNotice] = useState<string | null>(null);
   const presenceChannelRef = useRef<any>(null);
 
   // Karty a data
@@ -1208,6 +1209,16 @@ export default function AdminPage() {
         }
         setOnlineUsers(usersList);
       })
+      .on("broadcast", { event: "card_saved" }, (payload: any) => {
+        const info = payload?.payload;
+        if (info && info.editorName !== (currentProfile?.display_name || currentUser.email?.split("@")[0])) {
+          setTeamActivityNotice(`✍️ ${info.editorName} uložil/a kartu: ${info.titleEn || info.title}`);
+          setTimeout(() => setTeamActivityNotice(null), 6000);
+        }
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "cards" }, () => {
+        fetchCards(true);
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({
@@ -1427,8 +1438,8 @@ export default function AdminPage() {
     }
   }
 
-  async function fetchCards() {
-    setLoading(true);
+  async function fetchCards(isSilent: boolean = false) {
+    if (!isSilent) setLoading(true);
     let { data, error } = await supabase
       .from("cards")
       .select(`
@@ -1487,7 +1498,7 @@ export default function AdminPage() {
         }
       }
     }
-    setLoading(false);
+    if (!isSilent) setLoading(false);
     fetchAllGames();
   }
 
@@ -2154,6 +2165,40 @@ export default function AdminPage() {
     setShowDiffModal(false);
 
     if (!cardErr) {
+      // Úspěšně uloženo do Supabase cloudu - vyčistit z aktivních čekajících lokálních overrides
+      try {
+        const currentActive = getStoredCardOverrides();
+        if (currentActive[selectedCard.id]) {
+          delete currentActive[selectedCard.id];
+          if (Object.keys(currentActive).length > 0) {
+            localStorage.setItem(CARDS_OVERRIDES_KEY, JSON.stringify(currentActive));
+          } else {
+            localStorage.removeItem(CARDS_OVERRIDES_KEY);
+          }
+        }
+      } catch (e) {
+        console.warn("Chyba při odmazávání override:", e);
+      }
+
+      // Okamžitě informovat ostatní připojené editory přes Realtime broadcast
+      if (presenceChannelRef.current) {
+        try {
+          presenceChannelRef.current.send({
+            type: "broadcast",
+            event: "card_saved",
+            payload: {
+              cardId: selectedCard.id,
+              editorName: editorName,
+              title: editTitle,
+              titleEn: editTitleEn.trim(),
+              timestamp: nowIso,
+            },
+          });
+        } catch (e) {
+          console.warn("Chyba při odesílání realtime broadcastu:", e);
+        }
+      }
+
       const count = pendingChanges.length;
       setLastSavedSummary(
         count === 1
@@ -2164,7 +2209,7 @@ export default function AdminPage() {
       );
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
-      fetchCards();
+      fetchCards(true);
     } else {
       console.error("Chyba při ukládání karty:", cardErr);
       alert("Chyba při ukládání karty do databáze: " + (cardErr?.message || "Neznámá chyba"));
@@ -2748,6 +2793,12 @@ export default function AdminPage() {
           {autoSyncBanner && (
             <span className="text-xs text-[#73d13d] hidden sm:flex items-center gap-1 bg-emerald-950/90 px-2.5 py-1 rounded border border-emerald-700 shadow-sm animate-pulse">
               <Check size={14} /> {autoSyncBanner}
+            </span>
+          )}
+
+          {teamActivityNotice && (
+            <span className="text-xs text-sky-200 hidden sm:flex items-center gap-1.5 bg-sky-950/90 px-2.5 py-1 rounded border border-sky-700 shadow-sm animate-pulse">
+              <Users size={13} className="text-sky-400" /> {teamActivityNotice}
             </span>
           )}
 
