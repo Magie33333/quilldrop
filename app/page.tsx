@@ -121,6 +121,7 @@ type Colophon = {
   crop_y?: number;
   crop_w?: number;
   crop_h?: number;
+  status?: string;
 };
 
 type TradeItem = {
@@ -893,6 +894,7 @@ export default function Home() {
 
     async function fetchLiveCards() {
       try {
+        let loadedLiveCards: Colophon[] = [];
         let { data, error } = await supabase
           .from("cards")
           .select(`
@@ -1006,8 +1008,10 @@ export default function Home() {
               crop_y: Number(c.crop_y) || 0,
               crop_w: Number(c.crop_w) || 100,
               crop_h: Number(c.crop_h) || 100,
+              status: c.status || "published",
             };
           });
+          loadedLiveCards = mapped;
           setCards(mapped);
           setIsLive(true);
           const { data: { user } } = await supabase.auth.getUser();
@@ -1125,6 +1129,76 @@ export default function Home() {
             ...DEFAULT_QUESTIONS.filter(q => !existingKeys.has(q.id || q.title)),
           ];
           setQuestions(combined);
+
+          // Zkontrolovat, zda nějaká aktivní otázka neodkazuje na kartu, která dosud není v `mapped`
+          // (např. nově vytvořené karty týmem ve stavu "review" připravované pro minihry)
+          const referencedCardIds = Array.from(
+            new Set(
+              combined
+                .map((q) => q.card_id)
+                .filter((cid): cid is string => Boolean(cid))
+            )
+          );
+          const knownUuids = new Set(loadedLiveCards.map((c) => c.uuid));
+          const missingIds = referencedCardIds.filter((cid) => !knownUuids.has(cid));
+
+          if (missingIds.length > 0) {
+            try {
+              const { data: extraCards } = await supabase
+                .from("cards")
+                .select(`
+                  id, slug, title, title_en, rarity, rarity_reason, rarity_reason_en,
+                  mood, sigil, status, image_url, crop_x, crop_y, crop_w, crop_h,
+                  colophons (
+                    id, heurist_id, quote, translation_cs, translation_en,
+                    scribe, place, year, locus, manuscript_shelfmark, visual_note,
+                    features, formula_frequency, source_url
+                  )
+                `)
+                .in("id", missingIds);
+
+              if (extraCards && extraCards.length > 0) {
+                const extraMapped: Colophon[] = extraCards.map((c: any) => ({
+                  id: c.colophons?.heurist_id || c.id,
+                  uuid: c.id,
+                  slug: c.slug,
+                  title: c.title,
+                  title_cs: c.title,
+                  title_en: c.title_en || undefined,
+                  quote: c.colophons?.quote || "Explicit...",
+                  translation: c.colophons?.translation_cs || "Překlad se připravuje",
+                  translation_cs: c.colophons?.translation_cs || undefined,
+                  translation_en: c.colophons?.translation_en || undefined,
+                  scribe: c.colophons?.scribe || "Neznámý písař",
+                  place: c.colophons?.place || "Neznámé místo",
+                  year: c.colophons?.year || 1400,
+                  rarity: c.rarity as Rarity,
+                  mood: c.mood || "scribal voice",
+                  sigil: c.sigil || "Q",
+                  imageUrl: c.image_url,
+                  remoteImageUrl: c.image_url,
+                  manuscript: c.colophons?.manuscript_shelfmark || "Neznámý rukopis",
+                  locus: c.colophons?.locus || "fol. ?",
+                  sourceUrl: c.colophons?.source_url || c.image_url,
+                  formulaFrequency: c.colophons?.formula_frequency || 1,
+                  features: c.colophons?.features || [],
+                  rarityReason: c.rarity_reason,
+                  rarityReason_cs: c.rarity_reason,
+                  rarityReason_en: c.rarity_reason_en || undefined,
+                  visualNote: c.colophons?.visual_note,
+                  crop_x: Number(c.crop_x) || 0,
+                  crop_y: Number(c.crop_y) || 0,
+                  crop_w: Number(c.crop_w) || 100,
+                  crop_h: Number(c.crop_h) || 100,
+                  status: c.status || "review",
+                }));
+                loadedLiveCards.push(...extraMapped);
+                setCards([...loadedLiveCards]);
+              }
+            } catch (err) {
+              console.warn("Could not load extra cards for challenges:", err);
+            }
+          }
         }
       } catch (e) {
         console.warn("Supabase fetch failed, continuing with static data:", e);
@@ -1426,8 +1500,8 @@ export default function Home() {
       : quality === "refined"
         ? (roll > .97 ? ["Unique"] : roll > .80 ? ["Legendary", "Epic"] : ["Rare", "Epic", "Uncommon"])
         : (roll > .985 ? ["Unique"] : roll > .93 ? ["Legendary"] : roll > .78 ? ["Epic", "Rare"] : roll > .5 ? ["Uncommon", "Rare"] : ["Common", "Uncommon"]);
-    const pool = cards.filter(c => allowed.includes(c.rarity));
-    return pool[Math.floor(Math.random() * pool.length)] || cards[0] || COLOPHONS[0];
+    const pool = cards.filter(c => (c.status === "published" || !c.status) && allowed.includes(c.rarity));
+    return pool[Math.floor(Math.random() * pool.length)] || cards.find(c => c.status === "published") || cards[0] || COLOPHONS[0];
   };
 
   const openPack = (tierToOpen?: PackQuality | "daily") => {
@@ -3719,6 +3793,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
 
   const displayedCards = cards.filter(c => {
     const isOwned = Boolean(state.collection[c.id]);
+    if (!isOwned && c.status && c.status !== "published") return false;
     if (onlyOwned && !isOwned) return false;
     if (filter !== "All" && c.rarity !== filter) return false;
     if (search.trim()) {
@@ -7931,7 +8006,69 @@ function GameModal({
   lang?: Language;
   onLoupeMax?: () => void;
 }) {
+  const [asyncCard, setAsyncCard] = useState<Colophon | null>(null);
+
+  useEffect(() => {
+    if (
+      question.card_id &&
+      !cards.some((c) => c.uuid === question.card_id || String(c.id) === String(question.card_id))
+    ) {
+      supabase
+        .from("cards")
+        .select(`
+          id, slug, title, title_en, rarity, rarity_reason, rarity_reason_en,
+          mood, sigil, status, image_url, crop_x, crop_y, crop_w, crop_h,
+          colophons (
+            id, heurist_id, quote, translation_cs, translation_en,
+            scribe, place, year, locus, manuscript_shelfmark, visual_note,
+            features, formula_frequency, source_url
+          )
+        `)
+        .eq("id", question.card_id)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setAsyncCard({
+              id: (data as any).colophons?.heurist_id || data.id,
+              uuid: data.id,
+              slug: data.slug,
+              title: data.title,
+              title_cs: data.title,
+              title_en: data.title_en || undefined,
+              quote: (data as any).colophons?.quote || "Explicit...",
+              translation: (data as any).colophons?.translation_cs || "Překlad se připravuje",
+              translation_cs: (data as any).colophons?.translation_cs || undefined,
+              translation_en: (data as any).colophons?.translation_en || undefined,
+              scribe: (data as any).colophons?.scribe || "Neznámý písař",
+              place: (data as any).colophons?.place || "Neznámé místo",
+              year: (data as any).colophons?.year || 1400,
+              rarity: data.rarity as Rarity,
+              mood: data.mood || "scribal voice",
+              sigil: data.sigil || "Q",
+              imageUrl: data.image_url,
+              remoteImageUrl: data.image_url,
+              manuscript: (data as any).colophons?.manuscript_shelfmark || "Neznámý rukopis",
+              locus: (data as any).colophons?.locus || "fol. ?",
+              sourceUrl: (data as any).colophons?.source_url || data.image_url,
+              formulaFrequency: (data as any).colophons?.formula_frequency || 1,
+              features: (data as any).colophons?.features || [],
+              rarityReason: data.rarity_reason,
+              rarityReason_cs: data.rarity_reason,
+              rarityReason_en: data.rarity_reason_en || undefined,
+              visualNote: (data as any).colophons?.visual_note,
+              crop_x: Number(data.crop_x) || 0,
+              crop_y: Number(data.crop_y) || 0,
+              crop_w: Number(data.crop_w) || 100,
+              crop_h: Number(data.crop_h) || 100,
+              status: data.status,
+            });
+          }
+        });
+    }
+  }, [question.card_id, cards]);
+
   const challengeCard =
+    asyncCard ||
     (question.card_id
       ? cards.find((c) => c.uuid === question.card_id || String(c.id) === String(question.card_id))
       : null) ||

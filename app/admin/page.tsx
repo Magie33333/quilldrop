@@ -50,6 +50,9 @@ import {
   Filter,
   Database,
   Download,
+  Play,
+  Landmark,
+  Link2,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -80,6 +83,14 @@ import {
 import HeuristCatalogModal from "./HeuristCatalogModal";
 import StudioHelpModal from "./StudioHelpModal";
 import { generateSafeUsername } from "../security";
+
+export function getThumbnailUrl(url: string, width = 140): string {
+  if (!url) return "";
+  if (url.includes("imagines.manuscriptorium.com/loris/")) {
+    return url.replace(/\/full\/full\/0\/default\.jpg$/i, `/full/${width},/0/default.jpg`);
+  }
+  return url;
+}
 
 type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Unique";
 
@@ -125,6 +136,7 @@ type CardData = {
     locus: string;
     manuscript_shelfmark: string;
     visual_note: string | null;
+    source_url?: string | null;
   };
 };
 
@@ -299,11 +311,20 @@ export default function AdminPage() {
   const [editStatus, setEditStatus] = useState<"draft" | "review" | "published">("published");
   const [deletingCard, setDeletingCard] = useState(false);
 
+  // Metadata rukopisu a digitálního skenu
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editLocus, setEditLocus] = useState("");
+  const [editShelfmark, setEditShelfmark] = useState("");
+  const [editScribe, setEditScribe] = useState("");
+  const [editPlace, setEditPlace] = useState("");
+  const [editYear, setEditYear] = useState<number | string>(1400);
+
   // Minihry: Tvůrce výzev pro tým (4 herní režimy)
   type GameBuilderMode = "mood" | "cipher" | "script" | "transcription";
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [showGameForm, setShowGameForm] = useState(false);
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
+  const [previewGame, setPreviewGame] = useState<GameQuestion | null>(null);
   const [builderMode, setBuilderMode] = useState<GameBuilderMode>("mood");
   const [builderLang, setBuilderLang] = useState<"cs" | "en">("cs");
   const [builderTitle, setBuilderTitle] = useState("Nálada písaře");
@@ -1652,6 +1673,17 @@ export default function AdminPage() {
     setEditTranslationEn(card.colophons?.translation_en || "");
     setEditStatus(card.status === "archived" ? "draft" : card.status);
 
+    // Metadata rukopisu a skenu
+    setEditImageUrl(card.image_url || "");
+    setEditLocus(card.colophons?.locus || "");
+    setEditShelfmark(card.colophons?.manuscript_shelfmark || "");
+    setEditScribe(card.colophons?.scribe || "");
+    setEditPlace(card.colophons?.place || "");
+    setEditYear(card.colophons?.year ?? 1400);
+
+    // Okamžitě resetujeme pixelový ořez předchozí karty, aby se nepřenesl
+    setCompletedCrop(undefined);
+
     if (card.crop_w && Number(card.crop_w) > 5 && Number(card.crop_w) < 99) {
       setCrop({
         unit: "%",
@@ -1662,7 +1694,6 @@ export default function AdminPage() {
       });
     } else {
       setCrop(undefined);
-      setCompletedCrop(undefined);
     }
     fetchQuestions(card.id);
   }
@@ -1949,6 +1980,72 @@ export default function AdminPage() {
       });
     }
 
+    // 5b. URL obrázku (digitální sken)
+    const oldImg = selectedCard.image_url || "";
+    if (editImageUrl.trim() !== oldImg.trim()) {
+      changes.push({
+        field: "image_url",
+        label: "URL digitálního skenu (obrázku)",
+        oldVal: oldImg || "(prázdné)",
+        newVal: editImageUrl.trim() || "(prázdné)",
+      });
+    }
+
+    // 5c. Signatura rukopisu
+    const oldShelfmark = selectedCard.colophons?.manuscript_shelfmark || "";
+    if (editShelfmark.trim() !== oldShelfmark.trim()) {
+      changes.push({
+        field: "shelfmark",
+        label: "Signatura rukopisu",
+        oldVal: oldShelfmark || "(prázdné)",
+        newVal: editShelfmark.trim() || "(prázdné)",
+      });
+    }
+
+    // 5d. Folio (locus)
+    const oldLocus = selectedCard.colophons?.locus || "";
+    if (editLocus.trim() !== oldLocus.trim()) {
+      changes.push({
+        field: "locus",
+        label: "Folio rukopisu (locus)",
+        oldVal: oldLocus || "(prázdné)",
+        newVal: editLocus.trim() || "(prázdné)",
+      });
+    }
+
+    // 5e. Písař
+    const oldScribe = selectedCard.colophons?.scribe || "";
+    if (editScribe.trim() !== oldScribe.trim()) {
+      changes.push({
+        field: "scribe",
+        label: "Jméno písaře",
+        oldVal: oldScribe || "(prázdné)",
+        newVal: editScribe.trim() || "(prázdné)",
+      });
+    }
+
+    // 5f. Místo
+    const oldPlace = selectedCard.colophons?.place || "";
+    if (editPlace.trim() !== oldPlace.trim()) {
+      changes.push({
+        field: "place",
+        label: "Místo vzniku",
+        oldVal: oldPlace || "(prázdné)",
+        newVal: editPlace.trim() || "(prázdné)",
+      });
+    }
+
+    // 5g. Rok
+    const oldYear = selectedCard.colophons?.year ?? 1400;
+    if (Number(editYear) !== Number(oldYear)) {
+      changes.push({
+        field: "year",
+        label: "Rok vzniku",
+        oldVal: String(oldYear),
+        newVal: String(editYear),
+      });
+    }
+
     // 6. Ořez
     if (imgRef.current && completedCrop) {
       const img = imgRef.current;
@@ -2037,6 +2134,7 @@ export default function AdminPage() {
       rarity_reason: editRarityReason,
       rarity_reason_en: editRarityReasonEn.trim() || null,
       status: editStatus,
+      image_url: editImageUrl.trim() || selectedCard.image_url,
       crop_x: pctX,
       crop_y: pctY,
       crop_w: pctW,
@@ -2078,6 +2176,12 @@ export default function AdminPage() {
       const colPayload: any = {
         quote: editQuote.trim(),
         translation_cs: editTranslation.trim(),
+        locus: editLocus.trim() || selectedCard.colophons?.locus || "fol. ?",
+        manuscript_shelfmark: editShelfmark.trim() || selectedCard.colophons?.manuscript_shelfmark || "Neznámý rukopis",
+        scribe: editScribe.trim() || selectedCard.colophons?.scribe || "Neznámý písař",
+        place: editPlace.trim() || selectedCard.colophons?.place || "Neznámé místo",
+        year: Number(editYear) || selectedCard.colophons?.year || 1400,
+        source_url: editImageUrl.trim() || selectedCard.image_url,
         updated_at: nowIso,
       };
       if (editTranslationEn.trim()) {
@@ -2100,6 +2204,12 @@ export default function AdminPage() {
         selectedCard.colophons.quote = editQuote.trim();
         selectedCard.colophons.translation_cs = editTranslation.trim();
         selectedCard.colophons.translation_en = editTranslationEn.trim() || null;
+        selectedCard.colophons.locus = editLocus.trim() || selectedCard.colophons.locus;
+        selectedCard.colophons.manuscript_shelfmark = editShelfmark.trim() || selectedCard.colophons.manuscript_shelfmark;
+        selectedCard.colophons.scribe = editScribe.trim() || selectedCard.colophons.scribe;
+        selectedCard.colophons.place = editPlace.trim() || selectedCard.colophons.place;
+        selectedCard.colophons.year = Number(editYear) || selectedCard.colophons.year;
+        selectedCard.colophons.source_url = editImageUrl.trim() || selectedCard.colophons.source_url;
       }
     }
 
@@ -2114,6 +2224,7 @@ export default function AdminPage() {
         rarity_reason: editRarityReason,
         rarity_reason_en: editRarityReasonEn.trim() || undefined,
         status: editStatus,
+        image_url: editImageUrl.trim() || prev.image_url,
         crop_x: pctX,
         crop_y: pctY,
         crop_w: pctW,
@@ -2126,6 +2237,12 @@ export default function AdminPage() {
               quote: editQuote.trim(),
               translation_cs: editTranslation.trim(),
               translation_en: editTranslationEn.trim() || null,
+              locus: editLocus.trim() || prev.colophons.locus,
+              manuscript_shelfmark: editShelfmark.trim() || prev.colophons.manuscript_shelfmark,
+              scribe: editScribe.trim() || prev.colophons.scribe,
+              place: editPlace.trim() || prev.colophons.place,
+              year: Number(editYear) || prev.colophons.year,
+              source_url: editImageUrl.trim() || prev.colophons.source_url,
             }
           : prev.colophons,
       };
@@ -2142,6 +2259,7 @@ export default function AdminPage() {
               rarity_reason: editRarityReason,
               rarity_reason_en: editRarityReasonEn.trim() || undefined,
               status: editStatus,
+              image_url: editImageUrl.trim() || c.image_url,
               crop_x: pctX,
               crop_y: pctY,
               crop_w: pctW,
@@ -2154,6 +2272,12 @@ export default function AdminPage() {
                     quote: editQuote.trim(),
                     translation_cs: editTranslation.trim(),
                     translation_en: editTranslationEn.trim() || null,
+                    locus: editLocus.trim() || c.colophons.locus,
+                    manuscript_shelfmark: editShelfmark.trim() || c.colophons.manuscript_shelfmark,
+                    scribe: editScribe.trim() || c.colophons.scribe,
+                    place: editPlace.trim() || c.colophons.place,
+                    year: Number(editYear) || c.colophons.year,
+                    source_url: editImageUrl.trim() || c.colophons.source_url,
                   }
                 : c.colophons,
             }
@@ -2936,7 +3060,13 @@ export default function AdminPage() {
                     }`}
                   >
                     <div className="w-10 h-14 bg-[#231d18] rounded border border-[#3d3226] overflow-hidden shrink-0 relative">
-                      <img src={c.image_url} alt="" className="w-full h-full object-cover opacity-80" />
+                      <img
+                        src={getThumbnailUrl(c.image_url, 120)}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover opacity-80"
+                      />
                       <span className="absolute bottom-0 right-0 text-[8px] bg-black/80 px-1 text-[#d4af37]">
                         {c.rarity[0]}
                       </span>
@@ -3193,6 +3323,7 @@ export default function AdminPage() {
                     className="max-h-[calc(100vh-130px)]"
                   >
                     <img
+                      key={selectedCard.id}
                       ref={imgRef}
                       src={selectedCard.image_url}
                       alt="Folio rukopisu"
@@ -3264,6 +3395,7 @@ export default function AdminPage() {
                     style={{ lineHeight: 0 }}
                   >
                     <img
+                      key={selectedCard.id}
                       ref={stripImgRef}
                       src={selectedCard.image_url}
                       alt="Folio pro vyznačení řádků"
@@ -3717,6 +3849,107 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* ÚDAJE O RUKOPISU A DIGITÁLNÍM SKENU */}
+                <div className="bg-[#18130f] border border-[#423425] rounded-lg p-3 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#ffd580] flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                      <Landmark size={13} className="text-[#d4af37]" /> Rukopisné údaje a folio
+                    </span>
+                    <span className="text-[10px] text-[#8c7b6d] font-mono">prameny</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10.5px] text-[#9c8976] block mb-1">
+                        Signatura rukopisu
+                      </label>
+                      <input
+                        type="text"
+                        value={editShelfmark}
+                        onChange={(e) => setEditShelfmark(e.target.value)}
+                        placeholder="Např. Vědecká knihovna v Olomouci, M I 159"
+                        className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10.5px] text-[#9c8976] block mb-1">
+                        Folio (locus)
+                      </label>
+                      <input
+                        type="text"
+                        value={editLocus}
+                        onChange={(e) => setEditLocus(e.target.value)}
+                        placeholder="Např. 203r"
+                        className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10.5px] text-[#9c8976] block mb-1">
+                        Písař
+                      </label>
+                      <input
+                        type="text"
+                        value={editScribe}
+                        onChange={(e) => setEditScribe(e.target.value)}
+                        placeholder="Písař..."
+                        className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10.5px] text-[#9c8976] block mb-1">
+                        Místo
+                      </label>
+                      <input
+                        type="text"
+                        value={editPlace}
+                        onChange={(e) => setEditPlace(e.target.value)}
+                        placeholder="Místo..."
+                        className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10.5px] text-[#9c8976] block mb-1">
+                        Rok
+                      </label>
+                      <input
+                        type="number"
+                        value={editYear}
+                        onChange={(e) => setEditYear(e.target.value)}
+                        placeholder="1400"
+                        className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10.5px] text-[#9c8976] flex items-center gap-1">
+                        <Link2 size={11} className="text-[#d4af37]" /> URL digitálního skenu (obrázku)
+                      </label>
+                      {editImageUrl && (
+                        <a
+                          href={editImageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-[#d4af37] hover:underline flex items-center gap-0.5"
+                        >
+                          Otevřít originál <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={editImageUrl}
+                      onChange={(e) => setEditImageUrl(e.target.value)}
+                      placeholder="https://imagines.manuscriptorium.com/..."
+                      className="w-full bg-[#120e0b] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] font-mono text-[11px] focus:outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                </div>
+
                 {/* Informace o autorovi a historii úprav */}
                 <div className="bg-[#1a140f] border border-[#3b2f21] rounded-lg p-3 space-y-2 text-xs text-[#c9a96e]">
                   <div className="flex items-center justify-between">
@@ -3897,6 +4130,14 @@ export default function AdminPage() {
                           </span>
                           {q.id && (
                             <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewGame(q)}
+                                className="p-1 rounded text-[#ffd580] hover:text-white hover:bg-[#382d22] transition cursor-pointer"
+                                title="Vyzkoušet výzvu (Náhled s foliem)"
+                              >
+                                <Play size={13} />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleStartEditGame(q)}
@@ -4959,6 +5200,119 @@ export default function AdminPage() {
           setTimeout(() => setSaveSuccess(false), 4000);
         }}
       />
+
+      {/* MODAL: NÁHLED A VYZKOUŠENÍ MINIHRY PRO EDITORY */}
+      {previewGame && selectedCard && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#16120e] border border-[#d4af37]/50 rounded-xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-[#e8ded1]">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#2e2721] bg-[#1d1712]">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">
+                  {previewGame.game_kind === "mood" ? "🎭" : previewGame.game_kind === "cipher" ? "🔑" : "✒️"}
+                </span>
+                <div>
+                  <h3 className="font-serif font-bold text-sm text-[#ffd580]">{previewGame.title}</h3>
+                  <p className="text-[11px] text-[#9c8976]">
+                    Náhled výzvy k: {selectedCard.title} ({selectedCard.colophons?.locus || "fol. ?"})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewGame(null)}
+                className="text-[#8c7b6d] hover:text-white p-1 rounded hover:bg-[#2e261f] cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Náhled folia rukopisu */}
+              <div className="relative border border-[#4a3928] rounded-lg overflow-hidden bg-[#0a0806] flex items-center justify-center">
+                <img
+                  src={selectedCard.image_url}
+                  alt="Folio pro výzvu"
+                  className="max-h-64 w-auto object-contain block select-none"
+                />
+                <div className="absolute bottom-2 left-2 bg-black/80 text-[10px] text-[#ffd580] px-2 py-0.5 rounded border border-[#d4af37]/30">
+                  {selectedCard.colophons?.manuscript_shelfmark} · {selectedCard.colophons?.locus}
+                </div>
+              </div>
+
+              {previewGame.intro && (
+                <div className="text-xs text-[#dcd1c2] bg-[#1a1410] p-3 rounded border border-[#382b1f] leading-relaxed">
+                  {previewGame.intro}
+                </div>
+              )}
+
+              {previewGame.quote && (
+                <blockquote className="text-xs font-serif italic text-[#ffd580] border-l-2 border-[#d4af37] pl-3 py-1">
+                  "{previewGame.quote}"
+                </blockquote>
+              )}
+
+              {previewGame.target_transcription ? (
+                <div className="space-y-2 bg-[#120e0b] p-3 rounded border border-[#2e241b]">
+                  <label className="text-[11px] font-bold text-[#c9a96e] block">
+                    Cílový přepis (správná odpověď):
+                  </label>
+                  <div className="text-xs font-serif text-[#86efac] bg-[#172517] p-2 rounded border border-[#2e472a]">
+                    {previewGame.target_transcription}
+                  </div>
+                  {previewGame.accepted_variants && previewGame.accepted_variants.length > 0 && (
+                    <div className="text-[10px] text-[#8c7b6d]">
+                      Tolerované varianty: {previewGame.accepted_variants.join(", ")}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                Array.isArray(previewGame.options) && previewGame.options.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-[#c9a96e] block mb-1">
+                      Možnosti odpovědi (správná je zvýrazněna zeleně):
+                    </span>
+                    {previewGame.options.map((opt: any, optIdx: number) => {
+                      const isCorrect = optIdx === previewGame.correct_index;
+                      const optText = Array.isArray(opt)
+                        ? opt[1] || opt[0]
+                        : typeof opt === "object"
+                        ? opt.text || opt.label
+                        : String(opt);
+                      return (
+                        <div
+                          key={optIdx}
+                          className={`p-2.5 rounded text-xs flex items-center justify-between border ${
+                            isCorrect
+                              ? "bg-[#182c1b] border-emerald-600/70 text-emerald-200 font-semibold"
+                              : "bg-[#16120e] border-[#2e241b] text-[#c2b2a1]"
+                          }`}
+                        >
+                          <span>{optText}</span>
+                          {isCorrect && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-700/80">
+                              ✓ Správná volba
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-[#2e2721] bg-[#1a1410] flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewGame(null)}
+                className="px-4 py-1.5 bg-[#d4af37] text-black font-bold rounded text-xs hover:bg-[#e6c34e] cursor-pointer"
+              >
+                Zavřít náhled
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* MODAL: SPRÁVA HISTORICKÝCH GLOS A MOUDER */}
       {showCuriosModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -6055,8 +6409,10 @@ export default function AdminPage() {
                             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#29221b]">
                               <div className="w-7 h-7 rounded bg-[#0d0a08] border border-[#3b3025] overflow-hidden shrink-0">
                                 <img
-                                  src={targetCard?.image_url || "/colophons/placeholder.jpg"}
+                                  src={getThumbnailUrl(targetCard?.image_url || "/colophons/placeholder.jpg", 100)}
                                   alt={targetCard?.title || "Rukopis"}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";

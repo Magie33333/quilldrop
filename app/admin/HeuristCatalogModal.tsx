@@ -28,7 +28,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { saveStoredCardOverride } from "./page";
+import { saveStoredCardOverride, getThumbnailUrl } from "./page";
 
 export type HeuristCatalogItem = {
   id: number;
@@ -886,9 +886,10 @@ export default function HeuristCatalogModal({
                             {/* Velký náhled folia */}
                             <div className="h-44 bg-[#0d0a08] relative overflow-hidden">
                               <img
-                                src={item.img}
+                                src={getThumbnailUrl(item.img, 320)}
                                 alt={item.shelfmark}
                                 loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-300"
                                 onError={(e) => {
                                   (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
@@ -1020,9 +1021,10 @@ export default function HeuristCatalogModal({
 
                             <div className="w-14 h-16 rounded border border-[#3d3122] overflow-hidden shrink-0 bg-[#0d0a08] relative group">
                               <img
-                                src={item.img}
+                                src={getThumbnailUrl(item.img, 120)}
                                 alt={item.shelfmark}
                                 loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   (e.currentTarget as HTMLImageElement).src = "/illumination-rabbit.png";
