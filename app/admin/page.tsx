@@ -1684,14 +1684,42 @@ export default function AdminPage() {
     // Okamžitě resetujeme pixelový ořez předchozí karty, aby se nepřenesl
     setCompletedCrop(undefined);
 
-    if (card.crop_w && Number(card.crop_w) > 5 && Number(card.crop_w) < 99) {
-      setCrop({
+    const cropW = Number(card.crop_w);
+    const cropH = Number(card.crop_h);
+    const hasValidCrop =
+      card.crop_w !== null &&
+      card.crop_w !== undefined &&
+      !isNaN(cropW) &&
+      cropW > 5 &&
+      !isNaN(cropH) &&
+      cropH > 5;
+
+    if (hasValidCrop) {
+      const w = Math.min(100, Math.max(1, cropW));
+      const h = Math.min(100, Math.max(1, cropH));
+      const rawX = Number(card.crop_x);
+      const rawY = Number(card.crop_y);
+      const x = Number.isFinite(rawX) ? Math.min(100 - w, Math.max(0, rawX)) : 0;
+      const y = Number.isFinite(rawY) ? Math.min(100 - h, Math.max(0, rawY)) : 0;
+
+      const nextCrop: Crop = {
         unit: "%",
-        x: Number(card.crop_x) || 10,
-        y: Number(card.crop_y) || 10,
-        width: Number(card.crop_w) || 70,
-        height: Number(card.crop_h) || 52.5,
-      });
+        x,
+        y,
+        width: w,
+        height: h,
+      };
+      setCrop(nextCrop);
+
+      if (imgRef.current && imgRef.current.width > 0 && imgRef.current.height > 0) {
+        setCompletedCrop({
+          unit: "px",
+          x: (nextCrop.x / 100) * imgRef.current.width,
+          y: (nextCrop.y / 100) * imgRef.current.height,
+          width: (nextCrop.width / 100) * imgRef.current.width,
+          height: (nextCrop.height / 100) * imgRef.current.height,
+        });
+      }
     } else {
       setCrop(undefined);
     }
@@ -1700,13 +1728,24 @@ export default function AdminPage() {
 
   function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { width, height } = e.currentTarget;
-    if (crop && crop.width && crop.height) {
+    const currentCrop = crop && crop.width && crop.height ? crop : (
+      selectedCard && Number(selectedCard.crop_w) > 5 && Number(selectedCard.crop_h) > 5 ? {
+        unit: "%" as const,
+        x: Number.isFinite(Number(selectedCard.crop_x)) ? Math.max(0, Number(selectedCard.crop_x)) : 0,
+        y: Number.isFinite(Number(selectedCard.crop_y)) ? Math.max(0, Number(selectedCard.crop_y)) : 0,
+        width: Math.min(100, Math.max(1, Number(selectedCard.crop_w))),
+        height: Math.min(100, Math.max(1, Number(selectedCard.crop_h))),
+      } : null
+    );
+
+    if (currentCrop) {
+      setCrop(currentCrop);
       setCompletedCrop({
         unit: "px",
-        x: (crop.x / 100) * width,
-        y: (crop.y / 100) * height,
-        width: (crop.width / 100) * width,
-        height: (crop.height / 100) * height,
+        x: ((currentCrop.x ?? 0) / 100) * width,
+        y: ((currentCrop.y ?? 0) / 100) * height,
+        width: (currentCrop.width / 100) * width,
+        height: (currentCrop.height / 100) * height,
       });
     } else {
       const initial = defaultCrop(width, height);
@@ -2094,10 +2133,10 @@ export default function AdminPage() {
     setSaving(true);
     setSaveSuccess(false);
 
-    let pctX = Number(selectedCard.crop_x) || 10;
-    let pctY = Number(selectedCard.crop_y) || 10;
-    let pctW = Number(selectedCard.crop_w) || 70;
-    let pctH = Number(selectedCard.crop_h) || 52.5;
+    let pctX = Number.isFinite(Number(selectedCard.crop_x)) ? Number(selectedCard.crop_x) : 10;
+    let pctY = Number.isFinite(Number(selectedCard.crop_y)) ? Number(selectedCard.crop_y) : 10;
+    let pctW = Number.isFinite(Number(selectedCard.crop_w)) && Number(selectedCard.crop_w) > 0 ? Number(selectedCard.crop_w) : 70;
+    let pctH = Number.isFinite(Number(selectedCard.crop_h)) && Number(selectedCard.crop_h) > 0 ? Number(selectedCard.crop_h) : 52.5;
 
     if (imgRef.current && completedCrop && imgRef.current.width > 0 && imgRef.current.height > 0) {
       pctX = Math.round((completedCrop.x / imgRef.current.width) * 1000) / 10;
@@ -2105,11 +2144,16 @@ export default function AdminPage() {
       pctW = Math.round((completedCrop.width / imgRef.current.width) * 1000) / 10;
       pctH = Math.round((completedCrop.height / imgRef.current.height) * 1000) / 10;
     } else if (crop && crop.width && crop.height) {
-      pctX = Math.round(Number(crop.x) * 10) / 10;
-      pctY = Math.round(Number(crop.y) * 10) / 10;
+      pctX = Math.round(Number(crop.x ?? 0) * 10) / 10;
+      pctY = Math.round(Number(crop.y ?? 0) * 10) / 10;
       pctW = Math.round(Number(crop.width) * 10) / 10;
       pctH = Math.round(Number(crop.height) * 10) / 10;
     }
+
+    pctX = Math.max(0, Math.min(100, pctX));
+    pctY = Math.max(0, Math.min(100, pctY));
+    pctW = Math.max(1, Math.min(100, pctW));
+    pctH = Math.max(1, Math.min(100, pctH));
 
     const editorName =
       currentProfile?.display_name ||
@@ -2613,16 +2657,28 @@ export default function AdminPage() {
   let renderLeft = 0;
   let renderTop = 0;
 
-  if (imgRef.current && completedCrop && completedCrop.width > 0 && completedCrop.height > 0) {
+  const effectiveCropPx =
+    imgRef.current && completedCrop && completedCrop.width > 0 && completedCrop.height > 0
+      ? completedCrop
+      : imgRef.current && imgRef.current.width > 0 && imgRef.current.height > 0 && crop && crop.width && crop.height
+      ? {
+          x: ((crop.x ?? 0) / 100) * imgRef.current.width,
+          y: ((crop.y ?? 0) / 100) * imgRef.current.height,
+          width: (crop.width / 100) * imgRef.current.width,
+          height: (crop.height / 100) * imgRef.current.height,
+        }
+      : null;
+
+  if (imgRef.current && effectiveCropPx && effectiveCropPx.width > 0 && effectiveCropPx.height > 0) {
     const img = imgRef.current;
-    uniformScale = Math.min(CARD_IMG_W / completedCrop.width, CARD_IMG_H / completedCrop.height);
+    uniformScale = Math.min(CARD_IMG_W / effectiveCropPx.width, CARD_IMG_H / effectiveCropPx.height);
     renderW = img.width * uniformScale;
     renderH = img.height * uniformScale;
 
-    const offsetX = (CARD_IMG_W - completedCrop.width * uniformScale) / 2;
-    const offsetY = (CARD_IMG_H - completedCrop.height * uniformScale) / 2;
-    let rLeft = offsetX - completedCrop.x * uniformScale;
-    let rTop = offsetY - completedCrop.y * uniformScale;
+    const offsetX = (CARD_IMG_W - effectiveCropPx.width * uniformScale) / 2;
+    const offsetY = (CARD_IMG_H - effectiveCropPx.height * uniformScale) / 2;
+    let rLeft = offsetX - effectiveCropPx.x * uniformScale;
+    let rTop = offsetY - effectiveCropPx.y * uniformScale;
 
     // Clamping hran: zabrání vzniku prázdných mezer na okrajích, pokud je rukopis větší než rámeček
     if (renderW >= CARD_IMG_W) {

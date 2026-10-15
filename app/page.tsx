@@ -2770,11 +2770,19 @@ function ColophonImage({ card, alt = "" }: { card: Colophon; alt?: string }) {
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
+  const cropW = Number(card.crop_w);
+  const cropH = Number(card.crop_h);
+  const cropX = Number(card.crop_x) || 0;
+  const cropY = Number(card.crop_y) || 0;
+
   const hasCrop =
     card.crop_w !== undefined &&
     card.crop_w !== null &&
-    Number(card.crop_w) > 5 &&
-    Number(card.crop_w) < 99.5;
+    !isNaN(cropW) &&
+    cropW > 5 &&
+    !isNaN(cropH) &&
+    cropH > 5 &&
+    !(cropW >= 99.5 && cropH >= 99.5 && cropX <= 0.5 && cropY <= 0.5);
 
   const src = failedSrc === card.imageUrl && card.remoteImageUrl ? card.remoteImageUrl : (card.imageUrl || card.remoteImageUrl);
 
