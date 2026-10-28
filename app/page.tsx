@@ -7936,7 +7936,7 @@ function PlayerProfileModal({
 }
 
 function PackReveal({ card, position, total, quality, shown, onReveal, onNext, lang = "cs" }: { card: Colophon; position: number; total: number; quality: PackQuality; shown: boolean; onReveal: () => void; onNext: () => void; lang?: Language }) {
-  const glitterCount = card.rarity === "Unique" ? 64 : card.rarity === "Legendary" ? 48 : card.rarity === "Epic" ? 36 : card.rarity === "Rare" ? 22 : 14;
+  const glitterCount = card.rarity === "Unique" ? 72 : card.rarity === "Legendary" ? 56 : card.rarity === "Epic" ? 38 : card.rarity === "Rare" ? 22 : 14;
   const [tension, setTension] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const isMonumental = card.rarity === "Legendary" || card.rarity === "Unique";
@@ -8003,6 +8003,70 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
       <div className="light-shafts" aria-hidden="true"><i /><i /><i /><i /><i /></div>
       <div className="glitter-storm" aria-hidden="true">{Array.from({ length: glitterCount }).map((_, i) => <i key={i} style={{ "--x": `${(i * 37) % 100}%`, "--y": `${(i * 53) % 100}%`, "--dx": `${((i * 29) % 180) - 90}px`, "--dy": `${-50 - ((i * 17) % 190)}px`, "--delay": `${(i % 11) * .045}s`, "--size": `${5 + (i % 5) * 2}px` } as React.CSSProperties}>{i % 4 === 0 ? "◆" : i % 3 === 0 ? "✧" : "✦"}</i>)}</div>
       <div className="rarity-burst" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
+      {card.rarity === "Epic" && (
+        <div className="epic-effect-container" aria-hidden="true">
+          <div className="epic-arcane-halo" />
+          <div className="epic-floating-wisps">
+            {Array.from({ length: 18 }).map((_, i) => (
+              <i
+                key={i}
+                style={{
+                  "--left": `${8 + ((i * 17) % 84)}%`,
+                  "--delay": `${((i * 0.28) % 3.6)}s`,
+                  "--duration": `${3.2 + (i % 4) * 0.7}s`,
+                  "--size": `${8 + (i % 5) * 3}px`,
+                  "--drift": `${((i * 19) % 70) - 35}px`,
+                } as React.CSSProperties}
+              >
+                {i % 4 === 0 ? "✨" : i % 3 === 0 ? "✧" : i % 2 === 0 ? "✦" : "•"}
+              </i>
+            ))}
+          </div>
+        </div>
+      )}
+      {(card.rarity === "Legendary" || card.rarity === "Unique") && (
+        <div className={`legendary-effect-container ${card.rarity === "Unique" ? "is-unique" : ""}`} aria-hidden="true">
+          <div className="legendary-shockwaves">
+            <span className="shockwave sw-1" />
+            <span className="shockwave sw-2" />
+            <span className="shockwave sw-3" />
+          </div>
+          <div className="legendary-astral-rings">
+            <div className="astral-ring ring-outer" />
+            <div className="astral-ring ring-inner" />
+          </div>
+          <div className="legendary-flying-sparks">
+            {Array.from({ length: 36 }).map((_, i) => (
+              <i
+                key={i}
+                style={{
+                  "--tx": `${((i * 37) % 380) - 190}px`,
+                  "--ty": `${((i * 41) % 380) - 190}px`,
+                  "--rotate": `${(i * 73) % 360}deg`,
+                  "--delay": `${((i * 0.18) % 3.8)}s`,
+                  "--duration": `${2.3 + (i % 5) * 0.5}s`,
+                  "--size": `${9 + (i % 6) * 3}px`,
+                } as React.CSSProperties}
+              >
+                {i % 6 === 0 ? "★" : i % 5 === 0 ? "⚡" : i % 4 === 0 ? "✷" : i % 3 === 0 ? "✦" : i % 2 === 0 ? "✧" : "◆"}
+              </i>
+            ))}
+          </div>
+          <div className="legendary-orbiters">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <span
+                key={i}
+                className={`orbiter orbiter-${i + 1}`}
+                style={{
+                  "--orbit-delay": `${i * -0.62}s`,
+                  "--orbit-radius": `${155 + (i % 3) * 26}px`,
+                  "--orbit-speed": `${3.8 + (i % 3) * 1.2}s`,
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        </div>
+      )}
       <div className="reveal-kicker"><span>{card.rarity}</span><b>{position} / {total}</b></div>
       <section className={`reveal-card rarity-${card.rarity.toLowerCase()}`}>
         <div className="card-crown">✦ {card.rarity} ✦</div>
