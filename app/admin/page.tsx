@@ -6026,7 +6026,7 @@ export default function AdminPage() {
                         onChange={(e) => setMosaicForm({ ...mosaicForm, rewardPack: e.target.value as any })}
                         className="w-full bg-[#1c1612] border border-[#3b3025] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                       >
-                        <option value="standard">Běžný balíček / Standard Pack (5 karet)</option>
+                        <option value="standard">Běžný balíček / Standard Pack (3 karty)</option>
                         <option value="refined">Učencův balíček / Scholar Pack (vyšší šance na Rare)</option>
                         <option value="masterwork">Královský balíček / Masterwork Pack (garance vzácností)</option>
                       </select>

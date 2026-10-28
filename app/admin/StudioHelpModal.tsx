@@ -352,7 +352,7 @@ export default function StudioHelpModal({
               {/* DŮLEŽITÉ FUNKCE PRO HRÁČE A EDITORY */}
               <div className="bg-[#17120e] p-3.5 rounded-lg border border-[#2e261d] space-y-2.5">
                 <strong className="text-[#ffd580] text-xs block">
-                  🔍 Herní pravidla, 5 her denně a systém pokusů
+                  🔍 Herní pravidla, 3 výzvy denně a systém pokusů
                 </strong>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11.5px] text-[#8c7b6d]">
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
@@ -360,8 +360,8 @@ export default function StudioHelpModal({
                     Zatímco v editoru tvoříte 4 specializované režimy, ve hře student vidí přesně 3 intuitivní dlaždice odpovídající 3 balíčkům. Dlaždice <strong>„Šifry & Písmo“</strong> náhodně losuje šifry i určení písma pro pestřejší hratelnost.
                   </div>
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
-                    <span className="text-[#ffd580] font-bold block mb-1">⚖️ Denní limit 5 her a riziko:</span>
-                    Hráč může denně odehrát maximálně 5 výzev. Každá odehraná hra (úspěch, neúspěch i opuštění výzvy) odečte 1 pokus. Hráč musí zvažovat riziko: snadná nálada pro jistý balíček, nebo těžký přepis s rizikem neúspěchu.
+                    <span className="text-[#ffd580] font-bold block mb-1">⚖️ Denní limit 3 výzev a riziko:</span>
+                    Hráč může denně odehrát maximálně 3 výzvy. Každá odehraná hra (úspěch, neúspěch i opuštění výzvy) odečte 1 pokus. Hráč musí zvažovat riziko: snadná nálada pro jistý balíček, nebo těžký přepis s rizikem neúspěchu.
                   </div>
                   <div className="bg-[#120e0a] p-2.5 rounded border border-[#261e16]">
                     <span className="text-[#ffd580] font-bold block mb-1">✍️ 5 pokusů u paleografického mistra:</span>

@@ -128,7 +128,7 @@ export const UI_TRANSLATIONS = {
     open_pack_btn: "Rozpečetit balíček",
     bonus_vault_label: "Pokladnice bonusových balíčků",
     get_more_packs: "Získejte další balíček do pokladnice",
-    challenges_subtitle: "Splňte některou ze čtyř písařských disciplín a získejte odpovídající balíček.",
+    challenges_subtitle: "Splňte některou z písařských výzev a získejte odpovídající balíček.",
 
     // Minihry
     game_mood_title: "Nálada písaře",
@@ -250,7 +250,7 @@ export const UI_TRANSLATIONS = {
     open_pack_btn: "Unseal Pack",
     bonus_vault_label: "Bonus Pack Vault",
     get_more_packs: "Earn another pack for your vault",
-    challenges_subtitle: "Master any of the four scribal disciplines to unlock an authentic bonus pack.",
+    challenges_subtitle: "Master any of the scribal challenges to unlock an authentic bonus pack.",
 
     // Minigames
     game_mood_title: "Scribe's Mood",

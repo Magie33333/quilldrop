@@ -3605,8 +3605,8 @@ function PacksScreen({
           <h2>{lang === "en" ? "Earn Another Bonus Pack" : "Získejte další bonusový balíček"}</h2>
           <small style={{ color: "#765228", display: "block", marginTop: "2px", fontSize: "11px" }}>
             {lang === "en"
-              ? "Master any of the three scribal disciplines to unlock an authentic bonus pack."
-              : "Splňte některou ze tří písařských disciplín a získejte odpovídající balíček."}
+              ? "Master any of the scribal challenges to unlock an authentic bonus pack."
+              : "Splňte některou z písařských výzev a získejte odpovídající balíček."}
           </small>
         </div>
         <span className="quests-counter-badge">{gamesLeft}/{MAX_DAILY_GAMES} {lang === "en" ? "challenges available" : "výzev k dispozici"}</span>
