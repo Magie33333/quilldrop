@@ -306,6 +306,19 @@ const qualityLabel = (quality: PackQuality, lang?: Language) => {
   return "Běžný balíček";
 };
 
+const rarityLabel = (rarity: Rarity | string, lang: Language = "cs"): string => {
+  if (lang === "en") return rarity;
+  switch (rarity) {
+    case "Common": return "Běžná";
+    case "Uncommon": return "Neobyčejná";
+    case "Rare": return "Vzácná";
+    case "Epic": return "Epická";
+    case "Legendary": return "Legendární";
+    case "Unique": return "Unikátní";
+    default: return rarity;
+  }
+};
+
 const formatPacksCount = (n: number): string => {
   if (n === 1) return "1 balíček";
   if (n >= 2 && n <= 4) return `${n} balíčky`;
@@ -3106,7 +3119,7 @@ function HomeScreen({
                 onClick={() => count ? onDetail(card) : onPacks()}
                 aria-label={count ? `Otevřít detail ${title}` : (lang === "en" ? "Undiscovered card, open pack" : "Neobjevená karta, otevřete balíček")}
               >
-                <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "To Discover" : "K objevení")}</span>
+                <span className="rarity-label">{count ? rarityLabel(card.rarity, lang) : (lang === "en" ? "To Discover" : "K objevení")}</span>
                 <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
                 <strong>{title}</strong>
                 <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
@@ -3489,16 +3502,16 @@ function PacksScreen({
 
         {/* Šance na rarity */}
         <div className="pack-odds-badge">
-          {selectedTier === "masterwork" && "💎 Rare 34% · Epic 32% · Legendary 26% · Unique 8%"}
-          {selectedTier === "refined" && "✨ Uncommon 20% · Rare 50% · Epic 27% · Legendary 3%"}
-          {selectedTier === "standard" && "📜 Common 50% · Uncommon 28% · Rare 15% · Epic 5% · Legendary 1.5% · Unique 0.5%"}
+          {selectedTier === "masterwork" && (lang === "en" ? "💎 Rare 34% · Epic 32% · Legendary 26% · Unique 8%" : "💎 Vzácná 34% · Epická 32% · Legendární 26% · Unikátní 8%")}
+          {selectedTier === "refined" && (lang === "en" ? "✨ Uncommon 20% · Rare 50% · Epic 27% · Legendary 3%" : "✨ Neobyčejná 20% · Vzácná 50% · Epická 27% · Legendární 3%")}
+          {selectedTier === "standard" && (lang === "en" ? "📜 Common 50% · Uncommon 28% · Rare 15% · Epic 5% · Legendary 1.5% · Unique 0.5%" : "📜 Běžná 50% · Neobyčejná 28% · Vzácná 15% · Epická 5% · Legendární 1.5% · Unikátní 0.5%")}
         </div>
 
         <p>
           {selectedTier === "masterwork"
             ? (lang === "en"
                 ? "Supreme royal edition. Guarantees Rare+ cards with high odds of mythical Unique codices."
-                : "Nejvyšší královská edice. Garantuje pouze Rare a vyšší karty s vysokou šancí na mýtické unikáty.")
+                : "Nejvyšší královská edice. Garantuje pouze Vzácné a vyšší karty s vysokou šancí na mýtické unikáty.")
             : selectedTier === "refined"
             ? (lang === "en"
                 ? "Scholar pack with boosted chances for Rare and Epic colophons for dedicated researchers."
@@ -3506,7 +3519,7 @@ function PacksScreen({
             : dailyRemaining > 0
             ? (lang === "en"
                 ? "Daily scriptorium pack containing 5 cards of all rarities including a chance for Legendary and Unique treasures."
-                : "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendary a Unique poklady.")
+                : "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendární a Unikátní poklady.")
             : (lang === "en"
                 ? "Standard daily allowance exhausted. Earn additional packs by completing challenges below or buy from the Stationer."
                 : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže nebo nákupem u stacionáře.")}
@@ -3583,134 +3596,6 @@ function PacksScreen({
             )}
           </div>
         )}
-      </section>
-
-      {/* OFFICINA STATIONARII - Stacionářova dílna & trh rukopisů */}
-      <section id="officina-stationarii" className="stationer-market-card">
-        <div className="stationer-market-header">
-          <div className="stationer-market-title-group">
-            <div className="stationer-market-icon">
-              <Store size={22} color="#b8860b" />
-            </div>
-            <div>
-              <h3>
-                {lang === "en" ? "Officina Stationarii · University Scriptorium Market" : "Officina Stationarii · Stacionářova dílna & trh rukopisů"}
-              </h3>
-              <p className="stationer-market-subtitle">
-                {lang === "en"
-                  ? "A sworn university stationer (stationarius) offering authentic parchment quires (peciae) and illuminated masterworks in exchange for gold."
-                  : "Přísežný univerzitní stacionář (stationarius) nabízející ověřené opisované složky (peciae) a iluminované kodexy výměnou za cechovní zlaťáky."}
-              </p>
-            </div>
-          </div>
-          <div className="stationer-player-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
-            <Coins size={16} color="#d4af37" />
-            <span><strong>{state.coins}</strong> {lang === "en" ? "coins" : "zlaťáků"}</span>
-          </div>
-        </div>
-
-        <div className="stationer-wares-grid">
-          {/* 1. Běžný balíček */}
-          <div className={`stationer-ware-card tier-standard ${stockStandard <= 0 ? "sold-out" : ""}`}>
-            <div className="ware-badge standard">📜 {lang === "en" ? "Standard Quire" : "Běžná pecia"}</div>
-            <h4>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</h4>
-            <p className="ware-desc">
-              {lang === "en"
-                ? "Pecia exemplaris — 5 loose folios of academic and monastic transcriptions with standard odds."
-                : "Pecia exemplaris — 5 pergamenových listů univerzitních traktátů a opisů se standardními šancemi."}
-            </p>
-            <div className="ware-meta">
-              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
-              <span className={`ware-stock ${stockStandard === 0 ? "depleted" : ""}`}>
-                {stockStandard > 0
-                  ? (lang === "en" ? `${stockStandard} in stock today` : `Dnes na skladě: ${stockStandard} ks`)
-                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="stationer-buy-btn tier-standard"
-              disabled={stockStandard <= 0 || state.coins < STATIONER_PRICES.standard}
-              onClick={() => onBuyFromStationer?.("standard")}
-            >
-              {stockStandard <= 0
-                ? (lang === "en" ? "Sold out" : "Vyprodáno")
-                : state.coins < STATIONER_PRICES.standard
-                ? (lang === "en" ? `Need ${STATIONER_PRICES.standard} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.standard} 🪙)`)
-                : (lang === "en" ? `Buy Quire (${STATIONER_PRICES.standard} 🪙)` : `Zakoupit pecii (${STATIONER_PRICES.standard} 🪙)`)}
-            </button>
-          </div>
-
-          {/* 2. Učencův balíček */}
-          <div className={`stationer-ware-card tier-refined ${stockRefined <= 0 ? "sold-out" : ""}`}>
-            <div className="ware-badge refined">✨ {lang === "en" ? "Scholar Quire" : "Učenecký svazek"}</div>
-            <h4>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</h4>
-            <p className="ware-desc">
-              {lang === "en"
-                ? "Collectio scholarium — bound fascicle with glosses and rubrics, boosted Rare & Epic odds."
-                : "Collectio scholarium — svázané kvaterny s glosami a rubrikami, zvýšená šance na Rare a Epic."}
-            </p>
-            <div className="ware-meta">
-              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.refined}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
-              <span className={`ware-stock ${stockRefined === 0 ? "depleted" : ""}`}>
-                {stockRefined > 0
-                  ? (lang === "en" ? `${stockRefined} in stock today` : `Dnes na skladě: ${stockRefined} ks`)
-                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="stationer-buy-btn tier-refined"
-              disabled={stockRefined <= 0 || state.coins < STATIONER_PRICES.refined}
-              onClick={() => onBuyFromStationer?.("refined")}
-            >
-              {stockRefined <= 0
-                ? (lang === "en" ? "Sold out" : "Vyprodáno")
-                : state.coins < STATIONER_PRICES.refined
-                ? (lang === "en" ? `Need ${STATIONER_PRICES.refined} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.refined} 🪙)`)
-                : (lang === "en" ? `Buy Fascicle (${STATIONER_PRICES.refined} 🪙)` : `Zakoupit svazek (${STATIONER_PRICES.refined} 🪙)`)}
-            </button>
-          </div>
-
-          {/* 3. Královský balíček */}
-          <div className={`stationer-ware-card tier-masterwork ${stockMasterwork <= 0 ? "sold-out" : ""}`}>
-            <div className="ware-badge masterwork">💎 {lang === "en" ? "Royal Codex" : "Královský kodex"}</div>
-            <h4>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</h4>
-            <p className="ware-desc">
-              {lang === "en"
-                ? "Codex regius illuminatus — illuminated masterpiece on vellum with gold leaf; guarantees Rare+ cards."
-                : "Codex regius illuminatus — iluminovaný velínový skvost se zlatem; garantuje pouze Rare a vyšší karty."}
-            </p>
-            <div className="ware-meta">
-              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.masterwork}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
-              <span className={`ware-stock ${stockMasterwork === 0 ? "depleted" : ""}`}>
-                {stockMasterwork > 0
-                  ? (lang === "en" ? `${stockMasterwork} in stock today` : `Dnes na skladě: ${stockMasterwork} ks`)
-                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="stationer-buy-btn tier-masterwork"
-              disabled={stockMasterwork <= 0 || state.coins < STATIONER_PRICES.masterwork}
-              onClick={() => onBuyFromStationer?.("masterwork")}
-            >
-              {stockMasterwork <= 0
-                ? (lang === "en" ? "Sold out" : "Vyprodáno")
-                : state.coins < STATIONER_PRICES.masterwork
-                ? (lang === "en" ? `Need ${STATIONER_PRICES.masterwork} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.masterwork} 🪙)`)
-                : (lang === "en" ? `Buy Codex (${STATIONER_PRICES.masterwork} 🪙)` : `Zakoupit kodex (${STATIONER_PRICES.masterwork} 🪙)`)}
-            </button>
-          </div>
-        </div>
-
-        <div className="stationer-market-note">
-          <small>
-            {lang === "en"
-              ? "⚖️ Medieval Guild Ordinance: The stationer's inventory is regulated daily by university seal. Purchased quires are added directly to your scriptorium packs."
-              : "⚖️ Univerzitní a cechovní řád: Zásoby stacionáře jsou kontrolovány každý den pečetí rektora. Zakoupené balíčky se ihned přenesou do vašeho skriptoria."}
-          </small>
-        </div>
       </section>
 
       {/* Výzvy o další balíčky */}
@@ -3799,6 +3684,134 @@ function PacksScreen({
           </div>
         </button>
       </div>
+
+      {/* OFFICINA STATIONARII - Stacionářova dílna & trh rukopisů */}
+      <section id="officina-stationarii" className="stationer-market-card">
+        <div className="stationer-market-header">
+          <div className="stationer-market-title-group">
+            <div className="stationer-market-icon">
+              <Store size={22} color="#b8860b" />
+            </div>
+            <div>
+              <h3>
+                {lang === "en" ? "Officina Stationarii · University Scriptorium Market" : "Officina Stationarii · Stacionářova dílna & trh rukopisů"}
+              </h3>
+              <p className="stationer-market-subtitle">
+                {lang === "en"
+                  ? "A sworn university stationer (stationarius) offering authentic parchment quires (peciae) and illuminated masterworks in exchange for gold."
+                  : "Přísežný univerzitní stacionář (stationarius) nabízející ověřené opisované složky (peciae) a iluminované kodexy výměnou za cechovní zlaťáky."}
+              </p>
+            </div>
+          </div>
+          <div className="stationer-player-purse" title={lang === "en" ? "Your gold coins in purse" : "Zlaťáky ve vašem měšci"}>
+            <Coins size={16} color="#d4af37" />
+            <span><strong>{state.coins}</strong> {lang === "en" ? "coins" : "zlaťáků"}</span>
+          </div>
+        </div>
+
+        <div className="stationer-wares-grid">
+          {/* 1. Běžný balíček */}
+          <div className={`stationer-ware-card tier-standard ${stockStandard <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge standard">📜 {lang === "en" ? "Standard Quire" : "Běžná pecia"}</div>
+            <h4>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Pecia exemplaris — 5 loose folios of academic and monastic transcriptions with standard odds."
+                : "Pecia exemplaris — 5 pergamenových listů univerzitních traktátů a opisů se standardními šancemi."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockStandard === 0 ? "depleted" : ""}`}>
+                {stockStandard > 0
+                  ? (lang === "en" ? `${stockStandard} in stock today` : `Dnes na skladě: ${stockStandard} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-standard"
+              disabled={stockStandard <= 0 || state.coins < STATIONER_PRICES.standard}
+              onClick={() => onBuyFromStationer?.("standard")}
+            >
+              {stockStandard <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.standard
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.standard} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.standard} 🪙)`)
+                : (lang === "en" ? `Buy Quire (${STATIONER_PRICES.standard} 🪙)` : `Zakoupit pecii (${STATIONER_PRICES.standard} 🪙)`)}
+            </button>
+          </div>
+
+          {/* 2. Učencův balíček */}
+          <div className={`stationer-ware-card tier-refined ${stockRefined <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge refined">✨ {lang === "en" ? "Scholar Quire" : "Učenecký svazek"}</div>
+            <h4>{lang === "en" ? "Scholar Pack" : "Učencův balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Collectio scholarium — bound fascicle with glosses and rubrics, boosted Rare & Epic odds."
+                : "Collectio scholarium — svázané kvaterny s glosami a rubrikami, zvýšená šance na Vzácné a Epické karty."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.refined}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockRefined === 0 ? "depleted" : ""}`}>
+                {stockRefined > 0
+                  ? (lang === "en" ? `${stockRefined} in stock today` : `Dnes na skladě: ${stockRefined} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-refined"
+              disabled={stockRefined <= 0 || state.coins < STATIONER_PRICES.refined}
+              onClick={() => onBuyFromStationer?.("refined")}
+            >
+              {stockRefined <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.refined
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.refined} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.refined} 🪙)`)
+                : (lang === "en" ? `Buy Fascicle (${STATIONER_PRICES.refined} 🪙)` : `Zakoupit svazek (${STATIONER_PRICES.refined} 🪙)`)}
+            </button>
+          </div>
+
+          {/* 3. Královský balíček */}
+          <div className={`stationer-ware-card tier-masterwork ${stockMasterwork <= 0 ? "sold-out" : ""}`}>
+            <div className="ware-badge masterwork">💎 {lang === "en" ? "Royal Codex" : "Královský kodex"}</div>
+            <h4>{lang === "en" ? "Masterwork Pack" : "Královský balíček"}</h4>
+            <p className="ware-desc">
+              {lang === "en"
+                ? "Codex regius illuminatus — illuminated masterpiece on vellum with gold leaf; guarantees Rare+ cards."
+                : "Codex regius illuminatus — iluminovaný velínový skvost se zlatem; garantuje pouze Vzácné a vyšší karty."}
+            </p>
+            <div className="ware-meta">
+              <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.masterwork}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
+              <span className={`ware-stock ${stockMasterwork === 0 ? "depleted" : ""}`}>
+                {stockMasterwork > 0
+                  ? (lang === "en" ? `${stockMasterwork} in stock today` : `Dnes na skladě: ${stockMasterwork} ks`)
+                  : (lang === "en" ? "Sold out for today" : "Dnes vyprodáno")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="stationer-buy-btn tier-masterwork"
+              disabled={stockMasterwork <= 0 || state.coins < STATIONER_PRICES.masterwork}
+              onClick={() => onBuyFromStationer?.("masterwork")}
+            >
+              {stockMasterwork <= 0
+                ? (lang === "en" ? "Sold out" : "Vyprodáno")
+                : state.coins < STATIONER_PRICES.masterwork
+                ? (lang === "en" ? `Need ${STATIONER_PRICES.masterwork} 🪙` : `Chybí zlaťáky (${STATIONER_PRICES.masterwork} 🪙)`)
+                : (lang === "en" ? `Buy Codex (${STATIONER_PRICES.masterwork} 🪙)` : `Zakoupit kodex (${STATIONER_PRICES.masterwork} 🪙)`)}
+            </button>
+          </div>
+        </div>
+
+        <div className="stationer-market-note">
+          <small>
+            {lang === "en"
+              ? "⚖️ Medieval Guild Ordinance: The stationer's inventory is regulated daily by university seal. Purchased quires are added directly to your scriptorium packs."
+              : "⚖️ Univerzitní a cechovní řád: Zásoby stacionáře jsou kontrolovány každý den pečetí rektora. Zakoupené balíčky se ihned přenesou do vašeho skriptoria."}
+          </small>
+        </div>
+      </section>
     </div>
   );
 }
@@ -3868,7 +3881,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
     <div className="filter-row" aria-label="Filtrovat karty dle rarity">
       {rarities.map(r => (
         <button key={r} className={filter === r ? "active" : ""} onClick={() => setFilter(r)}>
-          {r === "All" ? (lang === "en" ? "All" : "Všechny") : r}
+          {r === "All" ? (lang === "en" ? "All" : "Všechny") : rarityLabel(r, lang)}
         </button>
       ))}
     </div>
@@ -3886,7 +3899,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
             const count = state.collection[card.id] || 0;
             const title = count ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
             return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Otevřít ${title}` : (lang === "en" ? "Undiscovered card" : "Neobjevená karta")}>
-              <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
+              <span className="rarity-label">{count ? rarityLabel(card.rarity, lang) : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
               <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
               <strong>{title}</strong>
               <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
@@ -4721,7 +4734,7 @@ function ProfileScreen({
             — <strong>{getCardScribe(mottoCard.scribe, lang)}</strong>, {getCardPlace(mottoCard.place, lang)} ({mottoCard.year || (lang === "en" ? "undated" : "nedatováno")}) · {mottoCard.manuscript} {mottoCard.locus ? `[${mottoCard.locus}]` : ""}
           </span>
           <span className={`rarity-pill rarity-${mottoCard.rarity.toLowerCase()}`} style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "6px", fontWeight: 800 }}>
-            {mottoCard.rarity}
+            {rarityLabel(mottoCard.rarity, lang)}
           </span>
         </div>
       </div>
@@ -7097,7 +7110,7 @@ function CardDetail({
       <section className={`modal card-detail rarity-${card.rarity.toLowerCase()}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <button className="close" onClick={onClose}>×</button>
         <div className="card-detail-left">
-          <span className="rarity-label">{card.rarity}</span>
+          <span className="rarity-label">{rarityLabel(card.rarity, lang)}</span>
           <div className="large-illustration">
             <ColophonImage card={card} alt={`Snímek rukopisu ${title}`} />
           </div>
@@ -7993,7 +8006,7 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
   return <div className={`modal-backdrop reveal-bg aura-${card.rarity.toLowerCase()} ${shown ? "is-revealed" : "is-sealed"} ${tension ? "is-tension" : ""}`}>
     <div className="particle-field" aria-hidden="true">{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ "--i": i } as React.CSSProperties}>✦</i>)}</div>
     {!shown ? <>
-      <div className="reveal-kicker"><span>{lang === "en" ? "Pack:" : "Balíček:"} {quality}</span><b>{lang === "en" ? `Card ${position} of ${total}` : `Karta ${position} z ${total}`}</b></div>
+      <div className="reveal-kicker"><span>{qualityLabel(quality, lang)}</span><b>{lang === "en" ? `Card ${position} of ${total}` : `Karta ${position} z ${total}`}</b></div>
       <button className="card-back" onClick={beginReveal} disabled={tension} aria-label={lang === "en" ? `Reveal card ${position} of ${total}` : `Odhalit kartu ${position} z ${total}`}>
         <div className="card-back-frame"><span>Q</span><small>{tension ? (!imageLoaded ? (lang === "en" ? "Awakening pigment…" : "Pigment se probouzí…") : (lang === "en" ? "The wax resists…" : "Pečeť klade odpor…")) : (lang === "en" ? "Tap to reveal" : "Klepnutím odhalit")}</small></div>
       </button>
@@ -8067,9 +8080,9 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
           </div>
         </div>
       )}
-      <div className="reveal-kicker"><span>{card.rarity}</span><b>{position} / {total}</b></div>
+      <div className="reveal-kicker"><span>{rarityLabel(card.rarity, lang)}</span><b>{position} / {total}</b></div>
       <section className={`reveal-card rarity-${card.rarity.toLowerCase()}`}>
-        <div className="card-crown">✦ {card.rarity} ✦</div>
+        <div className="card-crown">✦ {rarityLabel(card.rarity, lang)} ✦</div>
         <div className="large-illustration"><ColophonImage card={card} /><b>{card.year}</b></div>
         <h2>{title}</h2><p>“{card.quote}”</p><small>{getCardScribe(card.scribe, lang)} · {getCardPlace(card.place, lang)}</small>
       </section>
@@ -8238,7 +8251,7 @@ function GameModal({
   const reward = isTranscription
     ? (lang === "en"
         ? "Masterwork Pack · Guarantees Rare+ with chance of Legendary (+120 XP)"
-        : "Královský balíček · Garantuje Rare+ s šancí na Legendary (+120 XP)")
+        : "Královský balíček · Garantuje Vzácnou a vyšší s šancí na Legendární (+120 XP)")
     : question.mode === "script" || kind === "paleo"
     ? (lang === "en"
         ? "Scholar Pack · Rarer codices and illuminations (+75 XP)"
