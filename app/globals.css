@@ -1325,6 +1325,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 .sealed-pack::before, .sealed-pack::after { content: ""; position: absolute; pointer-events: none; }
 .sealed-pack::before { inset: 10px; border: 1px solid #9a671f; box-shadow: inset 0 0 0 4px #f3ddb4, inset 0 0 0 5px #bd8f4f; }
@@ -1354,6 +1357,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   will-change: transform;
 }
 .sealed-pack:hover .wax-seal { transform: translate3d(0, -4px, 0); }
@@ -1813,6 +1819,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   will-change: transform;
 }
 @keyframes card-hover {
@@ -1840,6 +1849,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   will-change: transform, opacity;
 }
 @keyframes reveal-grand {
@@ -1855,6 +1867,7 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
     opacity: 1;
   }
 }
+.reveal-card,
 .reveal-card h2,
 .reveal-card p,
 .reveal-card small,
@@ -1863,6 +1876,9 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 .card-crown { margin: 0 0 8px; padding: 5px; color: #fff1c4; background: var(--brown); text-transform: uppercase; letter-spacing: 1.6px; font-size: 8px; font-weight: 800; }.reveal-card .large-illustration { height: 180px; margin: 0; border-width: 2px; }.reveal-card .large-illustration::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, #fffbe3aa 47%, transparent 59%); transform: translateX(-120%); animation: foil-sweep 1.2s .7s ease-out; }@keyframes foil-sweep { to { transform: translateX(120%); } }.reveal-card .large-illustration b { position: absolute; left: 11px; bottom: 8px; color: #74420c; font-size: 10px; }.reveal-card h2 { font-size: 24px; }.reveal-card p { line-height: 1.35; }.reveal-actions { position: relative; z-index: 4; }.reveal-actions button { background: linear-gradient(180deg, #b27417, #6d3d07); box-shadow: inset 0 0 0 2px #d5a54c, 0 6px 16px #0007; }
 .aura-rare .reveal-card { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 30px rgba(184, 71, 50, 0.45); }
@@ -2199,8 +2215,8 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   animation: reveal-grand .7s cubic-bezier(.17,.82,.24,1.16) both, epic-pulse 3.5s .7s ease-in-out infinite alternate;
 }
 @keyframes epic-pulse {
-  0% { transform: translate3d(0, 0, 0); box-shadow: 0 18px 40px rgba(22, 9, 29, 0.65), 0 0 32px #a855f7aa; }
-  100% { transform: translate3d(0, -3px, 0); box-shadow: 0 22px 46px rgba(22, 9, 29, 0.75), 0 0 46px #c084fcaa, 0 0 65px rgba(192, 132, 252, 0.35); }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -4px, 0); }
 }
 
 .aura-legendary .reveal-card {
@@ -2208,17 +2224,11 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   animation: reveal-grand .7s cubic-bezier(.17,.82,.24,1.16) both, legendary-hover 3s .7s ease-in-out infinite alternate;
 }
 @keyframes legendary-hover {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-    box-shadow: 0 18px 44px rgba(7, 17, 45, 0.75), 0 0 45px #3a7fff, 0 0 75px rgba(36, 87, 189, 0.5);
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translate3d(0, -6px, 0) rotate(0.4deg);
-    box-shadow: 0 24px 52px rgba(7, 17, 45, 0.85), 0 0 60px #5ea3ff, 0 0 95px rgba(58, 127, 255, 0.65);
-  }
-  100% {
-    transform: translate3d(0, -2px, 0) rotate(-0.3deg);
-    box-shadow: 0 20px 46px rgba(7, 17, 45, 0.75), 0 0 48px #458dff, 0 0 80px rgba(36, 87, 189, 0.55);
+    transform: translate3d(0, -6px, 0);
   }
 }
 
@@ -2226,6 +2236,10 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   border-color: #fff0a0 !important;
   box-shadow: 0 18px 44px rgba(50, 27, 3, 0.6), 0 0 50px #ffd84d, 0 0 85px rgba(255, 216, 77, 0.45);
   animation: reveal-grand .7s cubic-bezier(.17,.82,.24,1.16) both, unique-breathe 2.5s .7s ease-in-out infinite alternate;
+}
+@keyframes unique-breathe {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -5px, 0); }
 }
 .aura-epic .card-crown { background: linear-gradient(90deg, #432150, #8e4fa2, #432150); }.aura-legendary .card-crown { background: linear-gradient(90deg, #0f2a6b, #2b65ce, #0f2a6b); }.aura-unique .card-crown { color: #4d2f00; background: linear-gradient(90deg, #c28b17, #fff0a0, #d19a21); }
 .aura-unique .reveal-card::after { content: ""; position: absolute; inset: -3px; border: 1.5px solid #fff3a8; border-radius: 12px; box-shadow: 0 0 14px #ffe35a; pointer-events: none; }
@@ -2243,8 +2257,8 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   left: 50%;
   top: 48%;
   transform: translate(-50%, -50%);
-  width: 380px;
-  height: 380px;
+  width: min(88vw, 380px);
+  height: min(88vw, 380px);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(168, 85, 247, 0.16) 0%, rgba(147, 51, 234, 0.06) 45%, transparent 70%);
   border: 1px solid rgba(192, 132, 252, 0.22);
@@ -2357,8 +2371,8 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   left: 50%;
   top: 48%;
   transform: translate(-50%, -50%);
-  width: 440px;
-  height: 440px;
+  width: min(92vw, 420px);
+  height: min(92vw, 420px);
 }
 .legendary-astral-rings .astral-ring {
   position: absolute;
@@ -2435,6 +2449,8 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
 
 /* High-speed orbiting celestial orbs dancing around the card */
 .legendary-orbiters {
+  --orbit-base: min(35vw, 155px);
+  --orbit-spread: min(3vw, 18px);
   position: absolute;
   left: 50%;
   top: 48%;
@@ -2444,9 +2460,10 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
   z-index: 4;
 }
 .legendary-orbiters .orbiter {
+  --orbit-radius: calc(var(--orbit-base) + var(--orbit-step, 0) * var(--orbit-spread));
   position: absolute;
-  width: 11px;
-  height: 11px;
+  width: clamp(8px, 2.2vw, 11px);
+  height: clamp(8px, 2.2vw, 11px);
   border-radius: 50%;
   background: radial-gradient(circle, #ffffff 20%, #93c5fd 60%, #2563eb 100%);
   box-shadow: 0 0 14px #60a5fa, 0 0 26px #2563eb, 0 0 42px #1d4ed8;
@@ -2459,23 +2476,23 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
 }
 @keyframes orbiter-fly {
   0% {
-    transform: rotate(0deg) translateX(var(--orbit-radius, 160px)) rotate(0deg) scale(0.65);
+    transform: rotate(0deg) translateX(var(--orbit-radius)) rotate(0deg) scale(0.65);
     opacity: 0.35;
   }
   25% {
-    transform: rotate(90deg) translateX(calc(var(--orbit-radius, 160px) * 0.75)) rotate(-90deg) scale(0.95);
+    transform: rotate(90deg) translateX(calc(var(--orbit-radius) * 0.75)) rotate(-90deg) scale(0.95);
     opacity: 0.9;
   }
   50% {
-    transform: rotate(180deg) translateX(var(--orbit-radius, 160px)) rotate(-180deg) scale(1.25);
+    transform: rotate(180deg) translateX(var(--orbit-radius)) rotate(-180deg) scale(1.25);
     opacity: 1;
   }
   75% {
-    transform: rotate(270deg) translateX(calc(var(--orbit-radius, 160px) * 0.75)) rotate(-270deg) scale(0.85);
+    transform: rotate(270deg) translateX(calc(var(--orbit-radius) * 0.75)) rotate(-270deg) scale(0.85);
     opacity: 0.85;
   }
   100% {
-    transform: rotate(360deg) translateX(var(--orbit-radius, 160px)) rotate(-360deg) scale(0.65);
+    transform: rotate(360deg) translateX(var(--orbit-radius)) rotate(-360deg) scale(0.65);
     opacity: 0.35;
   }
 }
@@ -2530,6 +2547,9 @@ html, body {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .sealed-pack h2,
@@ -2539,6 +2559,7 @@ html, body {
 .pack-tier-tab span,
 .mini-card strong,
 .mini-card small,
+.reveal-card,
 .reveal-card h2,
 .reveal-card p,
 .reveal-card small,
@@ -2546,6 +2567,9 @@ html, body {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* Denní glosa ze skriptoria a zajímavosti v kartě balíčků */
@@ -3182,6 +3206,18 @@ html, body {
   }
   .reveal-card p {
     font-size: 12px;
+  }
+  .legendary-astral-rings {
+    width: min(88vw, 340px);
+    height: min(88vw, 340px);
+  }
+  .epic-arcane-halo {
+    width: min(84vw, 310px);
+    height: min(84vw, 310px);
+  }
+  .legendary-orbiters {
+    --orbit-base: min(33vw, 130px);
+    --orbit-spread: min(2.5vw, 10px);
   }
 }
 

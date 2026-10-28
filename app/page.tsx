@@ -8040,8 +8040,8 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
               <i
                 key={i}
                 style={{
-                  "--tx": `${((i * 37) % 380) - 190}px`,
-                  "--ty": `${((i * 41) % 380) - 190}px`,
+                  "--tx": `${((i * 37) % 320) - 160}px`,
+                  "--ty": `${((i * 41) % 320) - 160}px`,
                   "--rotate": `${(i * 73) % 360}deg`,
                   "--delay": `${((i * 0.18) % 3.8)}s`,
                   "--duration": `${2.3 + (i % 5) * 0.5}s`,
@@ -8059,7 +8059,7 @@ function PackReveal({ card, position, total, quality, shown, onReveal, onNext, l
                 className={`orbiter orbiter-${i + 1}`}
                 style={{
                   "--orbit-delay": `${i * -0.62}s`,
-                  "--orbit-radius": `${155 + (i % 3) * 26}px`,
+                  "--orbit-step": `${i % 3}`,
                   "--orbit-speed": `${3.8 + (i % 3) * 1.2}s`,
                 } as React.CSSProperties}
               />
