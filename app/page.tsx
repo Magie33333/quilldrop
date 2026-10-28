@@ -1548,9 +1548,9 @@ export default function Home() {
         bonusIndexToRemove = state.bonusPacks.findIndex(p => p === "standard");
         if (bonusIndexToRemove === -1) {
           if (state.bonusPacks.length > 0) {
-            setToast(lang === "en" ? "Daily packs exhausted. Choose an available Scholar Pack or Masterwork Pack!" : "Denní balíčky jsou vyčerpány. Zvolte Učencův balíček nebo Královský balíček!");
+            setToast(lang === "en" ? "Daily pack exhausted. Choose an available Scholar Pack or Masterwork Pack!" : "Denní balíček je vyčerpán. Zvolte Učencův balíček nebo Královský balíček!");
           } else {
-            setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? (lang === "en" ? "All today's packs and mini-games are exhausted. Return tomorrow!" : "Všechny dnešní balíčky i minihry jsou vyčerpány. Přijďte zítra.") : (lang === "en" ? "Daily packs exhausted – earn more by completing a scribal challenge." : "Denní balíčky jsou vyčerpány – získejte další splněním výzvy."));
+            setToast(state.gamesPlayed >= MAX_DAILY_GAMES ? (lang === "en" ? "Today's daily pack and challenges are exhausted. Return tomorrow!" : "Dnešní denní balíček i výzvy jsou vyčerpány. Přijďte zítra.") : (lang === "en" ? "Daily pack exhausted – earn more by completing a scribal challenge." : "Denní balíček je vyčerpán – získejte další splněním výzvy."));
           }
           return;
         }
@@ -3004,7 +3004,7 @@ function HomeScreen({
         <section className="home-hero-card home-hero-pack">
           <div>
             <div className="home-pack-header">
-              <span>{hasBonus && remaining === 0 ? (lang === "en" ? "Vault Reward Ready" : "Připravená odměna") : (lang === "en" ? "Daily Pack Allowance" : "Denní příděl balíčků")}</span>
+              <span>{hasBonus && remaining === 0 ? (lang === "en" ? "Vault Reward Ready" : "Připravená odměna") : (lang === "en" ? "Daily Pack" : "Denní balíček")}</span>
               <span
                 className={`home-pack-badge ${
                   remaining > 0
@@ -3321,7 +3321,7 @@ function PacksScreen({
         <div className="daily-ledger-col">
           <div className="daily-ledger-header">
             <ScrollText size={13} />
-            <span>{lang === "en" ? "Daily Packs" : "Denní balíčky"}</span>
+            <span>{lang === "en" ? "Daily Pack" : "Denní balíček"}</span>
           </div>
           <div className="daily-ledger-counter">
             <strong>{packsLeft}</strong>
@@ -3337,8 +3337,8 @@ function PacksScreen({
                   className="ledger-pack-seal"
                   title={
                     isOpened
-                      ? (lang === "en" ? `Daily Pack ${roman}: Already opened today` : `Denní balíček ${roman}: Dnes již otevřen`)
-                      : (lang === "en" ? `Daily Pack ${roman}: Ready to unseal` : `Denní balíček ${roman}: Připraven k otevření`)
+                      ? (lang === "en" ? (MAX_DAILY_PACKS === 1 ? "Daily Pack: Already opened today" : `Daily Pack ${roman}: Already opened today`) : (MAX_DAILY_PACKS === 1 ? "Denní balíček: Dnes již otevřen" : `Denní balíček ${roman}: Dnes již otevřen`))
+                      : (lang === "en" ? (MAX_DAILY_PACKS === 1 ? "Daily Pack: Ready to unseal" : `Daily Pack ${roman}: Ready to unseal`) : (MAX_DAILY_PACKS === 1 ? "Denní balíček: Připraven k otevření" : `Denní balíček ${roman}: Připraven k otevření`))
                   }
                 >
                   <div className={`ledger-pack-seal-pip ${isOpened ? "opened" : "ready"}`}>
@@ -3401,7 +3401,7 @@ function PacksScreen({
         </div>
 
         <div className="daily-ledger-footer">
-          <span>{lang === "en" ? "📜 The daily allowance of packs and challenges is granted solely upon today's login and never accumulates." : "📜 Denní dávka balíčků i výzev platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítá."}</span>
+          <span>{lang === "en" ? "📜 The daily pack and challenges are granted solely upon today's login and never accumulate." : "📜 Denní balíček i výzvy platí výhradně pro dnešní přihlášení a do dalších dnů se nesčítají."}</span>
         </div>
       </div>
 
@@ -3563,7 +3563,7 @@ function PacksScreen({
                 ? (lang === "en" ? "Earn a Masterwork Pack by transcribing lines in Palaeographical Master." : "Královský balíček získáte úspěšným přepisem v Paleografickém mistrovi.")
                 : selectedTier === "refined"
                 ? (lang === "en" ? "Earn a Scholar Pack by cracking ciphers or identifying script & dating." : "Učencův balíček získáte vyřešením šifry nebo určením písma a století.")
-                : (lang === "en" ? "Standard packs replenish tomorrow at dawn, or complete a challenge below." : "Běžné balíčky se obnoví zítra za svítání, nebo splňte výzvu níže.")}
+                : (lang === "en" ? "Daily pack replenishes tomorrow at dawn, or earn one by completing a challenge below." : "Denní balíček se obnoví zítra za svítání, nebo získejte další splněním výzvy níže.")}
             </span>
             {selectedTier === "masterwork" && (
               <button
@@ -6405,7 +6405,7 @@ function OnboardingTutorialModal({
       ),
     },
     {
-      badge: lang === "en" ? "STEP 3 OF 5 · DAILY PACKS" : "KROK 3 ZE 5 · DENNÍ PŘÍDĚL KARET",
+      badge: lang === "en" ? "STEP 3 OF 5 · DAILY PACK" : "KROK 3 ZE 5 · DENNÍ BALÍČEK",
       icon: "📦",
       title: lang === "en" ? "Daily Pack & Scribe's Journey" : "Denní balíček a cesta písaře",
       lead: lang === "en" ? "Claim 3 new authentic colophons every single day for free." : "Vyzvedněte si každý kalendářní den 3 nové kolofony zdarma.",
@@ -6503,9 +6503,9 @@ function OnboardingTutorialModal({
               </strong>
               <span style={{ color: "#6b4916", fontSize: "12px" }}>
                 {lang === "en" ? (
-                  <>You receive <strong>+50 XP</strong> to start! Your 3 sealed packs are already waiting in the scriptorium.</>
+                  <>You receive <strong>+50 XP</strong> to start! Your sealed daily pack is already waiting in the scriptorium.</>
                 ) : (
-                  <>Získáváte <strong>+50 XP</strong> do začátku! Vaše 3 zapečetěné balíčky již čekají.</>
+                  <>Získáváte <strong>+50 XP</strong> do začátku! Váš zapečetěný denní balíček již čeká ve skriptoriu.</>
                 )}
               </span>
             </div>
