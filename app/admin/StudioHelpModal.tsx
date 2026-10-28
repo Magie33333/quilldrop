@@ -432,13 +432,13 @@ export default function StudioHelpModal({
                     </div>
                     <div className="p-2 rounded bg-[#2d1b1b] border border-[#c62828]/40 text-rose-300">
                       <strong className="block text-[11px]">🟣 Těžká</strong>
-                      <span className="text-[10px] text-rose-400/80">400–500 XP</span>
-                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">45 kodexů, 30 dní streak, 2 šifry</p>
+                      <span className="text-[10px] text-rose-400/80">450–600 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">80 kodexů, 30 dní streak, 60 výzev</p>
                     </div>
                     <div className="p-2 rounded bg-[#291730] border border-[#6a1b9a]/40 text-purple-300">
                       <strong className="block text-[11px]">🔴 Nemožná</strong>
-                      <span className="text-[10px] text-purple-400/80">1000–1500 XP</span>
-                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">60 kodexů + 5 legend, 100 dní streak</p>
+                      <span className="text-[10px] text-purple-400/80">1500–2500 XP</span>
+                      <p className="text-[9.5px] text-[#8c7b6d] mt-1">100–180 dní streak, 140 kodexů, 200 výzev</p>
                     </div>
                   </div>
                 </div>
