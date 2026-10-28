@@ -1178,7 +1178,7 @@ export default function AdminPage() {
           id: userId,
           username,
           display_name: username,
-          role: "admin",
+          role: "player",
         })
         .select()
         .maybeSingle();
@@ -1188,8 +1188,8 @@ export default function AdminPage() {
 
     if (data) {
       // Automatické povýšení prvního registrovaného uživatele na administrátora
-      const { count } = await supabase.from("profiles").select("*", { count: "exact", head: true });
-      if ((count === null || count <= 1) && data.role !== "admin") {
+      const { count: adminCount } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin");
+      if ((adminCount === null || adminCount === 0) && data.role !== "admin") {
         await supabase.from("profiles").update({ role: "admin" }).eq("id", userId);
         data.role = "admin";
       }

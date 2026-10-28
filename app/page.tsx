@@ -441,7 +441,7 @@ function loadState(userId?: string): GameState {
 
       // Pokud právě dnes dosáhl 16. fragmentu, dokončil celou iluminaci
       if (nextPuzzle === 16) {
-        const completedArt = getActiveIllumination(nextStreak, illuminationsList);
+        const completedArt = getActiveIllumination(nextStreak, illuminationsList, nextGallery);
         if (!nextGallery.includes(completedArt.id)) {
           nextGallery.push(completedArt.id);
         }
@@ -553,8 +553,8 @@ export default function Home() {
   }, []);
 
   const activeIllumination = useMemo(() => {
-    return getActiveIllumination(state.streak, illuminations);
-  }, [state.streak, illuminations]);
+    return getActiveIllumination(state.streak, illuminations, state.gallery);
+  }, [state.streak, illuminations, state.gallery]);
 
   // Uživatel a autentizace
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -1779,7 +1779,7 @@ export default function Home() {
         : `Den ${nextStreak}: Odhalen ${nextPuzzle}. dílek iluminace!`;
 
       if (nextPuzzle === 16) {
-        const completedArt = getActiveIllumination(nextStreak, illuminations);
+        const completedArt = getActiveIllumination(nextStreak, illuminations, nextGallery);
         if (!nextGallery.includes(completedArt.id)) {
           nextGallery.push(completedArt.id);
         }
@@ -7796,7 +7796,11 @@ function PlayerProfileModal({
                   }}
                   title={lang === "en" ? (trophy.text_en || trophy.text) : (trophy.text || trophy.text_en)}
                 >
-                  <span style={{ fontSize: "13px" }}>{trophy.initial || "🏆"}</span>
+                  {trophy.image_url ? (
+                    <img src={trophy.image_url} alt="" style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ fontSize: "13px" }}>{trophy.initial || "🏆"}</span>
+                  )}
                   <strong style={{ fontSize: "11px" }}>{lang === "en" ? (trophy.title_en || trophy.title) : trophy.title}</strong>
                 </div>
               ))}

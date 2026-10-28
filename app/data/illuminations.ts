@@ -25,7 +25,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "rabbit-scribe",
     cycle: 1,
-    title: "Učený zajíc (The Learned Hare)",
+    title: "Učený zajíc",
     title_en: "The Learned Hare",
     source: "/illumination-rabbit.png",
     origin: "Střední Evropa, iluminovaný žaltář",
@@ -43,7 +43,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "scriptorium-monk",
     cycle: 2,
-    title: "Písař v dílně (Scriptorium Master)",
+    title: "Písař v dílně",
     title_en: "Master Scribe in his Workshop",
     source: "/illuminations/eadwine-scribe.jpg",
     origin: "Eadwine Psalter, Trinity College Cambridge",
@@ -61,7 +61,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "bohemian-lion",
     cycle: 3,
-    title: "Český královský lev (Bohemian Lion)",
+    title: "Český královský lev",
     title_en: "The Bohemian Royal Lion",
     source: "/illuminations/bohemian-lion.jpg",
     origin: "Gelnhausenův kodex, Státní okresní archiv Jihlava",
@@ -79,7 +79,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "wenceslas-initial",
     cycle: 4,
-    title: "Královská iniciála 'W' (Wenceslas Bible)",
+    title: "Královská iniciála 'W'",
     title_en: "Royal Initial 'W' (Wenceslas Bible)",
     source: "/illuminations/wenceslas-initial.jpg",
     origin: "Bible Václava IV. (ÖNB Vídeň, Cod. 2759–2764), Praha",
@@ -97,7 +97,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "astrolabe-spheres",
     cycle: 5,
-    title: "Nebeské sféry a astroláb (Cosmographia)",
+    title: "Nebeské sféry a astroláb",
     title_en: "Celestial Spheres & Astrolabe (Cosmographia)",
     source: "/illuminations/astrolabe-spheres.jpg",
     origin: "Astronomický sborník krále Václava IV., Praha",
@@ -115,7 +115,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "codex-gigas-devil",
     cycle: 6,
-    title: "Podlažický ďábel (Codex Gigas)",
+    title: "Podlažický ďábel",
     title_en: "The Podlažice Devil (Codex Gigas)",
     source: "/illuminations/codex-gigas-devil.jpg",
     origin: "Benediktinský klášter Podlažice u Chrudimi (dnes Kungliga biblioteket, Stockholm)",
@@ -133,7 +133,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "titivillus",
     cycle: 7,
-    title: "Titivillus – Démon písařských chyb",
+    title: "Démon Titivillus",
     title_en: "Titivillus – The Scribes' Demon",
     source: "/illuminations/titivillus.png",
     origin: "Středověká skriptoria a traktáty o písařích (14.–15. století)",
@@ -151,7 +151,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "knight-vs-snail",
     cycle: 8,
-    title: "Rytíř a bojový hlemýžď (Knight vs. Snail)",
+    title: "Rytíř a bojový hlemýžď",
     title_en: "Knight Charging a Giant Snail",
     source: "/illuminations/knight-vs-snail.jpg",
     origin: "Brunetto Latini, Li Livres dou Tresor (Francie/Vlámsko, cca 1315)",
@@ -169,7 +169,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "killer-rabbit",
     cycle: 9,
-    title: "Vražedný králík pomstitel (The Killer Rabbit)",
+    title: "Vražedný králík pomstitel",
     title_en: "The Killer Rabbit of Smithfield",
     source: "/illuminations/killer-rabbit.jpg",
     origin: "Smithfield Decretals (British Library, Royal MS 10 E IV), Londýn",
@@ -187,7 +187,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "wenceslas-bathmaids",
     cycle: 10,
-    title: "Královské lazebnice Václava IV. (Dvorský věník)",
+    title: "Královské lazebnice Václava IV.",
     title_en: "The Royal Bathmaids of King Wenceslas IV",
     source: "/illuminations/wenceslas-bathmaids.jpg",
     origin: "Bible Václava IV. (ÖNB Vídeň, Cod. 2759–2764), Praha",
@@ -205,7 +205,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "sciapod-monopod",
     cycle: 11,
-    title: "Skiapod – Stínonoh (The Sciapod)",
+    title: "Skiapod – Stínonoh",
     title_en: "The Sciapod (Monopod) with Foot Umbrella",
     source: "/illuminations/sciapod-monopod.jpg",
     origin: "Livre des merveilles du monde (BnF Fr. 2810, fol. 29v), Paříž",
@@ -223,7 +223,7 @@ export const DEFAULT_ILLUMINATIONS: IlluminationMosaicItem[] = [
   {
     id: "luttrell-grotesque",
     cycle: 12,
-    title: "Klášterní chiméra (Luttrell Grotesque)",
+    title: "Klášterní chiméra",
     title_en: "Luttrell Grotesque (Hybrid Monster)",
     source: "/illuminations/luttrell-grotesque.png",
     origin: "Luttrell Psalter (British Library, Add MS 42130, fol. 27r), Anglie",
@@ -306,7 +306,15 @@ export function getStoredIlluminations(): IlluminationMosaicItem[] {
           }
 
           if (defMatch) {
-            if (!updatedItem.title_en && defMatch.title_en) { updatedItem.title_en = defMatch.title_en; changed = true; }
+            // Zajistit čisté české názvy (bez starých anglických závorek)
+            if (updatedItem.title !== defMatch.title) {
+              updatedItem.title = defMatch.title;
+              changed = true;
+            }
+            if (updatedItem.title_en !== defMatch.title_en) {
+              updatedItem.title_en = defMatch.title_en;
+              changed = true;
+            }
             if (!updatedItem.origin_en && defMatch.origin_en) { updatedItem.origin_en = defMatch.origin_en; changed = true; }
             if (!updatedItem.century_en && defMatch.century_en) { updatedItem.century_en = defMatch.century_en; changed = true; }
             if (!updatedItem.tierName_en && defMatch.tierName_en) { updatedItem.tierName_en = defMatch.tierName_en; changed = true; }
@@ -346,10 +354,25 @@ export function saveStoredIlluminations(list: IlluminationMosaicItem[]): void {
   }
 }
 
-// Vrátí aktivní iluminaci podle aktuálního počtu dní ve streaku
-export function getActiveIllumination(streak: number, list = getStoredIlluminations()): IlluminationMosaicItem {
+// Vrátí aktivní iluminaci podle aktuálního počtu dní ve streaku a galerie již hotových děl
+export function getActiveIllumination(
+  streak: number,
+  list = getStoredIlluminations(),
+  gallery: string[] = []
+): IlluminationMosaicItem {
   if (!list || list.length === 0) return DEFAULT_ILLUMINATIONS[0];
   const sorted = [...list].sort((a, b) => a.cycle - b.cycle);
+
+  // Pokud je předána galerie již hotových děl, vrátíme první zatím nedokončené dílo
+  // Hráč tak po přerušení streaku neskládá znovu již dokončená díla ze své galerie!
+  if (gallery && gallery.length > 0) {
+    const uncompleted = sorted.filter((item) => !gallery.includes(item.id));
+    if (uncompleted.length > 0) {
+      return uncompleted[0];
+    }
+  }
+
+  // Fallback nebo po zkompletování všech dostupných cyklů: cyklujeme podle streaku
   const cycleIndex = Math.floor(Math.max(0, streak - 1) / 16);
   return sorted[cycleIndex % sorted.length];
 }
