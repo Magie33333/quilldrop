@@ -1545,6 +1545,15 @@ export default function Home() {
     }
 
     const drawn = Array.from({ length: 5 }, () => chooseCard(chosenTier));
+    if (typeof window !== "undefined") {
+      drawn.forEach(c => {
+        const u = c.imageUrl || c.remoteImageUrl;
+        if (u) {
+          const pre = new Image();
+          pre.src = u;
+        }
+      });
+    }
     playSealCrack();
     setOpened(drawn);
     setReveal(0);
@@ -3797,7 +3806,12 @@ function PacksScreen({
 function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "cs" }: { state: GameState; cards: Colophon[]; filter: Rarity | "All"; setFilter: (f: Rarity | "All") => void; onDetail: (c: Colophon) => void; lang?: Language }) {
   const [search, setSearch] = useState("");
   const [onlyOwned, setOnlyOwned] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(48);
   const rarities: (Rarity | "All")[] = ["All", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Unique"];
+
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [search, onlyOwned, filter]);
 
   const displayedCards = cards.filter(c => {
     const isOwned = Boolean(state.collection[c.id]);
@@ -3866,19 +3880,35 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
         </p>
       </div>
     ) : (
-      <div className="card-grid">
-        {displayedCards.map(card => {
-          const count = state.collection[card.id] || 0;
-          const title = count ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
-          return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Otevřít ${title}` : (lang === "en" ? "Undiscovered card" : "Neobjevená karta")}>
-            <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
-            <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
-            <strong>{title}</strong>
-            <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
-            {count > 1 && <b className="duplicate">×{count}</b>}
-          </button>;
-        })}
-      </div>
+      <>
+        <div className="card-grid">
+          {displayedCards.slice(0, visibleCount).map(card => {
+            const count = state.collection[card.id] || 0;
+            const title = count ? getCardTitle(card, lang) : (lang === "en" ? "Mysterious Codex" : "Tajemný kodex");
+            return <button key={card.id} className={`mini-card rarity-${card.rarity.toLowerCase()} ${count ? "" : "locked"}`} onClick={() => count && onDetail(card)} aria-label={count ? `Otevřít ${title}` : (lang === "en" ? "Undiscovered card" : "Neobjevená karta")}>
+              <span className="rarity-label">{count ? card.rarity : (lang === "en" ? "Undiscovered" : "Neobjeveno")}</span>
+              <div className="mini-illustration">{count ? <ColophonImage card={card} /> : <span>?</span>}</div>
+              <strong>{title}</strong>
+              <small>{count ? `${getCardPlace(card.place, lang)} · ${card.year}` : (lang === "en" ? "Obtain in packs" : "Získejte v balíčcích")}</small>
+              {count > 1 && <b className="duplicate">×{count}</b>}
+            </button>;
+          })}
+        </div>
+        {displayedCards.length > visibleCount && (
+          <div style={{ textAlign: "center", margin: "22px 0 16px" }}>
+            <button
+              type="button"
+              onClick={() => setVisibleCount((c) => c + 48)}
+              className="game-continue-btn"
+              style={{ fontSize: "12px", padding: "8px 22px" }}
+            >
+              {lang === "en"
+                ? `Show more codices (${displayedCards.length - visibleCount} remaining)`
+                : `Zobrazit další kodexy (zbývá ${displayedCards.length - visibleCount})`}
+            </button>
+          </div>
+        )}
+      </>
     )}
   </div>;
 }
@@ -4112,7 +4142,7 @@ function TrophiesScreen({
               <article key={t.id} className={t.earned ? "earned" : "locked"}>
                 {t.image_url ? (
                   <div className="trophy-image-box">
-                    <img src={t.image_url} alt={title} />
+                    <img src={t.image_url} alt={title} loading="lazy" decoding="async" width={47} height={55} />
                   </div>
                 ) : (
                   <div className="illuminated-initial">{t.initial}</div>
@@ -7908,31 +7938,66 @@ function PlayerProfileModal({
 function PackReveal({ card, position, total, quality, shown, onReveal, onNext, lang = "cs" }: { card: Colophon; position: number; total: number; quality: PackQuality; shown: boolean; onReveal: () => void; onNext: () => void; lang?: Language }) {
   const glitterCount = card.rarity === "Unique" ? 64 : card.rarity === "Legendary" ? 48 : card.rarity === "Epic" ? 36 : card.rarity === "Rare" ? 22 : 14;
   const [tension, setTension] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const isMonumental = card.rarity === "Legendary" || card.rarity === "Unique";
   const title = getCardTitle(card, lang);
+
+  // Okamžitý prefetch obrázku dané karty do mezipaměti prohlížeče
+  useEffect(() => {
+    let active = true;
+    const src = card.imageUrl || card.remoteImageUrl;
+    if (!src) {
+      setImageLoaded(true);
+      return;
+    }
+    const img = new Image();
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) {
+      setImageLoaded(true);
+      return;
+    }
+    img.onload = () => {
+      if (active) setImageLoaded(true);
+    };
+    img.onerror = () => {
+      if (active) setImageLoaded(true);
+    };
+    return () => {
+      active = false;
+    };
+  }, [card.id, card.imageUrl, card.remoteImageUrl]);
 
   const beginReveal = () => {
     if (tension) return;
     playParchmentFlip(0.28);
-    if (!isMonumental) {
-      onReveal();
-      playTriumphFanfare(card.rarity);
-      return;
-    }
     setTension(true);
-    window.setTimeout(() => {
-      onReveal();
-      playTriumphFanfare(card.rarity);
-    }, card.rarity === "Unique" ? 1500 : 1050);
+
+    const minDelay = card.rarity === "Unique" ? 1400 : card.rarity === "Legendary" ? 1050 : card.rarity === "Epic" ? 600 : 380;
+    const startTime = Date.now();
+
+    const checkAndReveal = () => {
+      const elapsed = Date.now() - startTime;
+      const isReady = imageLoaded || elapsed >= 1800;
+
+      if (elapsed >= minDelay && isReady) {
+        setTension(false);
+        onReveal();
+        playTriumphFanfare(card.rarity);
+      } else {
+        requestAnimationFrame(checkAndReveal);
+      }
+    };
+
+    requestAnimationFrame(checkAndReveal);
   };
   return <div className={`modal-backdrop reveal-bg aura-${card.rarity.toLowerCase()} ${shown ? "is-revealed" : "is-sealed"} ${tension ? "is-tension" : ""}`}>
     <div className="particle-field" aria-hidden="true">{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ "--i": i } as React.CSSProperties}>✦</i>)}</div>
     {!shown ? <>
       <div className="reveal-kicker"><span>{lang === "en" ? "Pack:" : "Balíček:"} {quality}</span><b>{lang === "en" ? `Card ${position} of ${total}` : `Karta ${position} z ${total}`}</b></div>
       <button className="card-back" onClick={beginReveal} disabled={tension} aria-label={lang === "en" ? `Reveal card ${position} of ${total}` : `Odhalit kartu ${position} z ${total}`}>
-        <div className="card-back-frame"><span>Q</span><small>{tension ? (lang === "en" ? "The wax resists…" : "Pečeť klade odpor…") : (lang === "en" ? "Tap to reveal" : "Klepnutím odhalit")}</small></div>
+        <div className="card-back-frame"><span>Q</span><small>{tension ? (!imageLoaded ? (lang === "en" ? "Awakening pigment…" : "Pigment se probouzí…") : (lang === "en" ? "The wax resists…" : "Pečeť klade odpor…")) : (lang === "en" ? "Tap to reveal" : "Klepnutím odhalit")}</small></div>
       </button>
-      <p className="reveal-whisper">{tension ? (lang === "en" ? "Something ancient stirs beneath the parchment…" : "Něco prastarého se probouzí pod pergamenem…") : (lang === "en" ? "Ink moves beneath the wax…" : "Inkoust se hýbe pod voskem…")}</p>
+      <p className="reveal-whisper">{tension ? (!imageLoaded ? (lang === "en" ? "Gold leaf and ink settle upon the parchment…" : "Zlato a inkoust se usazují na pergamenu…") : (lang === "en" ? "Something ancient stirs beneath the parchment…" : "Něco prastarého se probouzí pod pergamenem…")) : (lang === "en" ? "Ink moves beneath the wax…" : "Inkoust se hýbe pod voskem…")}</p>
     </> : <>
       <div className="reveal-flash" aria-hidden="true" />
       <div className="light-shafts" aria-hidden="true"><i /><i /><i /><i /><i /></div>

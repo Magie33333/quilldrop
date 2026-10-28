@@ -157,12 +157,12 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 
 .filter-row { display: flex; gap: 6px; overflow-x: auto; padding: 6px 1px 12px; scrollbar-width: none; }.filter-row button { white-space: nowrap; padding: 5px 9px; border: 1px solid #966128; background: #f2dfb9; color: var(--brown); font-size: 10px; cursor: pointer; border-radius: 5px; }.filter-row button.active { background: var(--brown); color: #fff0ce; }
 .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mini-card { min-width: 0; position: relative; padding: 7px; min-height: 207px; border: 2px solid var(--brown); background: #f6e9ca; text-align: left; cursor: pointer; box-shadow: 2px 3px 0 #8a5a2250; overflow: hidden; }
+.mini-card { min-width: 0; position: relative; padding: 7px; min-height: 207px; border: 2px solid var(--brown); background: #f6e9ca; text-align: left; cursor: pointer; box-shadow: 2px 3px 0 #8a5a2250; overflow: hidden; content-visibility: auto; contain-intrinsic-size: 140px 210px; transform: translateZ(0); backface-visibility: hidden; }
 .rarity-label { display: inline-block; position: relative; z-index: 1; padding: 3px 7px; background: var(--brown); color: #fff1cd; text-transform: uppercase; font-size: 8px; letter-spacing: .8px; font-weight: 700; }
 .mini-illustration, .large-illustration { display: grid; place-items: center; position: relative; border: 1px solid #9b6a32; background: radial-gradient(circle, #f7eacb, #dbb978); overflow: hidden; }
 .mini-illustration img, .large-illustration img { width: 100%; height: 100%; object-fit: cover; filter: sepia(.12) saturate(.9) contrast(1.04); }
-.mini-illustration img { transition: transform .35s ease, filter .35s ease; }
-.mini-card:hover .mini-illustration img { transform: scale(1.045); filter: sepia(0) saturate(1) contrast(1.05); }
+.mini-illustration img { transition: transform .25s ease; }
+.mini-card:hover .mini-illustration img { transform: scale(1.045) translateZ(0); }
 .mini-illustration { height: 111px; margin: 6px 0 8px; }.mini-illustration::before, .large-illustration::before { content: ""; position: absolute; inset: 8px; border: 1px solid #b84732; border-radius: 50% 50% 8px 8px; }.mini-illustration span { font-size: 43px; z-index: 1; }
 .mini-card > strong, .mini-card > small { display: block; }.mini-card > strong { color: var(--brown); font-size: 13px; line-height: 1.1; }.mini-card > small { margin-top: 5px; font-size: 8.5px; }.duplicate { position: absolute; top: 5px; right: 5px; padding: 3px 6px; border-radius: 50%; background: var(--blue); color: white; font-size: 10px; }
 .mini-card.locked { filter: grayscale(1); opacity: .55; cursor: not-allowed; }.mini-card.locked .mini-illustration { background: #cdbb99; }
@@ -170,10 +170,10 @@ blockquote cite { display: block; margin-top: 5px; font-style: normal; color: #7
 
 .puzzle-board { display: grid; grid-template-columns: 1fr 132px; gap: 14px; align-items: center; padding: 14px; border: 2px solid var(--brown); background: #e3bd74; }.puzzle-copy p { margin: 0; font-size: 10px; text-transform: uppercase; }.puzzle-copy h2 { color: var(--brown); margin: 4px 0 10px; }.puzzle-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--brown); }.puzzle-grid span { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid #9c692c; color: #9b7a4b; background: #ddc99f; }.puzzle-grid span.found { color: #f9df71; background: var(--blue); }
 .trophy-list { display: grid; gap: 9px; }
-.trophy-list article { display: grid; grid-template-columns: 49px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid #9c6b31; background: #f3e2bd; border-radius: 4px; }
+.trophy-list article { display: grid; grid-template-columns: 49px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid #9c6b31; background: #f3e2bd; border-radius: 4px; content-visibility: auto; contain-intrinsic-size: 100% 75px; transform: translateZ(0); backface-visibility: hidden; will-change: transform; }
 .illuminated-initial { width: 47px; height: 55px; display: grid; place-items: center; background: var(--blue); border: 4px double #dba72c; color: #ffe179; font-size: 30px; font-weight: 800; border-radius: 3px; flex-shrink: 0; }
-.trophy-image-box { width: 47px; height: 55px; border-radius: 3px; border: 4px double #dba72c; overflow: hidden; background: #2a1f16; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.trophy-image-box img { width: 100%; height: 100%; object-fit: cover; }
+.trophy-image-box { width: 47px; height: 55px; border-radius: 3px; border: 4px double #dba72c; overflow: hidden; background: #2a1f16; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transform: translateZ(0); backface-visibility: hidden; }
+.trophy-image-box img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; transform: translateZ(0); backface-visibility: hidden; }
 .game-continue-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(180deg, #b8860b, #7a5205); color: #fff9e6; font-family: var(--font-cinzel), Georgia, serif; font-size: 12.5px; font-weight: 800; border: 1px solid #4a3203; border-radius: 6px; cursor: pointer; box-shadow: inset 0 0 0 1.5px #d4af37, 0 3px 8px rgba(0, 0, 0, 0.25); transition: all 0.2s ease; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 .game-continue-btn:hover { background: linear-gradient(180deg, #cf9815, #8f6007); box-shadow: inset 0 0 0 1.5px #ffd700, 0 5px 12px rgba(0, 0, 0, 0.35); transform: translateY(-1px); }
 .game-continue-btn:active { transform: translateY(1px); box-shadow: inset 0 0 0 1.5px #b8860b, 0 2px 4px rgba(0, 0, 0, 0.2); }
@@ -2128,7 +2128,15 @@ button:focus-visible { outline: 3px solid #2f63c8; outline-offset: 3px; }
 .close:hover { transform: rotate(4deg) scale(1.04); background: #fff2d2; }
 
 .is-tension .reveal-kicker, .is-tension .reveal-whisper { color: #fff0a2; text-shadow: 0 0 12px currentColor; }
-.is-tension .card-back { cursor: wait; }
+.is-tension .card-back { cursor: wait; animation: card-tension-shake 0.8s cubic-bezier(.36,.07,.19,.97) infinite alternate; }
+.is-tension.aura-epic .card-back { animation: card-tension-shake 0.65s cubic-bezier(.36,.07,.19,.97) infinite alternate; }
+@keyframes card-tension-shake {
+  0% { transform: translate(0) rotate(0deg); }
+  25% { transform: translate(-2px, 1px) rotate(-0.5deg) scale(1.01); }
+  50% { transform: translate(2px, -1px) rotate(0.6deg) scale(1.02); }
+  75% { transform: translate(-3px, 0) rotate(-0.7deg) scale(1.015); }
+  100% { transform: translate(3px, 1px) rotate(0.7deg) scale(1.025); }
+}
 .is-tension.aura-legendary .card-back { animation: legendary-tension 1.05s cubic-bezier(.36,.07,.19,.97) both; }
 .is-tension.aura-unique .card-back { animation: unique-tension 1.5s cubic-bezier(.36,.07,.19,.97) both; }
 .is-tension.aura-legendary .particle-field i, .is-tension.aura-unique .particle-field i { animation-duration: .45s; opacity: .9; }
