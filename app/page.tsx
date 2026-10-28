@@ -256,8 +256,9 @@ const NAV: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: "profile", label: "Profil", icon: UserRound },
 ];
 
-export const MAX_DAILY_PACKS = 3;
-export const MAX_DAILY_GAMES = 5;
+export const MAX_DAILY_PACKS = 1;
+export const MAX_DAILY_GAMES = 3;
+export const CARDS_PER_PACK = 3;
 
 const today = () => getSecureDate();
 
@@ -1557,7 +1558,7 @@ export default function Home() {
       }
     }
 
-    const drawn = Array.from({ length: 5 }, () => chooseCard(chosenTier));
+    const drawn = Array.from({ length: CARDS_PER_PACK }, () => chooseCard(chosenTier));
     if (typeof window !== "undefined") {
       drawn.forEach(c => {
         const u = c.imageUrl || c.remoteImageUrl;
@@ -1600,7 +1601,7 @@ export default function Home() {
     else {
       setOpened(null);
       if (pendingPackLevel) { setLevelUp(pendingPackLevel); setPendingPackLevel(null); }
-      else setToast(lang === "en" ? "Five new cards have been added to your collection!" : "Pět nových karet bylo uloženo do vaší sbírky!");
+      else setToast(lang === "en" ? "Three new cards have been added to your collection!" : "Tři nové karty byly uloženy do vaší sbírky!");
     }
   };
 
@@ -1723,7 +1724,7 @@ export default function Home() {
       : (state.completedQuestionsToday || []);
 
     const nextTrophies = [...state.trophies];
-    if (state.gamesPlayed + 1 >= 5 && !nextTrophies.includes("paleographer")) {
+    if (state.gamesPlayed + 1 >= MAX_DAILY_GAMES && !nextTrophies.includes("paleographer")) {
       nextTrophies.push("paleographer");
     }
 
@@ -2227,8 +2228,8 @@ export default function Home() {
     setToast(
       isFirstTime
         ? (lang === "en"
-            ? "Scriptorium initiation complete (+50 XP)! Here are your 3 sealed packs."
-            : "Zasvěcení do skriptoria dokončeno (+50 XP)! Zde jsou vaše 3 denní zapečetěné balíčky.")
+            ? "Scriptorium initiation complete (+50 XP)! Here is your sealed daily pack."
+            : "Zasvěcení do skriptoria dokončeno (+50 XP)! Zde je váš denní zapečetěný balíček.")
         : (lang === "en"
             ? "Tutorial closed."
             : "Průvodce skriptoriem zavřen.")
@@ -3028,7 +3029,7 @@ function HomeScreen({
                 <h2>{remaining ? (lang === "en" ? "Scriptorium Pack" : "Balíček ze skriptoria") : hasBonus ? qualityLabel(state.bonusPacks[0], lang) : (lang === "en" ? "Scriptorium at Rest" : "Skriptorium odpočívá")}</h2>
                 <p>
                   {remaining
-                    ? (lang === "en" ? "Five concealed scribal voices await under the wax seal." : "Pět skrytých hlasů písařů čeká pod voskovou pečetí.")
+                    ? (lang === "en" ? "Three concealed scribal voices await under the wax seal." : "Tři skryté hlasy písařů čekají pod voskovou pečetí.")
                     : hasBonus
                     ? (lang === "en" ? "Earned reward from your scribal challenge awaits in vault." : "Získaná odměna z písařské výzvy čeká na otevření.")
                     : gamesLeft
@@ -3061,7 +3062,7 @@ function HomeScreen({
             </div>
           </div>
           <button className="illuminated-button" onClick={onPacks} style={{ width: "100%", justifyContent: "center" }}>
-            {remaining || hasBonus ? (lang === "en" ? "Open Pack (5 cards)" : "Otevřít balíček (5 karet)") : (lang === "en" ? "Pack Overview" : "Přehled balíčků")} <span>→</span>
+            {remaining || hasBonus ? (lang === "en" ? `Open Pack (${CARDS_PER_PACK} cards)` : `Otevřít balíček (${CARDS_PER_PACK} karty)`) : (lang === "en" ? "Pack Overview" : "Přehled balíčků")} <span>→</span>
           </button>
         </section>
 
@@ -3324,7 +3325,7 @@ function PacksScreen({
           </div>
           <div className="daily-ledger-counter">
             <strong>{packsLeft}</strong>
-            <span>{lang === "en" ? `of ${MAX_DAILY_PACKS} available` : `ze ${MAX_DAILY_PACKS} k dispozici`}</span>
+            <span>{lang === "en" ? `of ${MAX_DAILY_PACKS} available` : `z ${MAX_DAILY_PACKS} k dispozici`}</span>
           </div>
           <div className="ledger-pack-seals">
             {Array.from({ length: MAX_DAILY_PACKS }).map((_, i) => {
@@ -3359,7 +3360,7 @@ function PacksScreen({
           </div>
           <div className="daily-ledger-counter games">
             <strong>{gamesLeft}</strong>
-            <span>{lang === "en" ? `of ${MAX_DAILY_GAMES} available` : `z ${MAX_DAILY_GAMES} k dispozici`}</span>
+            <span>{lang === "en" ? `of ${MAX_DAILY_GAMES} available` : `ze ${MAX_DAILY_GAMES} k dispozici`}</span>
           </div>
           <div className="ledger-game-tokens">
             {Array.from({ length: MAX_DAILY_GAMES }).map((_, i) => {
@@ -3518,8 +3519,8 @@ function PacksScreen({
                 : "Učencův balíček se zvýšenou šancí na vzácné a epické kolofony pro badatele.")
             : dailyRemaining > 0
             ? (lang === "en"
-                ? "Daily scriptorium pack containing 5 cards of all rarities including a chance for Legendary and Unique treasures."
-                : "Denní skriptoriální balíček obsahující 5 karet všech vzácností včetně šance na Legendární a Unikátní poklady.")
+                ? `Daily scriptorium pack containing ${CARDS_PER_PACK} cards of all rarities including a chance for Legendary and Unique treasures.`
+                : `Denní skriptoriální balíček obsahující ${CARDS_PER_PACK} karty všech vzácností včetně šance na Legendární a Unikátní poklady.`)
             : (lang === "en"
                 ? "Standard daily allowance exhausted. Earn additional packs by completing challenges below or buy from the Stationer."
                 : "Základní denní příděl je vyčerpán. Můžete získat další splněním některé z výzev níže nebo nákupem u stacionáře.")}
@@ -3531,7 +3532,7 @@ function PacksScreen({
             onClick={() => onOpen(selectedTier)}
             style={{ width: "100%", maxWidth: "340px", justifyContent: "center", marginBottom: "8px" }}
           >
-            {lang === "en" ? `Unseal ${qualityLabel(selectedTier, lang)} (5 cards)` : `Otevřít ${qualityLabel(selectedTier, lang)} (5 karet)`} <span>→</span>
+            {lang === "en" ? `Unseal ${qualityLabel(selectedTier, lang)} (${CARDS_PER_PACK} cards)` : `Otevřít ${qualityLabel(selectedTier, lang)} (${CARDS_PER_PACK} karty)`} <span>→</span>
           </button>
         ) : (
           <div className="empty-pack-prompt">
@@ -3716,8 +3717,8 @@ function PacksScreen({
             <h4>{lang === "en" ? "Standard Pack" : "Běžný balíček"}</h4>
             <p className="ware-desc">
               {lang === "en"
-                ? "Pecia exemplaris — 5 loose folios of academic and monastic transcriptions with standard odds."
-                : "Pecia exemplaris — 5 pergamenových listů univerzitních traktátů a opisů se standardními šancemi."}
+                ? "Pecia exemplaris — 3 loose folios of academic and monastic transcriptions with standard odds."
+                : "Pecia exemplaris — 3 pergamenové listy univerzitních traktátů a opisů se standardními šancemi."}
             </p>
             <div className="ware-meta">
               <span className="ware-price"><Coins size={14} color="#d4af37" /> <strong>{STATIONER_PRICES.standard}</strong> {lang === "en" ? "gold" : "zlaťáků"}</span>
@@ -6406,15 +6407,15 @@ function OnboardingTutorialModal({
     {
       badge: lang === "en" ? "STEP 3 OF 5 · DAILY PACKS" : "KROK 3 ZE 5 · DENNÍ PŘÍDĚL KARET",
       icon: "📦",
-      title: lang === "en" ? "3 Daily Packs & Scribe's Journey" : "3 denní balíčky a cesta písaře",
-      lead: lang === "en" ? "Claim 15 new authentic colophons every single day for free." : "Vyzvedněte si každý kalendářní den 15 nových kolofonů zdarma.",
+      title: lang === "en" ? "Daily Pack & Scribe's Journey" : "Denní balíček a cesta písaře",
+      lead: lang === "en" ? "Claim 3 new authentic colophons every single day for free." : "Vyzvedněte si každý kalendářní den 3 nové kolofony zdarma.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
             {lang === "en" ? (
-              <>Every day, <strong>3 free sealed packs</strong> await you in the scriptorium. Each pack contains 5 cards in six rarity tiers:</>
+              <>Every day, <strong>1 free sealed pack</strong> awaits you in the scriptorium. Each pack contains 3 cards in six rarity tiers:</>
             ) : (
-              <>Každý den na vás ve skriptoriu čekají <strong>3 bezplatné zapečetěné balíčky</strong>. V každém balíčku naleznete 5 karet v šesti stupních vzácnosti:</>
+              <>Každý den na vás ve skriptoriu čeká <strong>1 bezplatný zapečetěný balíček</strong>. V každém balíčku naleznete 3 karty v šesti stupních vzácnosti:</>
             )}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, textAlign: "center", fontSize: "11px", fontWeight: 700 }}>
@@ -6438,15 +6439,15 @@ function OnboardingTutorialModal({
     {
       badge: lang === "en" ? "STEP 4 OF 5 · PALAEOGRAPHY & CHALLENGES" : "KROK 4 ZE 5 · PALEOGRAFIE A MINIHRY",
       icon: "⚔️",
-      title: lang === "en" ? "5 Daily Scribal Challenges" : "5 denních výzev pro bystrý zrak",
+      title: lang === "en" ? "3 Daily Scribal Challenges" : "3 denní výzvy pro bystrý zrak",
       lead: lang === "en" ? "Train your eye to decipher Gothic letters, script styles, and medieval abbreviations." : "Trénujte čtení gotických liter, duktů písma a dešifrování středověkých zkratek.",
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: "13px", lineHeight: "1.6", color: "#3d2711" }}>
           <p>
             {lang === "en" ? (
-              <>In the <strong>Challenges</strong> tab, you have <strong>5 daily activities</strong> across 4 disciplines:</>
+              <>In the <strong>Challenges</strong> tab, you have <strong>3 daily activities</strong> across 4 disciplines:</>
             ) : (
-              <>V záložce <strong>Výzvy</strong> máte denně k dispozici <strong>5 písařských aktivit</strong> ve 4 disciplínách:</>
+              <>V záložce <strong>Výzvy</strong> máte denně k dispozici <strong>3 písařské aktivity</strong> ve 4 disciplínách:</>
             )}
           </p>
           <ul style={{ margin: "0 0 0 18px", padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -7051,8 +7052,8 @@ function DailyPieceModal({
           )}
           <div style={{ marginTop: 4, fontSize: "11px", color: "#8b6508", fontStyle: "italic" }}>
             🕯️ {lang === "en"
-              ? "Your 3 daily packs and 5 scribal challenges are ready in the scriptorium!"
-              : "Vaše 3 denní balíčky a 5 písařských výzev jsou připraveny ve skriptoriu!"}
+              ? `Your ${MAX_DAILY_PACKS} daily pack and ${MAX_DAILY_GAMES} scribal challenges are ready in the scriptorium!`
+              : `Váš ${MAX_DAILY_PACKS} denní balíček a ${MAX_DAILY_GAMES} písařské výzvy jsou připraveny ve skriptoriu!`}
           </div>
         </div>
 
@@ -8392,8 +8393,8 @@ function GameModal({
     if (!answer) {
       const leaveConfirm =
         lang === "en"
-          ? "Are you sure you want to abandon this challenge? Abandoning counts as a failed attempt and will consume 1 of your 5 daily challenges."
-          : "Opravdu chcete tuto výzvu opustit? Opuštění rozehrané výzvy se započítává jako neúspěch a odečte 1 z vašich 5 denních her.";
+          ? `Are you sure you want to abandon this challenge? Abandoning counts as a failed attempt and will consume 1 of your ${MAX_DAILY_GAMES} daily challenges.`
+          : `Opravdu chcete tuto výzvu opustit? Opuštění rozehrané výzvy se započítává jako neúspěch a odečte 1 z vašich ${MAX_DAILY_GAMES} denních výzev.`;
       if (confirm(leaveConfirm)) {
         onAnswer(false);
         onClose();

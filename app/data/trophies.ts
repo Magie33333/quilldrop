@@ -1578,7 +1578,7 @@ export function evaluateTrophy(
     case "mosaic-master":
       return (state?.puzzle || 0) >= 16 || Boolean(state?.gallery && state.gallery.length > 0);
     case "paleographer":
-      return (state?.gamesPlayed || 0) >= 5;
+      return (state?.gamesPlayed || 0) >= 3;
     default:
       return false;
   }
