@@ -53,6 +53,8 @@ import {
   Play,
   Landmark,
   Link2,
+  Sidebar,
+  Menu,
 } from "lucide-react";
 import { HEURIST_COLOPHONS } from "../data/colophons.generated";
 import { DEFAULT_CURIOS, type Curio } from "../data/curios";
@@ -267,6 +269,8 @@ export default function AdminPage() {
     onlineSince: string;
   };
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showMobileTools, setShowMobileTools] = useState(false);
   const [showPresenceModal, setShowPresenceModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -1299,19 +1303,97 @@ export default function AdminPage() {
     }
   }, [selectedCard?.id, currentProfile]);
 
-  // Klávesová zkratka Ctrl+S / Cmd+S pro rychlé uložení karty
+  // Klávesové zkratky: Ctrl+S pro uložení karty, Enter pro potvrzení v diffu, Escape pro zavření oken
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         if (selectedCard && !saving) {
-          handleOpenSaveConfirmation();
+          if (showDiffModal) {
+            executeSave();
+          } else {
+            handleOpenSaveConfirmation();
+          }
         }
+      }
+      if (e.key === "Enter" && showDiffModal && !saving) {
+        e.preventDefault();
+        executeSave();
+      }
+      if (e.key === "Escape") {
+        setShowDiffModal(false);
+        setShowTeamModal(false);
+        setShowPresenceModal(false);
+        setShowHelpModal(false);
+        setShowSyncModal(false);
+        setShowNewModal(false);
+        setShowCuriosModal(false);
+        setShowMosaicsModal(false);
+        setShowAllGamesModal(false);
+        setShowAchievementsModal(false);
+        setPreviewGame(null);
+        setShowMobileTools(false);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedCard, saving, editTitle, editTitleEn, editQuote, editTranslation, editTranslationEn, editRarity, editRarityReason, editRarityReasonEn, editStatus, completedCrop]);
+  }, [
+    selectedCard,
+    saving,
+    showDiffModal,
+    showTeamModal,
+    showPresenceModal,
+    showHelpModal,
+    showSyncModal,
+    showNewModal,
+    showCuriosModal,
+    showMosaicsModal,
+    showAllGamesModal,
+    showAchievementsModal,
+    previewGame,
+    showMobileTools,
+    editTitle,
+    editTitleEn,
+    editQuote,
+    editTranslation,
+    editTranslationEn,
+    editRarity,
+    editRarityReason,
+    editRarityReasonEn,
+    editStatus,
+    completedCrop,
+  ]);
+
+  // Ochrana před nechtěným zavřením nebo obnovením záložky při rozepsaných změnách
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (selectedCard && getPendingChanges().length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [
+    selectedCard,
+    editTitle,
+    editTitleEn,
+    editQuote,
+    editTranslation,
+    editTranslationEn,
+    editRarity,
+    editRarityReason,
+    editRarityReasonEn,
+    editStatus,
+    editImageUrl,
+    editLocus,
+    editShelfmark,
+    editScribe,
+    editPlace,
+    editYear,
+    completedCrop,
+    crop,
+  ]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -1430,13 +1512,14 @@ export default function AdminPage() {
       const cleanName = colleagueName.trim() || colleagueEmail.split("@")[0];
       const cleanEmail = colleagueEmail.trim().toLowerCase();
       const cleanPassword = colleaguePassword.trim();
+      const safeUsername = generateSafeUsername(cleanName, cleanEmail);
 
       const { data: signData, error: signErr } = await tempClient.auth.signUp({
         email: cleanEmail,
         password: cleanPassword,
         options: {
           data: {
-            username: generateSafeUsername(cleanName, cleanEmail),
+            username: safeUsername,
             full_name: cleanName,
             display_name: cleanName,
             must_change_password: true,
@@ -1455,7 +1538,7 @@ export default function AdminPage() {
         // Nastavíme profilu roli v tabulce profiles
         await supabase.from("profiles").upsert({
           id: signData.user.id,
-          username: cleanName,
+          username: safeUsername,
           display_name: cleanName,
           role: colleagueRole,
         });
@@ -2913,11 +2996,23 @@ export default function AdminPage() {
             <ArrowLeft size={14} /> Zpět do hry
           </a>
           <span className="text-[#3d3122]">|</span>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 text-xs ${
+              sidebarOpen
+                ? "bg-[#241c16] border-[#423425] text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#2e241c]"
+                : "bg-[#3d3120] border-[#d4af37] text-[#ffd580]"
+            }`}
+            title={sidebarOpen ? "Skrýt katalog karet (zvětšit pracovní plochu)" : "Zobrazit katalog karet"}
+          >
+            <Sidebar size={14} />
+          </button>
           <div className="flex items-center gap-2">
             <span className="font-serif font-bold text-base sm:text-lg text-[#ffd580] tracking-wide">
               Quilldrop Studio
             </span>
-            <span className="text-[10px] uppercase font-bold text-[#c9a96e] bg-[#241c16] px-2 py-0.5 rounded border border-[#423425] tracking-wider">
+            <span className="hidden md:inline-block text-[10px] uppercase font-bold text-[#c9a96e] bg-[#241c16] px-2 py-0.5 rounded border border-[#423425] tracking-wider">
               Redakční studio
             </span>
           </div>
@@ -2984,6 +3079,80 @@ export default function AdminPage() {
           >
             <HelpCircle size={14} className="text-[#ffd580]" /> Příručka editora
           </button>
+        </div>
+
+        {/* MOBILNÍ / TABLET MENU (pro obrazovky < lg) */}
+        <div className="flex lg:hidden items-center gap-1.5 relative">
+          <button
+            type="button"
+            onClick={() => setShowMobileTools(!showMobileTools)}
+            className="flex items-center gap-1 text-xs bg-[#241c16] hover:bg-[#30261e] text-[#ffd580] px-2.5 py-1.5 rounded-lg border border-[#423425] cursor-pointer transition font-medium"
+          >
+            <Menu size={13} /> Nástroje ▾
+          </button>
+          {showMobileTools && (
+            <div className="absolute top-full left-0 mt-1 w-56 bg-[#16120e] border border-[#3d3226] rounded-xl shadow-2xl p-2 z-50 space-y-1">
+              <button
+                onClick={() => {
+                  setShowNewModal(true);
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-bold bg-[#d4af37] text-[#14100c] hover:bg-[#c39e2e] transition cursor-pointer"
+              >
+                <PlusCircle size={14} /> + Přidat kolofon
+              </button>
+              <button
+                onClick={() => {
+                  setShowCuriosModal(true);
+                  setEditingCurio(null);
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#241c16] transition cursor-pointer"
+              >
+                <BookOpen size={13} /> Glosy ({curios.length})
+              </button>
+              <button
+                onClick={() => {
+                  setShowMosaicsModal(true);
+                  setEditingMosaic(null);
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#241c16] transition cursor-pointer"
+              >
+                <Puzzle size={13} /> Denní iluminace ({illuminations.length})
+              </button>
+              <button
+                onClick={() => {
+                  setShowAllGamesModal(true);
+                  fetchAllGames();
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#241c16] transition cursor-pointer"
+              >
+                <Gamepad2 size={13} /> Minihry ({allGamesList.length})
+              </button>
+              <button
+                onClick={() => {
+                  setShowAchievementsModal(true);
+                  handleNewTrophyForm();
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#c9a96e] hover:text-[#ffd580] hover:bg-[#241c16] transition cursor-pointer"
+              >
+                <Trophy size={13} /> Výzvy ({trophiesList.length})
+              </button>
+              <div className="border-t border-[#2e2721] my-1" />
+              <button
+                onClick={() => {
+                  setShowHelpModal(true);
+                  setShowMobileTools(false);
+                }}
+                className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[#ffd580] hover:bg-[#241c16] transition cursor-pointer"
+              >
+                <HelpCircle size={14} className="text-[#ffd580]" /> Příručka editora
+              </button>
+            </div>
+          )}
         </div>
 
         {/* PRAVÁ ČÁST: Tým, Uživatel a Uložení */}
@@ -3088,7 +3257,11 @@ export default function AdminPage() {
       {/* HLAVNÍ PLOCHA */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* LEVÝ PANEL: Seznam karet */}
-        <aside className="w-80 border-r border-[#2e2721] bg-[#14110f] flex flex-col min-h-0 overflow-hidden">
+        <aside
+          className={`${
+            sidebarOpen ? "w-80" : "w-0 hidden"
+          } border-r border-[#2e2721] bg-[#14110f] flex flex-col min-h-0 overflow-hidden transition-all duration-200 shrink-0`}
+        >
           <div className="p-3 border-b border-[#2e2721] space-y-2">
             <div className="flex items-center justify-between">
               <div>
@@ -3103,6 +3276,14 @@ export default function AdminPage() {
                   </span>
                 </small>
               </div>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="text-[#7d6f62] hover:text-[#ffd580] p-1 rounded hover:bg-[#241c16] transition cursor-pointer"
+                title="Sbalit katalog karet"
+              >
+                <Sidebar size={14} />
+              </button>
             </div>
 
             <input
@@ -3182,7 +3363,14 @@ export default function AdminPage() {
                 return (
                   <button
                     key={c.id}
-                    onClick={() => selectCard(c)}
+                    onClick={() => {
+                      if (selectedCard?.id !== c.id && getPendingChanges().length > 0) {
+                        if (!confirm("Máte rozpracované neuložené změny na aktuální kartě. Opravdu chcete přejít na jinou kartu bez uložení?")) {
+                          return;
+                        }
+                      }
+                      selectCard(c);
+                    }}
                     className={`w-full text-left p-3 transition flex items-start gap-2.5 cursor-pointer relative ${
                       selectedCard?.id === c.id
                         ? "bg-[#29221b] border-l-2 border-[#d4af37]"
@@ -3302,6 +3490,17 @@ export default function AdminPage() {
 
           <div className="p-2.5 border-b border-[#2e2721] bg-[#14110f] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2.5">
+              {!sidebarOpen && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="bg-[#241c16] hover:bg-[#33261a] text-[#ffd580] border border-[#d4af37]/40 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+                  title="Zobrazit katalog karet"
+                >
+                  <Sidebar size={13} />
+                  <span className="hidden sm:inline">Katalog</span>
+                </button>
+              )}
               {centerMode === "crop" ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[12px] font-bold text-[#ffd580] flex items-center gap-1.5">
@@ -3344,7 +3543,15 @@ export default function AdminPage() {
                 <button
                   onClick={() => {
                     if (imgRef.current) {
-                      setCrop(defaultCrop(imgRef.current.width, imgRef.current.height));
+                      const next = defaultCrop(imgRef.current.width, imgRef.current.height);
+                      setCrop(next);
+                      setCompletedCrop({
+                        unit: "px",
+                        x: (next.x / 100) * imgRef.current.width,
+                        y: (next.y / 100) * imgRef.current.height,
+                        width: (next.width / 100) * imgRef.current.width,
+                        height: (next.height / 100) * imgRef.current.height,
+                      });
                     }
                   }}
                   className="text-[11px] text-[#b39e87] hover:text-[#e8ded1] px-2 py-1 bg-[#231d18] rounded border border-[#3b322a] flex items-center gap-1 cursor-pointer"
@@ -3458,6 +3665,9 @@ export default function AdminPage() {
                       src={selectedCard.image_url}
                       alt="Folio rukopisu"
                       onLoad={onImageLoad}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";
+                      }}
                       className="max-h-[calc(100vh-130px)] max-w-full w-auto h-auto object-contain block select-none"
                     />
                   </ReactCrop>
@@ -3529,6 +3739,9 @@ export default function AdminPage() {
                       ref={stripImgRef}
                       src={selectedCard.image_url}
                       alt="Folio pro vyznačení řádků"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";
+                      }}
                       className="max-h-[calc(100vh-260px)] max-w-full w-auto h-auto block pointer-events-none select-none"
                     />
 
@@ -3796,6 +4009,9 @@ export default function AdminPage() {
                       <img
                         src={selectedCard.image_url}
                         alt=""
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/colophons/placeholder.jpg";
+                        }}
                         style={{
                           position: "absolute",
                           maxWidth: "none",
@@ -3929,12 +4145,12 @@ export default function AdminPage() {
                       onChange={(e) => setEditRarity(e.target.value as Rarity)}
                       className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                     >
-                      <option value="Common">Common</option>
-                      <option value="Uncommon">Uncommon</option>
-                      <option value="Rare">Rare</option>
-                      <option value="Epic">Epic</option>
-                      <option value="Legendary">Legendary</option>
-                      <option value="Unique">Unique</option>
+                      <option value="Common">Běžná (Common)</option>
+                      <option value="Uncommon">Neobvyklá (Uncommon)</option>
+                      <option value="Rare">Vzácná (Rare)</option>
+                      <option value="Epic">Epická (Epic)</option>
+                      <option value="Legendary">Legendární (Legendary)</option>
+                      <option value="Unique">Unikátní (Unique)</option>
                     </select>
                   </div>
 
@@ -3945,9 +4161,9 @@ export default function AdminPage() {
                       onChange={(e) => setEditStatus(e.target.value as any)}
                       className="w-full bg-[#1e1915] border border-[#3b322a] rounded px-2.5 py-1.5 text-xs text-[#e8ded1] focus:outline-none focus:border-[#d4af37]"
                     >
-                      <option value="published">Publikováno</option>
-                      <option value="draft">Koncept (Draft)</option>
-                      <option value="review">Ke kontrole</option>
+                      <option value="published">🟢 Publikováno</option>
+                      <option value="draft">🟡 Koncept (Draft)</option>
+                      <option value="review">🔵 Ke kontrole</option>
                     </select>
                   </div>
                 </div>
