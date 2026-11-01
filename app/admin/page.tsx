@@ -282,6 +282,8 @@ export default function AdminPage() {
   // Karty a data
   const [cards, setCards] = useState<CardData[]>([]);
   const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
+  const selectedCardIdRef = useRef<string | null>(null);
+  const fetchCardsRef = useRef<(isSilent?: boolean) => Promise<void>>(() => Promise.resolve());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -864,10 +866,21 @@ export default function AdminPage() {
     }
   }
 
-  function handleStartEditFromAllGames(q: GameQuestion) {
+  async function handleStartEditFromAllGames(q: GameQuestion) {
     setShowAllGamesModal(false);
-    const targetCard = cards.find((c) => c.id === q.card_id);
+    let targetCard = cards.find((c) => c.id === q.card_id);
+    if (!targetCard && q.card_id) {
+      try {
+        const { data } = await supabase
+          .from("cards")
+          .select("*, colophons(*)")
+          .eq("id", q.card_id)
+          .single();
+        if (data) targetCard = data as CardData;
+      } catch {}
+    }
     if (targetCard) {
+      selectedCardIdRef.current = targetCard.id;
       selectCard(targetCard);
     }
     setRightSidebarTab("minigames");
@@ -877,11 +890,22 @@ export default function AdminPage() {
     handleStartEditGame(q);
   }
 
-  function handleCreateGameForCard(cardId: string, mode: GameBuilderMode) {
-    const targetCard = cards.find((c) => c.id === cardId);
+  async function handleCreateGameForCard(cardId: string, mode: GameBuilderMode) {
+    let targetCard = cards.find((c) => c.id === cardId);
+    if (!targetCard && cardId) {
+      try {
+        const { data } = await supabase
+          .from("cards")
+          .select("*, colophons(*)")
+          .eq("id", cardId)
+          .single();
+        if (data) targetCard = data as CardData;
+      } catch {}
+    }
     if (!targetCard) return;
     setShowAllGamesModal(false);
     setShowNewGamePicker(false);
+    selectedCardIdRef.current = targetCard.id;
     selectCard(targetCard);
     setRightSidebarTab("minigames");
     if (mode === "transcription") {
@@ -1238,7 +1262,7 @@ export default function AdminPage() {
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "cards" }, () => {
-        fetchCards(true);
+        fetchCardsRef.current?.(true);
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -1247,7 +1271,7 @@ export default function AdminPage() {
             userName: currentProfile?.display_name || currentUser.email?.split("@")[0] || "Badatel",
             userEmail: currentUser.email || "",
             role: currentProfile?.role || "editor",
-            cardId: selectedCard?.id || null,
+            cardId: selectedCardIdRef.current || selectedCard?.id || null,
             cardTitle: selectedCard?.title || null,
             onlineSince: new Date().toISOString(),
           });
@@ -1507,21 +1531,35 @@ export default function AdminPage() {
 
       setCards(merged);
       if (merged.length > 0) {
-        if (!selectedCard) {
-          selectCard(merged[0]);
+        // Spolehlivě zjistíme ID vybrané karty ze sdílené ref, state nebo sessionStorage
+        let currentSelectedId: string | null = selectedCardIdRef.current || selectedCard?.id || null;
+        if (!currentSelectedId && typeof window !== "undefined") {
+          try {
+            currentSelectedId = sessionStorage.getItem("quilldrop-admin-selected-card-id");
+          } catch {}
+        }
+
+        const fresh = currentSelectedId ? merged.find((c) => c.id === currentSelectedId) : null;
+        if (fresh) {
+          // Karta již byla vybrána a existuje v čerstvých datech:
+          // Pouze aktualizujeme referenční objekt v paměti pro metadata (autor, updated_at apod.),
+          // ale NIKDY nepřepínáme kartu na merged[0] a nepřemazáváme rozepsané hodnoty ve formuláři!
+          selectedCardIdRef.current = fresh.id;
+          setSelectedCard(fresh);
         } else {
-          // Pouze aktualizovat referenční objekt selectedCard v paměti pro metadata (např. updated_at, autor),
-          // ale NIKDY nepřemazávat rozepsané hodnoty editora ve formuláři (setEditTitleEn apod.)!
-          const fresh = merged.find((c) => c.id === selectedCard.id);
-          if (fresh) {
-            setSelectedCard(fresh);
-          }
+          // Žádná karta dosud nebyla vybrána (první načtení) nebo předchozí karta byla smazána
+          selectedCardIdRef.current = merged[0].id;
+          selectCard(merged[0]);
         }
       }
     }
     if (!isSilent) setLoading(false);
     fetchAllGames();
   }
+
+  useEffect(() => {
+    fetchCardsRef.current = fetchCards;
+  });
 
   async function syncOverridesToSupabase(customData?: Record<string, CardOverride>) {
     setSyncingOverrides(true);
@@ -1606,7 +1644,7 @@ export default function AdminPage() {
       }
 
       if (customData) {
-        fetchCards();
+        fetchCards(true);
       }
 
       if (errorCount > 0 && successCount === 0) {
@@ -1623,7 +1661,7 @@ export default function AdminPage() {
           setAutoSyncBanner(`Automaticky nahráno ${successCount} karet do Supabase cloudu`);
           setTimeout(() => setAutoSyncBanner(null), 8000);
         }
-        fetchCards();
+        fetchCards(true);
       }
     } catch (err: any) {
       setSyncResultMsg(`Chyba při synchronizaci: ${err.message || "Neznámá chyba"}`);
@@ -1662,6 +1700,12 @@ export default function AdminPage() {
   }, [currentUser?.id, cards.length > 0, syncingOverrides]);
 
   function selectCard(card: CardData) {
+    selectedCardIdRef.current = card.id;
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("quilldrop-admin-selected-card-id", card.id);
+      } catch {}
+    }
     setSelectedCard(card);
     setEditTitle(card.title || "");
     setEditTitleEn(card.title_en || "");
@@ -2428,9 +2472,16 @@ export default function AdminPage() {
 
       if (selectedCard?.id === target.id) {
         if (nextCards.length > 0) {
+          selectedCardIdRef.current = nextCards[0].id;
           selectCard(nextCards[0]);
         } else {
+          selectedCardIdRef.current = null;
           setSelectedCard(null);
+          if (typeof window !== "undefined") {
+            try {
+              sessionStorage.removeItem("quilldrop-admin-selected-card-id");
+            } catch {}
+          }
         }
       }
 
