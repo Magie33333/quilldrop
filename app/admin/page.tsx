@@ -1541,11 +1541,15 @@ export default function AdminPage() {
 
         const fresh = currentSelectedId ? merged.find((c) => c.id === currentSelectedId) : null;
         if (fresh) {
-          // Karta již byla vybrána a existuje v čerstvých datech:
-          // Pouze aktualizujeme referenční objekt v paměti pro metadata (autor, updated_at apod.),
-          // ale NIKDY nepřepínáme kartu na merged[0] a nepřemazáváme rozepsané hodnoty ve formuláři!
           selectedCardIdRef.current = fresh.id;
-          setSelectedCard(fresh);
+          if (!selectedCard) {
+            // První načtení (např. při obnovení z relace): naplníme formulář a natáhneme otázky
+            selectCard(fresh);
+          } else {
+            // Tiché obnovení na pozadí za běhu editoru: pouze aktualizujeme objekt v paměti pro metadata,
+            // ale NIKDY nepřepínáme na jinou kartu a nemažeme rozepsané hodnoty!
+            setSelectedCard(fresh);
+          }
         } else {
           // Žádná karta dosud nebyla vybrána (první načtení) nebo předchozí karta byla smazána
           selectedCardIdRef.current = merged[0].id;
@@ -1700,6 +1704,8 @@ export default function AdminPage() {
   }, [currentUser?.id, cards.length > 0, syncingOverrides]);
 
   function selectCard(card: CardData) {
+    const isDifferentCard = selectedCardIdRef.current !== card.id;
+
     selectedCardIdRef.current = card.id;
     if (typeof window !== "undefined") {
       try {
@@ -1727,6 +1733,16 @@ export default function AdminPage() {
 
     // Okamžitě resetujeme pixelový ořez předchozí karty, aby se nepřenesl
     setCompletedCrop(undefined);
+
+    // Pokud přepínáme na jinou kartu, bezpečně vyčistíme stav předchozí karty a rozpracované minihry
+    if (isDifferentCard) {
+      setQuestions([]);
+      setEditingGameId(null);
+      setShowGameForm(false);
+      setPreviewGame(null);
+      setSaveSuccess(false);
+      setCenterMode("crop");
+    }
 
     const cropW = Number(card.crop_w);
     const cropH = Number(card.crop_h);
@@ -1858,7 +1874,9 @@ export default function AdminPage() {
           translation_en: translationEn,
         };
       });
-      setQuestions(parsed as GameQuestion[]);
+      if (selectedCardIdRef.current === cardId) {
+        setQuestions(parsed as GameQuestion[]);
+      }
     }
   }
 
@@ -2656,6 +2674,7 @@ export default function AdminPage() {
             options_en: builderOptionsEn,
           } as any,
         ]);
+        setEditingGameId(null);
         setShowGameForm(false);
         setLastSavedSummary("Nová minihra byla uložena do databáze");
         setSaveSuccess(true);
@@ -2673,6 +2692,10 @@ export default function AdminPage() {
     if (!error) {
       setQuestions(questions.filter((q) => q.id !== qId));
       setAllGamesList((prev) => prev.filter((q) => q.id !== qId));
+      if (editingGameId === qId) {
+        setEditingGameId(null);
+        setShowGameForm(false);
+      }
     } else {
       alert("Chyba při mazání minihry: " + error.message);
     }
