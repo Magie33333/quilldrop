@@ -3850,7 +3850,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
       {lang === "en" ? "Colophon Collection" : "Sbírka kolofonů"}
     </PageTitle>
     <div className="collection-summary">
-      <div><strong>{Object.keys(state.collection).length}</strong><span>{lang === "en" ? "discovered" : "objeveno"}</span></div>
+      <div><strong>{Object.keys(state.collection).length} / {cards.filter(c => c.status === "published" || !c.status).length}</strong><span>{lang === "en" ? "discovered" : "objeveno"}</span></div>
       <div><strong>{Object.values(state.collection).reduce((a, b) => a + b, 0)}</strong><span>{lang === "en" ? "total cards" : "karet celkem"}</span></div>
       <div><strong>{Object.values(state.collection).filter(n => n > 1).length}</strong><span>{lang === "en" ? "duplicates" : "duplikátů"}</span></div>
     </div>
@@ -3909,7 +3909,7 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
           })}
         </div>
         {displayedCards.length > visibleCount && (
-          <div style={{ textAlign: "center", margin: "22px 0 16px" }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", margin: "22px 0 16px", flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setVisibleCount((c) => c + 48)}
@@ -3919,6 +3919,14 @@ function CollectionScreen({ state, cards, filter, setFilter, onDetail, lang = "c
               {lang === "en"
                 ? `Show more codices (${displayedCards.length - visibleCount} remaining)`
                 : `Zobrazit další kodexy (zbývá ${displayedCards.length - visibleCount})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleCount(displayedCards.length)}
+              className="game-btn-subtle"
+              style={{ fontSize: "12px", padding: "8px 16px", cursor: "pointer", background: "transparent", border: "1px solid #8c6020", color: "#ffd580", borderRadius: "6px" }}
+            >
+              {lang === "en" ? `Show all (${displayedCards.length})` : `Zobrazit všechny (${displayedCards.length})`}
             </button>
           </div>
         )}

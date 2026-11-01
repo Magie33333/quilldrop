@@ -16,6 +16,7 @@
     "db:generate": "drizzle-kit generate",
     "import:heurist": "node scripts/import-heurist.mjs",
     "import:supabase": "node scripts/import-to-supabase.mjs",
+    "sync:colophons": "node scripts/sync-published-colophons.mjs",
     "backup": "node scripts/backup-db.mjs"
   },
   "dependencies": {

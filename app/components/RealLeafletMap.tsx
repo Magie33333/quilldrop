@@ -362,7 +362,7 @@ export default function RealLeafletMap({
   const handleCenterEurope = () => {
     if (mapInstanceRef.current && mapInstanceRef.current._container) {
       try {
-        mapInstanceRef.current.flyTo([49.2, 15.2], compact ? 4.8 : 5.2, { duration: 0.8 });
+        mapInstanceRef.current.flyTo([52.0, 15.0], compact ? 4.3 : 4.8, { duration: 0.8 });
       } catch {}
     }
   };

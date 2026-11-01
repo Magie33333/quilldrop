@@ -46,7 +46,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 48,
     y: 36,
     icon: "👑",
-    matchKeywords: ["prague", "praha", "prag", "pragae", "pragens", "castro", "sanctorum", "klementinum", "klementin", "karolin", "strahov", "břevnov", "brevnov", "staré město", "stare mesto", "nové město", "nove mesto", "hradčany", "hradcany", "vyšehrad", "vysehrad", "národní knihovna", "narodni knihovna", "czechia (praha?)"],
+    matchKeywords: ["prague", "praha", "prag", "pragae", "pragens", "castro", "sanctorum", "klementinum", "klementin", "karolin", "strahov", "břevnov", "brevnov", "staré město", "stare mesto", "nové město", "nove mesto", "hradčany", "hradcany", "vyšehrad", "vysehrad", "národní knihovna", "narodni knihovna", "czechia (praha?)", "knihovna národního muzea", "narodniho muzea", "collegium omnium sanctorum", "nazaretská kolej", "nazaretska", "jadwiga", "reginae"],
   },
   {
     id: "olomouc",
@@ -66,7 +66,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 64,
     y: 40,
     icon: "⛪",
-    matchKeywords: ["olomouc", "moravia", "opava", "zemský archiv"],
+    matchKeywords: ["olomouc", "moravia", "opava", "zemský archiv", "zemsky archiv", "metropolitní kapitula", "metropolitni kapitula", "vědecká knihovna v olomouci", "vedecka knihovna v olomouci", "vkol"],
   },
   {
     id: "vyssi-brod",
@@ -86,7 +86,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 45,
     y: 53,
     icon: "📜",
-    matchKeywords: ["vyšší brod", "vyssi brod", "hohenfurth", "rožmberk"],
+    matchKeywords: ["vyšší brod", "vyssi brod", "hohenfurth", "rožmberk", "rozmberk", "cisterciácké opatství vyšší brod", "cisterciacke opatstvi vyssi brod", "opatství vyšší brod", "opatstvi vyssi brod"],
   },
   {
     id: "brno",
@@ -96,17 +96,17 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     region_en: "Moravian Provincial Capital",
     country: "Česká republika",
     country_en: "Czech Republic",
-    modernRepository: "Moravská zemská knihovna v Brně (MZK)",
-    modernRepository_en: "Moravian Library in Brno (MZK)",
-    description: "Centrum moravských zemských sněmů a soudů. Bohatá sbírka rukopisů a starých tisků je dnes badatelům přístupná v Moravské zemské knihovně v Brně.",
-    description_en: "Center of the Moravian provincial assemblies and courts. A rich collection of manuscripts and early printed books is accessible to researchers at the Moravian Library in Brno.",
+    modernRepository: "Moravská zemská knihovna v Brně (MZK), Knihovna Augustiniánů na Starém Brně",
+    modernRepository_en: "Moravian Library in Brno (MZK), Augustinian Library in Old Brno",
+    description: "Centrum moravských zemských sněmů a soudů. Bohatá sbírka rukopisů a starých tisků z augustiniánského kláštera a minoritů je dnes badatelům přístupná v Moravské zemské knihovně.",
+    description_en: "Center of the Moravian provincial assemblies and courts. A rich collection of manuscripts from the Augustinian abbey and Minorite friars is accessible in the Moravian Library.",
     lat: 49.1951,
     lng: 16.6068,
     zoom: 11,
     x: 58,
     y: 45,
     icon: "⚖️",
-    matchKeywords: ["brno", "brünn", "moravská zemská", "mzk"],
+    matchKeywords: ["brno", "brünn", "moravská zemská", "mzk", "augustiniánů na st. brně", "augustinianu na st. brne", "st. brně", "st. brne", "staré brno", "stare brno", "starém brně", "starem brne", "starobrněnsk", "minorité brno", "minorite brno", "minorité", "minorite"],
   },
   {
     id: "rajhrad",
@@ -126,7 +126,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 60,
     y: 48,
     icon: "🏛️",
-    matchKeywords: ["rajhrad", "raygern", "památník písemnictví"],
+    matchKeywords: ["rajhrad", "raygern", "památník písemnictví", "pamatnik pisemnictvi", "benediktinské opatství rajhrad", "benediktinske opatstvi rajhrad", "rajhradě", "rajhrade"],
   },
   {
     id: "trebon",
@@ -166,7 +166,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 67,
     y: 33,
     icon: "🛡️",
-    matchKeywords: ["fulštejn", "fulstein", "osoblaha", "bohušov"],
+    matchKeywords: ["fulštejn", "fulstein", "osoblaha", "bohušov", "šenov", "senov", "nový jičín", "novy jicin"],
   },
   {
     id: "litomerice",
@@ -206,7 +206,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 78,
     y: 31,
     icon: "🏰",
-    matchKeywords: ["kazimierz", "krakow", "cracov", "polon", "jagiellon"],
+    matchKeywords: ["kazimierz", "krakow", "kraków", "cracov", "polon", "jagiellon"],
   },
   {
     id: "wroclaw",
@@ -246,7 +246,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 50,
     y: 26,
     icon: "🛡️",
-    matchKeywords: ["zittau", "žitava", "lusatia", "christian-weise"],
+    matchKeywords: ["zittau", "žitava", "zitava", "lusatia", "christian-weise", "oybin"],
   },
   {
     id: "leipzig",
@@ -346,7 +346,7 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     x: 56,
     y: 58,
     icon: "🦅",
-    matchKeywords: ["wien", "vienna", "vídeň", "österreichische", "österreichische nationalbibliothek", "vídni"],
+    matchKeywords: ["wien", "vienna", "vídeň", "viden", "österreichische", "österreichische nationalbibliothek", "vídni", "vidni", "waldhausen"],
   },
   {
     id: "melk",
@@ -688,6 +688,206 @@ export const SCRIPTORIA_PLACES: ScriptoriumPlace[] = [
     icon: "🏛️",
     matchKeywords: ["roma", "řím", "rim", "rome", "vatican", "vaticana", "bav", "apostolica", "curia"],
   },
+  {
+    id: "mikulov",
+    name: "Mikulov",
+    name_en: "Mikulov (Nikolsburg)",
+    region: "Zámecká knihovna Dietrichsteinů",
+    region_en: "Dietrichstein Castle Library",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Moravská zemská knihovna v Brně (deponát Zámecké knihovny Dietrichsteinů)",
+    modernRepository_en: "Moravian Library in Brno (Dietrichstein Castle Library collection)",
+    description: "Slavná zámecká knihovna kardinála Františka z Dietrichsteina na mikulovském zámku pod Pálavou. Během třicetileté války (1645) byla zčásti odvezena švédským vojskem, dochované a navrácené kodexy jsou dnes chráněny v MZK.",
+    description_en: "Celebrated castle library of Cardinal Franz von Dietrichstein at Mikulov Castle beneath the Pálava Hills. Looted in 1645 by Swedish forces, surviving and restituted codices are conserved today in the Moravian Library.",
+    lat: 48.8056,
+    lng: 16.6378,
+    zoom: 12,
+    x: 60,
+    y: 50,
+    icon: "🏰",
+    matchKeywords: ["mikulov", "nikolsburg", "dietrichstein", "dietrichsteinu"],
+  },
+  {
+    id: "kynzvart",
+    name: "Zámek Kynžvart",
+    name_en: "Kynžvart Castle (Königswart)",
+    region: "Zámecká knihovna kancléře Metternicha",
+    region_en: "Chancellor Metternich's Castle Library",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Zámecká knihovna Kynžvart (Národní památkový ústav)",
+    modernRepository_en: "Kynžvart Castle Library (National Heritage Institute)",
+    description: "Mimořádně cenná zámecká knihovna knížete Metternicha v západních Čechách. Uchovává vzácné středověké rukopisy z klášterních fondů včetně kodexu 25 C 5 s kolofonem písaře Ruadkera.",
+    description_en: "Exceptionally valuable castle library of Prince Metternich in Western Bohemia. Houses rare medieval codices from monastic collections, including codex 25 C 5 signed by scribe Ruadker.",
+    lat: 50.0051,
+    lng: 12.6053,
+    zoom: 12,
+    x: 38,
+    y: 37,
+    icon: "🏛️",
+    matchKeywords: ["kynžvart", "kynzvart", "königswart", "koenigswart"],
+  },
+  {
+    id: "melnik",
+    name: "Mělník",
+    name_en: "Mělník",
+    region: "Městská partikulární škola a kapitula",
+    region_en: "Municipal School & Chapter",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Zámecká knihovna Dietrichsteinů / Moravská zemská knihovna",
+    modernRepository_en: "Dietrichstein Castle Library / Moravian Library",
+    description: "Věnné město českých královen na soutoku Labe a Vltavy. Zdejší městská partikulární škola u sv. Petra a Pavla byla proslulým centrem latinské vzdělanosti a opisování kodexů žáky a bakaláři.",
+    description_en: "Dowry town of Bohemian queens at the confluence of the Elbe and Vltava rivers. Its municipal Latin school was a renowned scribal hub where pupils and bachelors copied liturgical and grammatical codices.",
+    lat: 50.3506,
+    lng: 14.4744,
+    zoom: 12,
+    x: 48,
+    y: 33,
+    icon: "🍇",
+    matchKeywords: ["mělník", "melnik", "melnicen", "melnicensi", "mělnické škole", "melnicke skole"],
+  },
+  {
+    id: "caslav",
+    name: "Čáslav",
+    name_en: "Čáslav",
+    region: "Královské město a děkanství",
+    region_en: "Royal Town & Deanery",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Zámecká knihovna Dietrichsteinů / Moravská zemská knihovna",
+    modernRepository_en: "Dietrichstein Castle Library / Moravian Library",
+    description: "Královské město ve východních Čechách, dějiště slavného Čáslavského sněmu (1421). Místo sepsání traktátů a kodexů českých písařů.",
+    description_en: "Bohemian royal town, venue of the famous Diet of Čáslav (1421). Provenance of theological treatises and codices inscribed by Bohemian scribes.",
+    lat: 49.9114,
+    lng: 15.3900,
+    zoom: 12,
+    x: 53,
+    y: 39,
+    icon: "⚔️",
+    matchKeywords: ["čáslav", "caslav"],
+  },
+  {
+    id: "ostrov",
+    name: "Ostrov nad Ohří",
+    name_en: "Ostrov (Schlackenwerth)",
+    region: "Podkrušnohoří",
+    region_en: "Ore Mountain Foothills",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Knihovna cisterciáckého opatství Vyšší Brod",
+    modernRepository_en: "Library of the Cistercian Abbey Vyšší Brod",
+    description: "Historické krušnohorské město, působiště zručného písaře Vavřince ze Slackenwerdu (Laurentius de Slackenwerd), jehož bohatě iluminované kodexy jsou chráněny ve Vyšším Brodě.",
+    description_en: "Historic town at the foot of the Ore Mountains, sphere of scribe Laurentius of Slackenwerd whose codices are preserved today at Vyšší Brod Abbey.",
+    lat: 50.3044,
+    lng: 12.9469,
+    zoom: 12,
+    x: 40,
+    y: 32,
+    icon: "📜",
+    matchKeywords: ["ostrov nad ohří", "ostrov nad ohri", "slackenwerd", "slackenwerdu"],
+  },
+  {
+    id: "straznice",
+    name: "Strážnice",
+    name_en: "Strážnice",
+    region: "Páni z Kravař / Slovácko",
+    region_en: "Lords of Kravaře / Moravian Slovakia",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Zemský archiv v Opavě – pobočka Olomouc (Metropolitní kapitula)",
+    modernRepository_en: "Opava Land Archive – Olomouc Branch (Metropolitan Chapter)",
+    description: "Středověký hrad a rezidence pánů z Kravař na jižní Moravě. Hradní kaple a písařská dílna vytvořily teologické a právní kodexy pro moravskou šlechtu a církev.",
+    description_en: "Medieval castle and residence of the Lords of Kravaře in southern Moravia. Its scriptorium and chapel produced theological codices for the Moravian nobility.",
+    lat: 48.9011,
+    lng: 17.3167,
+    zoom: 12,
+    x: 64,
+    y: 47,
+    icon: "🛡️",
+    matchKeywords: ["strážnice", "straznice", "straznic", "castle straznice"],
+  },
+  {
+    id: "bechyne",
+    name: "Bechyně",
+    name_en: "Bechyně",
+    region: "Jihočeské panství a františkánský klášter",
+    region_en: "South Bohemian Domain & Franciscan Friary",
+    country: "Česká republika",
+    country_en: "Czech Republic",
+    modernRepository: "Národní knihovna České republiky, Praha",
+    modernRepository_en: "National Library of the Czech Republic, Prague",
+    description: "Gotický hrad a město nad Lužnicí spjaté s rodem Šternberků a františkánským klášterem. Zdejší kodexy a kolofony se vyznačují humornými a lidovými glosami.",
+    description_en: "Gothic castle and town perched above the Lužnice river, home to Sternberg holdings and a Franciscan friary celebrated for its colophons with vivid scribal wit.",
+    lat: 49.2958,
+    lng: 14.4686,
+    zoom: 12,
+    x: 47,
+    y: 47,
+    icon: "🏰",
+    matchKeywords: ["bechyně", "bechyne"],
+  },
+  {
+    id: "stockholm",
+    name: "Stockholm",
+    name_en: "Stockholm",
+    region: "Královská knihovna (Kungliga biblioteket)",
+    region_en: "National Library of Sweden (Kungliga biblioteket)",
+    country: "Švédsko",
+    country_en: "Sweden",
+    modernRepository: "Kungliga biblioteket : Sveriges nationalbibliotek, Stockholm",
+    modernRepository_en: "National Library of Sweden (Kungliga biblioteket), Stockholm",
+    description: "Švédská královská knihovna, která uchovává proslulou válečnou kořist z Prahy, Mikulova a Olomouce z roku 1648 (včetně rukopisů děl Jana Viklefa, Ďáblovy bible a Stříbrné bible).",
+    description_en: "The National Library of Sweden, which preserves celebrated Bohemian manuscript war booty seized in 1648 from Prague, Mikulov, and Olomouc (including Wyclif treatises and the Codex Gigas).",
+    lat: 59.3398,
+    lng: 18.0718,
+    zoom: 10,
+    x: 67,
+    y: 8,
+    icon: "🇸🇪",
+    matchKeywords: ["stockholm", "kungliga", "sverige", "sveriges", "sweden", "švédsko", "svedsko"],
+  },
+  {
+    id: "pirna",
+    name: "Pirna",
+    name_en: "Pirna",
+    region: "Sasko na Labi",
+    region_en: "Saxony on the Elbe",
+    country: "Německo",
+    country_en: "Germany",
+    modernRepository: "Národní knihovna České republiky, Praha",
+    modernRepository_en: "National Library of the Czech Republic, Prague",
+    description: "Historické saské město na Labi u česko-saské hranice. Důležitá zastávka na obchodní a univerzitní cestě z Prahy do Drážďan a Lipska.",
+    description_en: "Historic Saxon town on the Elbe near the Bohemian border. Vital crossroads on the academic route linking Prague to Dresden and Leipzig.",
+    lat: 50.9625,
+    lng: 13.9403,
+    zoom: 12,
+    x: 46,
+    y: 25,
+    icon: "⛪",
+    matchKeywords: ["pirna"],
+  },
+  {
+    id: "magdeburg",
+    name: "Magdeburg",
+    name_en: "Magdeburg",
+    region: "Arcibiskupství a metropole na Labi",
+    region_en: "Archbishopric & Metropolis on the Elbe",
+    country: "Německo",
+    country_en: "Germany",
+    modernRepository: "Národní knihovna České republiky, Praha",
+    modernRepository_en: "National Library of the Czech Republic, Prague",
+    description: "Významná středověká metropole na Labi s magdeburským městským právem, přejatým desítkami českých a moravských měst. Místo vzniku teologických a právních kodexů.",
+    description_en: "Foremost medieval metropolis on the Elbe and source of Magdeburg law adopted across Bohemia and Moravia. Hub of theological and juridical manuscripts.",
+    lat: 52.1205,
+    lng: 11.6276,
+    zoom: 11,
+    x: 39,
+    y: 19,
+    icon: "🏰",
+    matchKeywords: ["magdeburg"],
+  },
 ];
 
 export function getPlaceName(place: ScriptoriumPlace, lang: "cs" | "en" = "cs"): string {
@@ -717,54 +917,84 @@ export function getScriptoriumForCard(card?: { place?: string; manuscript?: stri
   const pNorm = normalizeKeyword(rawP);
   const mNorm = normalizeKeyword(rawM);
 
-  // 1. Nejprve zkusíme určit přesné místo sepsání z kolofonu (card.place)
-  if (pNorm && !pNorm.includes("unknown") && pNorm !== "unknown place" && !pNorm.includes("neznám") && !pNorm.includes("neznam")) {
+  const isGenericPlace =
+    !pNorm ||
+    pNorm.includes("unknown") ||
+    pNorm.includes("neznam") ||
+    pNorm === "czechia" ||
+    pNorm === "czechia?" ||
+    pNorm === "bohemia" ||
+    pNorm === "moravia" ||
+    pNorm === "central europe";
+
+  // 1. SPECIFICKÉ MÍSTO SEPSÁNÍ (pokud je známo z kolofonu a nejde o obecné zemské označení)
+  if (!isGenericPlace) {
     for (const place of SCRIPTORIA_PLACES) {
-      if (place.matchKeywords.some((kw) => {
-        const kwNorm = normalizeKeyword(kw);
-        return pNorm.includes(kwNorm) || rawP.toLowerCase().includes(kw.toLowerCase());
-      })) {
+      if (
+        place.matchKeywords.some((kw) => {
+          const kwNorm = normalizeKeyword(kw);
+          return pNorm.includes(kwNorm) || rawP.toLowerCase().includes(kw.toLowerCase());
+        })
+      ) {
         return place;
       }
     }
-    // Geografické zástupné termíny
-    if (pNorm.includes("czech") || pNorm.includes("cesk") || pNorm.includes("bohem")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "praha")!;
+  }
+
+  // 2. SPECIFICKÝ REPOSITÁŘ / MÍSTO ULOŽENÍ RUKOPISU (manuscript shelfmark)
+  if (mNorm) {
+    if (mNorm.includes("mikulov") || mNorm.includes("dietrichstein")) {
+      const mik = SCRIPTORIA_PLACES.find((x) => x.id === "mikulov");
+      if (mik) return mik;
     }
-    if (pNorm.includes("morav")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "olomouc")!;
+    if (mNorm.includes("kynzvart") || mNorm.includes("koenigswart")) {
+      const kyn = SCRIPTORIA_PLACES.find((x) => x.id === "kynzvart");
+      if (kyn) return kyn;
     }
-    if (pNorm.includes("siles") || pNorm.includes("slezsk")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "wroclaw") || SCRIPTORIA_PLACES.find((x) => x.id === "fulstejn")!;
+    if (mNorm.includes("kungliga") || mNorm.includes("sverige") || mNorm.includes("stockholm")) {
+      const sto = SCRIPTORIA_PLACES.find((x) => x.id === "stockholm");
+      if (sto) return sto;
     }
-    if (pNorm.includes("austria") || pNorm.includes("rakousk")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "viden")!;
-    }
-    if (pNorm.includes("ital")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "bologna")!;
-    }
-    if (pNorm.includes("poland") || pNorm.includes("polsk")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "krakow")!;
-    }
-    if (pNorm.includes("germany") || pNorm.includes("nemeck") || pNorm.includes("aleman")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "nurnberg")!;
-    }
-    if (pNorm.includes("franc") || pNorm.includes("gallia")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "paris") || SCRIPTORIA_PLACES[0];
-    }
-    if (pNorm.includes("helvet") || pNorm.includes("svycar") || pNorm.includes("swiss")) {
-      return SCRIPTORIA_PLACES.find((x) => x.id === "basel") || SCRIPTORIA_PLACES[0];
+
+    for (const place of SCRIPTORIA_PLACES) {
+      if (
+        place.matchKeywords.some((kw) => {
+          const kwNorm = normalizeKeyword(kw);
+          return mNorm.includes(kwNorm) || rawM.toLowerCase().includes(kw.toLowerCase());
+        })
+      ) {
+        return place;
+      }
     }
   }
 
-  // 2. Pokud je místo vzniku neznámé, zařadíme kartu podle místa dochování kodexu (card.manuscript)
-  for (const place of SCRIPTORIA_PLACES) {
-    if (place.matchKeywords.some((kw) => {
-      const kwNorm = normalizeKeyword(kw);
-      return mNorm.includes(kwNorm) || rawM.toLowerCase().includes(kw.toLowerCase());
-    })) {
-      return place;
-    }
+  // 3. REGIONÁLNÍ ZÁSTUPNÉ TERMÍNY Z MÍSTA (pokud ani repositář nebyl specifický)
+  if (pNorm.includes("morav")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "olomouc")!;
+  }
+  if (pNorm.includes("siles") || pNorm.includes("slezsk")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "wroclaw") || SCRIPTORIA_PLACES.find((x) => x.id === "fulstejn")!;
+  }
+  if (pNorm.includes("austria") || pNorm.includes("rakousk")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "viden")!;
+  }
+  if (pNorm.includes("ital")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "bologna")!;
+  }
+  if (pNorm.includes("poland") || pNorm.includes("polsk")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "krakow")!;
+  }
+  if (pNorm.includes("germany") || pNorm.includes("nemeck") || pNorm.includes("aleman")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "nurnberg")!;
+  }
+  if (pNorm.includes("franc") || pNorm.includes("gallia")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "paris") || SCRIPTORIA_PLACES[0];
+  }
+  if (pNorm.includes("helvet") || pNorm.includes("svycar") || pNorm.includes("swiss")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "basel") || SCRIPTORIA_PLACES[0];
+  }
+  if (pNorm.includes("czech") || pNorm.includes("cesk") || pNorm.includes("bohem")) {
+    return SCRIPTORIA_PLACES.find((x) => x.id === "praha")!;
   }
 
   // Fallback: Olomouc (kde je uchována většina olomouckých kapitulních kodexů)
